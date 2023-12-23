@@ -1,8 +1,8 @@
 package userservice
 
 import (
-	entity "Game/entity/user"
-	"Game/pkg/email"
+	entity "BrainBlitz.com/game/entity/user"
+	"BrainBlitz.com/game/pkg/email"
 	"fmt"
 )
 

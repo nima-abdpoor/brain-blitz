@@ -1,11 +1,11 @@
 package mysql
 
-import entity "Game/entity/user"
+import entity "BrainBlitz.com/game/entity/user"
 
-func (db DB) IsEmailUnique(email string) (bool, error) {
+func (db MYSQLDB) IsEmailUnique(email string) (bool, error) {
 
 }
 
-func (db DB) Register(user entity.User) (entity.User, error) {
+func (db MYSQLDB) Register(user entity.User) (entity.User, error) {
 
 }
