@@ -26,11 +26,17 @@ var (
 	insertUserErr = errors.New("failed to insert user")
 )
 
-type UserRepository struct {
+type userRepository struct {
 	DB repository.Database
 }
 
-func (ur UserRepository) Insert(dto dto.UserDTO) error {
+func NewUserRepository(db repository.Database) repository.UserRepository {
+	return &userRepository{
+		DB: db,
+	}
+}
+
+func (ur userRepository) Insert(dto dto.UserDTO) error {
 	result, err := ur.DB.GetDB().Exec(insertUserStatement,
 		dto.Email,
 		dto.Password,
