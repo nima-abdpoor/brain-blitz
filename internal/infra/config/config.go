@@ -1,5 +1,9 @@
 package config
 
+type HttpServerConfig struct {
+	Port uint
+}
+
 type DatabaseConfig struct {
 	Driver                 string
 	Url                    string
