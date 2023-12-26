@@ -20,6 +20,10 @@ type RegisterRequest struct {
 	Name  string
 }
 
+func New(repo Repository) Service {
+	return Service{repo: repo}
+}
+
 type RegisterResponse struct {
 	User entity.User
 }
