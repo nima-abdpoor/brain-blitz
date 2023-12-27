@@ -4,6 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/config"
 	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 	"time"
 )
 
