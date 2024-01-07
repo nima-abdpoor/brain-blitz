@@ -2,7 +2,7 @@ package main
 
 import (
 	"BrainBlitz.com/game/internal/controller"
-	"BrainBlitz.com/game/internal/core/server"
+	"BrainBlitz.com/game/internal/core/server/http"
 	"BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
@@ -39,7 +39,7 @@ func main() {
 	userController.InitRouter()
 
 	//create httpServer
-	httpServer := server.NewHTTPServer(ginInstance, config.HttpServerConfig{
+	httpServer := http.NewHTTPServer(ginInstance, config.HttpServerConfig{
 		Port: 8000,
 	})
 

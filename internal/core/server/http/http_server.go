@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"BrainBlitz.com/game/internal/infra/config"
