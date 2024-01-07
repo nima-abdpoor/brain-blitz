@@ -2,9 +2,12 @@ package grpc
 
 import (
 	"BrainBlitz.com/game/internal/infra/config"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"io"
+	"net"
+	"strconv"
 	"time"
 )
 
@@ -19,13 +22,21 @@ type gRPCServer struct {
 }
 
 func (g gRPCServer) Start(serviceRegister func(server *grpc.Server)) {
-	//TODO implement me
-	panic("implement me")
+	grpcListener, err := net.Listen("tcp", ":"+strconv.Itoa(int(g.config.Port)))
+	if err != nil {
+		zap.L().Fatal("failed to start grpc server", zap.Any("err", err))
+	}
+
+	serviceRegister(g.grpcServer)
+	zap.L().Info("start grpc server success ", zap.Any("endpoint", grpcListener.Addr()))
+	if err := g.grpcServer.Serve(grpcListener); err != nil {
+		zap.L().Fatal("failed to grpc server serve", zap.Any("err", err))
+	}
 }
 
 func (g gRPCServer) Close() error {
-	//TODO implement me
-	panic("implement me")
+	g.grpcServer.GracefulStop()
+	return nil
 }
 
 func NewGRPCServer(config config.GrpcServerConfig) (GRPCServer, error) {
