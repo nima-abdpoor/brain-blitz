@@ -10,7 +10,7 @@ import (
 	"syscall"
 )
 
-func addShutdownHook(closers ...io.Closer) {
+func AddShutdownHook(closers ...io.Closer) {
 	zap.L().Info("listening signals...")
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
