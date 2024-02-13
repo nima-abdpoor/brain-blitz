@@ -39,16 +39,21 @@ func (us UserService) SignUp(request *request.SignUpRequest) *response.Response 
 
 	currentTime := utils.GetUTCCurrentMillis()
 
+	hashPassword, err := utils.HashPassword(request.Password)
+	if err != nil {
+		return us.createFailedResponse(error_code.InternalError, error_code.GetLocalErrorCode(error_code.BcryptErrorHashingPassword))
+	}
+
 	userDto := dto.UserDTO{
-		Email:       request.Email,
-		Password:    request.Password,
-		DisplayName: getDisplayName(request.Email),
-		CreatedAt:   currentTime,
-		UpdatedAt:   currentTime,
+		Email:          request.Email,
+		HashedPassword: hashPassword,
+		DisplayName:    getDisplayName(request.Email),
+		CreatedAt:      currentTime,
+		UpdatedAt:      currentTime,
 	}
 
 	//save a new user
-	err := us.userRepo.Insert(userDto)
+	err = us.userRepo.Insert(userDto)
 	if err != nil {
 		if err == repository.DuplicateUser {
 			return us.createFailedResponse(error_code.DuplicateUser, err.Error())

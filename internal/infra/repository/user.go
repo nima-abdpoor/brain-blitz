@@ -39,7 +39,7 @@ func NewUserRepository(db repository.Database) repository.UserRepository {
 func (ur userRepository) Insert(dto dto.UserDTO) error {
 	result, err := ur.DB.GetDB().Exec(insertUserStatement,
 		dto.Email,
-		dto.Password,
+		dto.HashedPassword,
 		dto.DisplayName,
 		dto.CreatedAt,
 		dto.UpdatedAt,

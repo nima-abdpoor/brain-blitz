@@ -1,6 +1,9 @@
 package error_code
 
+import "fmt"
+
 type ErrorCode string
+type LocalErrorCode int
 
 // error code
 const (
@@ -16,3 +19,11 @@ const (
 	InternalErrMsg       = "internal error"
 	InvalidRequestErrMsg = "invalid request"
 )
+
+const (
+	BcryptErrorHashingPassword LocalErrorCode = iota + 1
+)
+
+func GetLocalErrorCode(code LocalErrorCode) string {
+	return fmt.Sprintf("ERROR_CODE:%v", code)
+}
