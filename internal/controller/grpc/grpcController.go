@@ -10,10 +10,10 @@ import (
 )
 
 var errorCodeMapper = map[error_code.ErrorCode]proto.ErrorCode{
-	error_code.Success:        proto.ErrorCode_SUCCESS,
-	error_code.InternalError:  proto.ErrorCode_EC_UNKNOWN,
-	error_code.InvalidRequest: proto.ErrorCode_INVALID_REQUEST,
-	error_code.DuplicateUser:  proto.ErrorCode_DUPLICATE_USER,
+	error_code.Success:       proto.ErrorCode_SUCCESS,
+	error_code.InternalError: proto.ErrorCode_EC_UNKNOWN,
+	error_code.BadRequest:    proto.ErrorCode_INVALID_REQUEST,
+	error_code.DuplicateUser: proto.ErrorCode_DUPLICATE_USER,
 }
 
 type userController struct {

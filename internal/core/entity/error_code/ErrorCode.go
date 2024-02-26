@@ -1,16 +1,17 @@
 package error_code
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
 
-type ErrorCode string
 type LocalErrorCode int
 
 // error code
 const (
-	Success        ErrorCode = "SUCCESS"
-	InvalidRequest ErrorCode = "INVALID_REQUEST"
-	DuplicateUser  ErrorCode = "DUPLICATE_USER"
-	InternalError  ErrorCode = "INTERNAL_ERROR"
+	Success       = http.StatusOK
+	BadRequest    = http.StatusBadRequest
+	InternalError = http.StatusInternalServerError
 )
 
 // error message

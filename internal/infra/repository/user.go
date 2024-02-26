@@ -4,6 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/core/dto"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -15,6 +16,8 @@ const (
 		"`created_at`," +
 		"`updated_at`) " +
 		"VALUES (?, ?, ?, ?, ?)"
+
+	getUserStatement = "SELECT * FROM User WHERE email = ?"
 )
 
 const (
@@ -36,7 +39,7 @@ func NewUserRepository(db repository.Database) repository.UserRepository {
 	}
 }
 
-func (ur userRepository) Insert(dto dto.UserDTO) error {
+func (ur userRepository) InsertUser(dto dto.UserDTO) error {
 	result, err := ur.DB.GetDB().Exec(insertUserStatement,
 		dto.Email,
 		dto.HashedPassword,
@@ -58,6 +61,15 @@ func (ur userRepository) Insert(dto dto.UserDTO) error {
 	}
 	if numRow != numberRowInserted {
 		return insertUserErr
+	}
+	return nil
+}
+
+func (ur userRepository) GetUser(email string) error {
+	if result, err := ur.DB.GetDB().Exec(getUserStatement, email); err != nil {
+		return err
+	} else {
+		fmt.Println("asdfasdfasf", result)
 	}
 	return nil
 }

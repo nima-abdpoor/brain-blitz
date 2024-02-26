@@ -30,11 +30,11 @@ func NewUserService(userRepo repository.UserRepository) service.UserService {
 func (us UserService) SignUp(request *request.SignUpRequest) *response.Response {
 	//validate request
 	if !email.IsValid(request.Email) {
-		return us.createFailedResponse(error_code.InvalidRequest, invalidUserNameErrMsg)
+		return us.createFailedResponse(error_code.BadRequest, invalidUserNameErrMsg)
 	}
 
 	if len(request.Password) == 0 {
-		return us.createFailedResponse(error_code.InvalidRequest, invalidPasswordErrMsg)
+		return us.createFailedResponse(error_code.BadRequest, invalidPasswordErrMsg)
 	}
 
 	currentTime := utils.GetUTCCurrentMillis()
@@ -53,10 +53,10 @@ func (us UserService) SignUp(request *request.SignUpRequest) *response.Response 
 	}
 
 	//save a new user
-	err = us.userRepo.Insert(userDto)
+	err = us.userRepo.InsertUser(userDto)
 	if err != nil {
 		if err == repository.DuplicateUser {
-			return us.createFailedResponse(error_code.DuplicateUser, err.Error())
+			return us.createFailedResponse(error_code.BadRequest, err.Error())
 		}
 		return us.createFailedResponse(error_code.InternalError, error_code.InternalErrMsg)
 	}
@@ -72,10 +72,10 @@ func getDisplayName(email string) string {
 	return strings.Split(email, "@")[0]
 }
 
-func (us UserService) createFailedResponse(code error_code.ErrorCode, message string) *response.Response {
+func (us UserService) createFailedResponse(errorCode int, message string) *response.Response {
 	return &response.Response{
 		Status:       false,
-		ErrorCode:    code,
+		ErrorCode:    errorCode,
 		ErrorMessage: message,
 	}
 }

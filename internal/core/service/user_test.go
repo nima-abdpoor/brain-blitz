@@ -14,18 +14,18 @@ type mockUserRepository struct{}
 type mockDuplicateUserRepository struct{}
 type mockInvalidUserRepository struct{}
 
-func (m *mockUserRepository) Insert(dto dto.UserDTO) error {
+func (m *mockUserRepository) InsertUser(dto dto.UserDTO) error {
 	if dto.Email == "test_user" {
 		return repository.DuplicateUser
 	}
 	return nil
 }
 
-func (m *mockDuplicateUserRepository) Insert(dto dto.UserDTO) error {
+func (m *mockDuplicateUserRepository) InsertUser(dto dto.UserDTO) error {
 	return repository.DuplicateUser
 }
 
-func (m *mockInvalidUserRepository) Insert(dto dto.UserDTO) error {
+func (m *mockInvalidUserRepository) InsertUser(dto dto.UserDTO) error {
 	return errors.New("")
 }
 
@@ -58,8 +58,8 @@ func TestUserService_SignUp_InvalidUsername(t *testing.T) {
 	if res.Status {
 		t.Errorf("expected status to be false, got true")
 	}
-	if res.ErrorCode != error_code.InvalidRequest {
-		t.Errorf("expected error code to be InvalidRequest, got %s", res.ErrorCode)
+	if res.ErrorCode != error_code.BadRequest {
+		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
 	}
 }
 
@@ -76,8 +76,8 @@ func TestUserService_SignUp_InvalidPassword(t *testing.T) {
 	if res.Status {
 		t.Errorf("expected status to be false, got true")
 	}
-	if res.ErrorCode != error_code.InvalidRequest {
-		t.Errorf("expected error code to be InvalidRequest, got %s", res.ErrorCode)
+	if res.ErrorCode != error_code.BadRequest {
+		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
 	}
 	if res.ErrorMessage != invalidPasswordErrMsg {
 		t.Errorf("expected error message to be %s, got %s", invalidPasswordErrMsg, res.ErrorCode)
@@ -99,7 +99,7 @@ func TestUserService_SignUp_DuplicateUser(t *testing.T) {
 		t.Errorf("expected status to be false, got true")
 	}
 	if res.ErrorCode != error_code.DuplicateUser {
-		t.Errorf("expected error code to be InvalidRequest, got %s", res.ErrorCode)
+		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
 	}
 }
 
@@ -118,7 +118,7 @@ func TestUserService_SignUp_InternalError(t *testing.T) {
 		t.Errorf("expected status to be false, got true")
 	}
 	if res.ErrorCode == error_code.DuplicateUser {
-		t.Errorf("expected error code to be InvalidRequest, got %s", res.ErrorCode)
+		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
 	}
 
 	if res.ErrorMessage != error_code.InternalErrMsg {

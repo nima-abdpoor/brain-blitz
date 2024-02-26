@@ -4,27 +4,21 @@ import (
 	"BrainBlitz.com/game/internal/core/entity/error_code"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
-	"BrainBlitz.com/game/internal/core/port/service"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
-type UserController struct {
-	Gin     *gin.Engine
-	Service service.Service
-}
-
-func (uc UserController) SignUp(ctx *gin.Context) {
+func (uc HttpController) SignUp(ctx *gin.Context) {
 	req, err := uc.parseRequest(ctx)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusOK, &invalidRequestResponse)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, &invalidRequestResponse)
 		return
 	}
 	resp := uc.Service.UserService.SignUp(req)
 	ctx.JSON(http.StatusOK, resp)
 }
 
-func (uc UserController) parseRequest(ctx *gin.Context) (*request.SignUpRequest, error) {
+func (uc HttpController) parseRequest(ctx *gin.Context) (*request.SignUpRequest, error) {
 	var req request.SignUpRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		return nil, err
@@ -34,7 +28,7 @@ func (uc UserController) parseRequest(ctx *gin.Context) (*request.SignUpRequest,
 
 var (
 	invalidRequestResponse = &response.Response{
-		ErrorCode:    error_code.InvalidRequest,
+		ErrorCode:    error_code.BadRequest,
 		ErrorMessage: error_code.InvalidRequestErrMsg,
 		Status:       false,
 	}
