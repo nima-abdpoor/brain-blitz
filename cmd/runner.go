@@ -2,8 +2,9 @@ package main
 
 import (
 	"BrainBlitz.com/game/internal/controller"
+	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
-	"BrainBlitz.com/game/internal/core/service"
+	userService "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
 	"github.com/gin-gonic/gin"
@@ -33,9 +34,11 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 
 	//create the user service
-	userService := service.NewUserService(userRepo)
-
-	userController := controller.NewUserController(ginInstance, userService)
+	uService := userService.NewUserService(userRepo)
+	controllerServices := service.Service{
+		UserService: uService,
+	}
+	userController := controller.NewUserController(ginInstance, controllerServices)
 	userController.InitRouter()
 
 	//create httpServer
