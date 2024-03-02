@@ -3,7 +3,10 @@ package repository
 import (
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/config"
+	"BrainBlitz.com/game/internal/infra/repository/sqlc"
+	"context"
 	"database/sql"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"time"
 )
@@ -35,10 +38,29 @@ func newDatabase(conf config.DatabaseConfig) (*sql.DB, error) {
 	return db, err
 }
 
-func (db database) GetDB() *sql.DB {
-	return db.DB
+func (db database) GetDB() *sqlc.Queries {
+	return sqlc.New(db)
 }
 
 func (db database) Close() error {
 	return db.DB.Close()
+}
+
+// ExecTx Execute a function within a database transaction.
+func (db *database) ExecTx(ctx context.Context, fn func(queries *sqlc.Queries) error) error {
+	tx, err := db.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	q := sqlc.New(tx)
+	err = fn(q)
+	if err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return fmt.Errorf("tx err: %v, rb err: %v", err, rbErr)
+		}
+		return err
+	}
+
+	return tx.Commit()
 }

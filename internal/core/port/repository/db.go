@@ -1,11 +1,13 @@
 package repository
 
 import (
-	"database/sql"
+	"BrainBlitz.com/game/internal/infra/repository/sqlc"
+	"context"
 	"io"
 )
 
 type Database interface {
 	io.Closer
-	GetDB() *sql.DB
+	GetDB() *sqlc.Queries
+	ExecTx(ctx context.Context, fn func(queries *sqlc.Queries) error) error
 }
