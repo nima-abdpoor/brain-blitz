@@ -11,5 +11,5 @@ var (
 
 type UserRepository interface {
 	InsertUser(dto dto.UserDTO) error
-	GetUser(email string) error
+	GetUser(email string) (dto.UserDTO, error)
 }

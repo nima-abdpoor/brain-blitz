@@ -3,7 +3,7 @@ package email
 import "strings"
 
 func IsValid(email string) bool {
-	// todo user REGEX to validation Email
+	// todo user REGEX to validation Username
 
 	if !strings.Contains(email, "@") {
 		return false

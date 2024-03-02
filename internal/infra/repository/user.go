@@ -3,30 +3,16 @@ package repository
 import (
 	"BrainBlitz.com/game/internal/core/dto"
 	"BrainBlitz.com/game/internal/core/port/repository"
-	"errors"
+	"BrainBlitz.com/game/internal/infra/repository/sqlc"
+	"context"
+	"database/sql"
 	"fmt"
-	"strings"
-)
-
-const (
-	insertUserStatement = "INSERT INTO User ( " +
-		"`email`, " +
-		"`password`, " +
-		"`display_name`, " +
-		"`created_at`," +
-		"`updated_at`) " +
-		"VALUES (?, ?, ?, ?, ?)"
-
-	getUserStatement = "SELECT * FROM User WHERE email = ?"
+	"time"
 )
 
 const (
 	duplicateEntryMsg = "Duplicate entry"
 	numberRowInserted = 1
-)
-
-var (
-	insertUserErr = errors.New("failed to insert user")
 )
 
 type userRepository struct {
@@ -40,36 +26,63 @@ func NewUserRepository(db repository.Database) repository.UserRepository {
 }
 
 func (ur userRepository) InsertUser(dto dto.UserDTO) error {
-	result, err := ur.DB.GetDB().Exec(insertUserStatement,
-		dto.Email,
-		dto.HashedPassword,
-		dto.DisplayName,
-		dto.CreatedAt,
-		dto.UpdatedAt,
-	)
-
-	if err != nil {
-		if strings.Contains(err.Error(), duplicateEntryMsg) {
-			return repository.DuplicateUser
+	currentTime := sql.NullTime{
+		Time:  time.Now(),
+		Valid: true,
+	}
+	if err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
+		res, err := queries.CreateUser(context.Background(), sqlc.CreateUserParams{
+			Username:    dto.Username,
+			Password:    dto.HashedPassword,
+			DisplayName: dto.DisplayName,
+			CreatedAt:   currentTime,
+			UpdatedAt:   currentTime,
+		})
+		if err != nil {
+			return err
 		}
+		fmt.Println(res)
+		return nil
+	}); err != nil {
 		return err
-	}
-	numRow, err := result.RowsAffected()
-
-	if err != nil {
-		return err
-	}
-	if numRow != numberRowInserted {
-		return insertUserErr
 	}
 	return nil
+
+	//if err != nil {
+	//	if strings.Contains(err.Error(), duplicateEntryMsg) {
+	//		return repository.DuplicateUser
+	//	}
+	//	return err
+	//}
+	//numRow, err := result.RowsAffected()
+	//
+	//if err != nil {
+	//	return err
+	//}
+	//if numRow != numberRowInserted {
+	//	return insertUserErr
+	//}
+	//return nil
 }
 
-func (ur userRepository) GetUser(email string) error {
-	if result, err := ur.DB.GetDB().Exec(getUserStatement, email); err != nil {
-		return err
-	} else {
-		fmt.Println("asdfasdfasf", result)
+func (ur userRepository) GetUser(username string) (dto.UserDTO, error) {
+	var result dto.UserDTO
+	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
+		if user, err := queries.GetUser(context.Background(), username); err != nil {
+			return err
+		} else {
+			result = dto.UserDTO{
+				Username:       user.Username,
+				HashedPassword: user.Password,
+				DisplayName:    user.DisplayName,
+				CreatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
+				UpdatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return result, err
 	}
-	return nil
+	return result, nil
 }

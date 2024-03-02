@@ -1,10 +1,10 @@
 -- name: GetUser :one
 SELECT *
 FROM user
-WHERE id = ? LIMIT 1;
+WHERE username = ? LIMIT 1;
 
 -- name: CreateUser :execresult
-INSERT INTO user (email, password, display_name, created_at, updated_at)
+INSERT INTO user (username, password, display_name, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?);
 
 -- name: DeleteUser :exec
