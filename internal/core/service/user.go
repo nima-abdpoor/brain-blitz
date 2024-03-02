@@ -9,6 +9,7 @@ import (
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/pkg/email"
+	"fmt"
 	"strings"
 )
 
@@ -45,7 +46,7 @@ func (us UserService) SignUp(request *request.SignUpRequest) *response.Response 
 	}
 
 	userDto := dto.UserDTO{
-		Email:          request.Email,
+		Username:       request.Email,
 		HashedPassword: hashPassword,
 		DisplayName:    getDisplayName(request.Email),
 		CreatedAt:      currentTime,
@@ -54,10 +55,13 @@ func (us UserService) SignUp(request *request.SignUpRequest) *response.Response 
 
 	//save a new user
 	err = us.userRepo.InsertUser(userDto)
+	fmt.Println("111")
 	if err != nil {
 		if err == repository.DuplicateUser {
 			return us.createFailedResponse(error_code.BadRequest, err.Error())
 		}
+		fmt.Println(err)
+		fmt.Errorf("errorIn: %v", err)
 		return us.createFailedResponse(error_code.InternalError, error_code.InternalErrMsg)
 	}
 

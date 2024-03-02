@@ -15,7 +15,7 @@ type mockDuplicateUserRepository struct{}
 type mockInvalidUserRepository struct{}
 
 func (m *mockUserRepository) InsertUser(dto dto.UserDTO) error {
-	if dto.Email == "test_user" {
+	if dto.Username == "test_user" {
 		return repository.DuplicateUser
 	}
 	return nil
