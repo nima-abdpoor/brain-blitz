@@ -19,6 +19,7 @@ const (
 	SuccessErrMsg        = "success"
 	InternalErrMsg       = "internal error"
 	InvalidRequestErrMsg = "invalid request"
+	InvalidPasswordMsg   = "invalid password"
 )
 
 const (
