@@ -47,22 +47,6 @@ func (ur userRepository) InsertUser(dto dto.UserDTO) error {
 		return err
 	}
 	return nil
-
-	//if err != nil {
-	//	if strings.Contains(err.Error(), duplicateEntryMsg) {
-	//		return repository.DuplicateUser
-	//	}
-	//	return err
-	//}
-	//numRow, err := result.RowsAffected()
-	//
-	//if err != nil {
-	//	return err
-	//}
-	//if numRow != numberRowInserted {
-	//	return insertUserErr
-	//}
-	//return nil
 }
 
 func (ur userRepository) GetUser(username string) (dto.UserDTO, error) {

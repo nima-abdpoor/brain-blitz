@@ -4,18 +4,25 @@ import (
 	"BrainBlitz.com/game/internal/core/entity/error_code"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
+	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func (uc HttpController) SignUp(ctx *gin.Context) {
 	req, err := uc.parseRequest(ctx)
+	code := http.StatusOK
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, &invalidRequestResponse)
 		return
 	}
-	resp := uc.Service.UserService.SignUp(req)
-	ctx.JSON(http.StatusOK, resp)
+	resp, err := uc.Service.UserService.SignUp(req)
+	if err != nil {
+		msg, code := httpmsg.Error(err)
+		ctx.JSON(code, msg)
+	} else {
+		ctx.JSON(code, resp)
+	}
 }
 
 func (uc HttpController) parseRequest(ctx *gin.Context) (*request.SignUpRequest, error) {

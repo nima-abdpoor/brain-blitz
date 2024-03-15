@@ -47,7 +47,7 @@ func (u userController) newSignUpResponse(resp *response.Response) (*proto.SignU
 		}, nil
 	}
 
-	data := resp.Data.(response.SignUpDataResponse)
+	data := resp.Data.(response.SignUpResponse)
 	return &proto.SignUpResponse{
 		Status:       resp.Status,
 		ErrorCode:    u.mapErrorCode(resp.ErrorCode),

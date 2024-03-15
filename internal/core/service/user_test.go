@@ -39,7 +39,7 @@ func TestUserService_SignUp_Success(t *testing.T) {
 	if !res.Status {
 		t.Errorf("Expected status to be true, got false")
 	}
-	data := res.Data.(response.SignUpDataResponse)
+	data := res.Data.(response.SignUpResponse)
 	if data.DisplayName == "" {
 		t.Errorf("expected non-empty display name, got empty")
 	}

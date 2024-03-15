@@ -1,5 +1,5 @@
 package response
 
-type SignUpDataResponse struct {
+type SignUpResponse struct {
 	DisplayName string `json:"displayName"`
 }

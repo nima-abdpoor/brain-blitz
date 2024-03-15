@@ -9,12 +9,13 @@ import (
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/pkg/email"
+	"BrainBlitz.com/game/pkg/errmsg"
+	"BrainBlitz.com/game/pkg/richerror"
 	"fmt"
 	"strings"
 )
 
 const (
-	invalidUserNameErrMsg = "invalid username"
 	invalidPasswordErrMsg = "invalid password"
 )
 
@@ -28,21 +29,27 @@ func NewUserService(userRepo repository.UserRepository) service.UserService {
 	}
 }
 
-func (us UserService) SignUp(request *request.SignUpRequest) *response.Response {
-	//validate request
+func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpResponse, error) {
+	const op = "service.SignUp"
 	if !email.IsValid(request.Email) {
-		return us.createFailedResponse(error_code.BadRequest, invalidUserNameErrMsg)
+		return response.SignUpResponse{}, richerror.New(op).
+			WithMeta(map[string]interface{}{"email": request.Email}).
+			WithMessage(errmsg.InvalidUserNameErrMsg)
 	}
 
 	if len(request.Password) == 0 {
-		return us.createFailedResponse(error_code.BadRequest, invalidPasswordErrMsg)
+		return response.SignUpResponse{}, richerror.New(op).
+			WithMessage(errmsg.InvalidPasswordErrMsg).
+			WithMeta(map[string]interface{}{"password": request.Password})
 	}
 
 	currentTime := utils.GetUTCCurrentMillis()
 
 	hashPassword, err := utils.HashPassword(request.Password)
 	if err != nil {
-		return us.createFailedResponse(error_code.InternalError, error_code.GetLocalErrorCode(error_code.BcryptErrorHashingPassword))
+		return response.SignUpResponse{}, richerror.New(op).
+			WithKind(richerror.KindUnexpected).
+			WithMeta(map[string]interface{}{"ERROR_CODE": error_code.BcryptErrorHashingPassword})
 	}
 
 	userDto := dto.UserDTO{
@@ -55,21 +62,23 @@ func (us UserService) SignUp(request *request.SignUpRequest) *response.Response 
 
 	//save a new user
 	err = us.userRepo.InsertUser(userDto)
-	fmt.Println("111")
 	if err != nil {
-		if err == repository.DuplicateUser {
-			return us.createFailedResponse(error_code.BadRequest, err.Error())
+		if strings.Contains(err.Error(), "Duplicate") {
+			return response.SignUpResponse{}, richerror.New(op).
+				WithError(err).
+				WithKind(richerror.KindInvalid).
+				WithMessage(errmsg.DuplicateUsername)
 		}
-		fmt.Println(err)
 		fmt.Errorf("errorIn: %v", err)
-		return us.createFailedResponse(error_code.InternalError, error_code.InternalErrMsg)
+		return response.SignUpResponse{}, richerror.New(op).
+			WithError(err).
+			WithKind(richerror.KindUnexpected)
 	}
 
 	// create data response
-	signUpData := response.SignUpDataResponse{
+	return response.SignUpResponse{
 		DisplayName: userDto.DisplayName,
-	}
-	return us.createSuccessResponse(signUpData)
+	}, nil
 }
 
 func getDisplayName(email string) string {
@@ -84,7 +93,7 @@ func (us UserService) createFailedResponse(errorCode int, message string) *respo
 	}
 }
 
-func (us UserService) createSuccessResponse(data response.SignUpDataResponse) *response.Response {
+func (us UserService) createSuccessResponse(data response.SignUpResponse) *response.Response {
 	return &response.Response{
 		Data:         data,
 		Status:       true,
