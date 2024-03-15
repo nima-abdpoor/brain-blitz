@@ -20,6 +20,6 @@ func NewUserController(gin *gin.Engine, us service.Service) HttpController {
 
 func (uc HttpController) InitRouter() {
 	api := uc.Gin.Group("/api/v1")
-	router.Post(api, "/signup", uc.SignUp)
 	router.Get(api, "/signin", uc.SignIn)
+	router.Post(api, "/signup", uc.SignUp)
 }

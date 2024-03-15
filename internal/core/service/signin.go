@@ -2,57 +2,45 @@ package service
 
 import (
 	utils "BrainBlitz.com/game/internal/core/common"
-	"BrainBlitz.com/game/internal/core/entity/error_code"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
 	"BrainBlitz.com/game/pkg/email"
+	"BrainBlitz.com/game/pkg/errmsg"
+	"BrainBlitz.com/game/pkg/richerror"
 	"fmt"
 )
 
-func (us UserService) SignIn(request *request.SingInRequest) *response.Response {
+func (us UserService) SignIn(request *request.SignInRequest) (response.SignInResponse, error) {
+	const op = "service.SignIn"
 	if !email.IsValid(request.Email) {
-		return us.createFailedResponse(error_code.BadRequest, invalidUserNameErrMsg)
+		return response.SignInResponse{}, richerror.New(op).
+			WithMeta(map[string]interface{}{"email": request.Email}).
+			WithMessage(errmsg.InvalidUserNameErrMsg)
 	}
 
 	if len(request.Password) == 0 {
-		return us.createFailedResponse(error_code.BadRequest, invalidPasswordErrMsg)
+		return response.SignInResponse{}, richerror.New(op).
+			WithMessage(errmsg.InvalidPasswordErrMsg).
+			WithMeta(map[string]interface{}{"password": request.Password})
 	}
 
 	if user, err := us.userRepo.GetUser(request.Email); err != nil {
 		fmt.Errorf("error In Getting User: %v", err)
-		return &response.Response{
-			Data:         nil,
-			Status:       false,
-			ErrorCode:    error_code.InternalError,
-			ErrorMessage: error_code.InternalErrMsg,
-		}
+		return response.SignInResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
 	} else {
 		result := utils.CheckPasswordHash(request.Password, user.HashedPassword)
 		if result {
-			data := struct {
-				Username    string `json:"username"`
-				DisplayName string `json:"displayName"`
-				CreatedAt   uint64 `json:"createdAt"`
-				UpdatedAt   uint64 `json:"updatedAt"`
-			}{
+			return response.SignInResponse{
 				Username:    user.Username,
 				DisplayName: user.DisplayName,
 				CreatedAt:   user.CreatedAt,
 				UpdatedAt:   user.UpdatedAt,
-			}
-			return &response.Response{
-				Data:         data,
-				Status:       true,
-				ErrorCode:    error_code.Success,
-				ErrorMessage: error_code.SuccessErrMsg,
-			}
+			}, nil
 		} else {
-			return &response.Response{
-				Data:         nil,
-				Status:       false,
-				ErrorCode:    error_code.BadRequest,
-				ErrorMessage: error_code.InvalidPasswordMsg,
-			}
+			return response.SignInResponse{}, richerror.New(op).
+				WithKind(richerror.KindForbidden).
+				WithMessage(errmsg.InvalidPasswordErrMsg).
+				WithMeta(map[string]interface{}{"password": request})
 		}
 	}
 }

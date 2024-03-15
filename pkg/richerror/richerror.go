@@ -22,22 +22,27 @@ func New(op Op) RichError {
 	return RichError{operation: op}
 }
 
-func (re RichError) withOperation(op Op) RichError {
+func (re RichError) WithOperation(op Op) RichError {
 	re.operation = op
 	return re
 }
 
-func (re RichError) withMessage(message string) RichError {
+func (re RichError) WithMessage(message string) RichError {
 	re.message = message
 	return re
 }
 
-func (re RichError) withKind(kind Kind) RichError {
+func (re RichError) WithError(err error) RichError {
+	re.wrappedError = err
+	return re
+}
+
+func (re RichError) WithKind(kind Kind) RichError {
 	re.kind = kind
 	return re
 }
 
-func (re RichError) withMeta(meta map[string]interface{}) RichError {
+func (re RichError) WithMeta(meta map[string]interface{}) RichError {
 	re.meta = meta
 	return re
 }

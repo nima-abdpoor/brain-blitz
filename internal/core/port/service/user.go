@@ -7,5 +7,5 @@ import (
 
 type UserService interface {
 	SignUp(request *request.SignUpRequest) *response.Response
-	SignIn(request *request.SingInRequest) *response.Response
+	SignIn(request *request.SignInRequest) (response.SignInResponse, error)
 }
