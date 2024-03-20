@@ -8,8 +8,10 @@ type Response struct {
 }
 
 type SignInResponse struct {
-	Username    string `json:"username"`
-	DisplayName string `json:"displayName"`
-	CreatedAt   uint64 `json:"createdAt"`
-	UpdatedAt   uint64 `json:"updatedAt"`
+	Username     string `json:"username"`
+	DisplayName  string `json:"displayName"`
+	CreatedAt    uint64 `json:"createdAt"`
+	UpdatedAt    uint64 `json:"updatedAt"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
 }

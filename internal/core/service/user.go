@@ -20,12 +20,14 @@ const (
 )
 
 type UserService struct {
-	userRepo repository.UserRepository
+	userRepo    repository.UserRepository
+	authService service.AuthGenerator
 }
 
-func NewUserService(userRepo repository.UserRepository) service.UserService {
+func NewUserService(userRepo repository.UserRepository, authService service.AuthGenerator) service.UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:    userRepo,
+		authService: authService,
 	}
 }
 

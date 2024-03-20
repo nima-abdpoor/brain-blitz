@@ -1,10 +1,11 @@
 module BrainBlitz.com/game
 
-go 1.21.5
+go 1.19
 
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.14.0
 	google.golang.org/grpc v1.60.1

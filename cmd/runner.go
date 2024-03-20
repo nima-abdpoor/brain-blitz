@@ -4,7 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/controller"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
-	userService "BrainBlitz.com/game/internal/core/service"
+	coreService "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
 	"github.com/gin-gonic/gin"
@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -34,9 +35,11 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 
 	//create the user service
-	uService := userService.NewUserService(userRepo)
+	authService := coreService.NewJWTAuthService("salam", "exp", time.Now().Add(time.Hour*24).Unix(), time.Now().Add(time.Hour*24*7).Unix())
+	uService := coreService.NewUserService(userRepo, authService)
 	controllerServices := service.Service{
 		UserService: uService,
+		AuthService: authService,
 	}
 	userController := controller.NewUserController(ginInstance, controllerServices)
 	userController.InitRouter()

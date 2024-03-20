@@ -8,6 +8,7 @@ import (
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"fmt"
+	"strconv"
 )
 
 func (us UserService) SignIn(request *request.SignInRequest) (response.SignInResponse, error) {
@@ -30,11 +31,29 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 	} else {
 		result := utils.CheckPasswordHash(request.Password, user.HashedPassword)
 		if result {
+			data := make(map[string]string)
+			data["user"] = strconv.FormatInt(user.ID, 10)
+			accessToken, err := us.authService.CreateAccessToken(data)
+			if err != nil {
+				return response.SignInResponse{}, richerror.New(op).
+					WithKind(richerror.KindUnexpected).
+					WithError(err).
+					WithMeta(map[string]interface{}{"data": data})
+			}
+			refreshToken, err := us.authService.CreateRefreshToken(data)
+			if err != nil {
+				return response.SignInResponse{}, richerror.New(op).
+					WithKind(richerror.KindUnexpected).
+					WithError(err).
+					WithMeta(map[string]interface{}{"data": data})
+			}
 			return response.SignInResponse{
-				Username:    user.Username,
-				DisplayName: user.DisplayName,
-				CreatedAt:   user.CreatedAt,
-				UpdatedAt:   user.UpdatedAt,
+				Username:     user.Username,
+				DisplayName:  user.DisplayName,
+				CreatedAt:    user.CreatedAt,
+				UpdatedAt:    user.UpdatedAt,
+				AccessToken:  accessToken,
+				RefreshToken: refreshToken,
 			}, nil
 		} else {
 			return response.SignInResponse{}, richerror.New(op).

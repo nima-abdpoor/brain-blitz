@@ -56,6 +56,7 @@ func (ur userRepository) GetUser(username string) (dto.UserDTO, error) {
 			return err
 		} else {
 			result = dto.UserDTO{
+				ID:             user.ID,
 				Username:       user.Username,
 				HashedPassword: user.Password,
 				DisplayName:    user.DisplayName,
