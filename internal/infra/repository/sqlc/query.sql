@@ -3,6 +3,11 @@ SELECT *
 FROM user
 WHERE username = ? LIMIT 1;
 
+-- name: GetUser :one
+SELECT *
+FROM user
+WHERE id = ? LIMIT 1;
+
 -- name: CreateUser :execresult
 INSERT INTO user (username, password, display_name, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?);

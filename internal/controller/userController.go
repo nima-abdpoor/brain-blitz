@@ -9,6 +9,22 @@ import (
 	"net/http"
 )
 
+func (uc HttpController) SignIn(ctx *gin.Context) {
+	var req request.SignInRequest
+	code := http.StatusOK
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, &invalidRequestResponse)
+		return
+	}
+	res, err := uc.Service.UserService.SignIn(&req)
+	if err != nil {
+		msg, code := httpmsg.Error(err)
+		ctx.JSON(code, msg)
+	} else {
+		ctx.JSON(code, res)
+	}
+}
+
 func (uc HttpController) SignUp(ctx *gin.Context) {
 	req, err := uc.parseRequest(ctx)
 	code := http.StatusOK
@@ -21,6 +37,23 @@ func (uc HttpController) SignUp(ctx *gin.Context) {
 		msg, code := httpmsg.Error(err)
 		ctx.JSON(code, msg)
 	} else {
+		ctx.JSON(code, resp)
+	}
+}
+
+func (uc HttpController) Profile(ctx *gin.Context) {
+	code := http.StatusBadRequest
+	var profileReq request.ProfileRequest
+	if err := ctx.ShouldBindUri(profileReq); err != nil {
+		ctx.JSON(code, "Invalid Id")
+		return
+	}
+	resp, err := uc.Service.UserService.Profile(string(rune(profileReq.ID)))
+	if err != nil {
+		msg, code := httpmsg.Error(err)
+		ctx.JSON(code, msg)
+	} else {
+		code = http.StatusOK
 		ctx.JSON(code, resp)
 	}
 }

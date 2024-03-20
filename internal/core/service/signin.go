@@ -48,10 +48,7 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 					WithMeta(map[string]interface{}{"data": data})
 			}
 			return response.SignInResponse{
-				Username:     user.Username,
-				DisplayName:  user.DisplayName,
-				CreatedAt:    user.CreatedAt,
-				UpdatedAt:    user.UpdatedAt,
+				ID:           strconv.FormatInt(user.ID, 10),
 				AccessToken:  accessToken,
 				RefreshToken: refreshToken,
 			}, nil

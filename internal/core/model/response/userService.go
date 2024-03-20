@@ -8,10 +8,19 @@ type Response struct {
 }
 
 type SignInResponse struct {
-	Username     string `json:"username"`
-	DisplayName  string `json:"displayName"`
-	CreatedAt    uint64 `json:"createdAt"`
-	UpdatedAt    uint64 `json:"updatedAt"`
+	ID           string `json:"id"`
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
+}
+
+type SignUpResponse struct {
+	DisplayName string `json:"displayName"`
+}
+
+type ProfileResponse struct {
+	ID          string `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"displayName"`
+	CreatedAt   uint64 `json:"createdAt"`
+	UpdatedAt   uint64 `json:"updatedAt"`
 }

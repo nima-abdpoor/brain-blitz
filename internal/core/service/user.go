@@ -103,3 +103,12 @@ func (us UserService) createSuccessResponse(data response.SignUpResponse) *respo
 		ErrorMessage: error_code.SuccessErrMsg,
 	}
 }
+
+func (us UserService) Profile(id string) (response.ProfileResponse, error) {
+	const op = "service.Profile"
+	if user, err := us.userRepo.GetUser(); err != nil {
+		fmt.Errorf("error In Getting User: %v", err)
+		return response.SignInResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
+	}
+	us.authService.ValidateToken()
+}
