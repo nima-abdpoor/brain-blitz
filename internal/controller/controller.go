@@ -22,4 +22,5 @@ func (uc HttpController) InitRouter() {
 	api := uc.Gin.Group("/api/v1")
 	router.Post(api, "/signup", uc.SignUp)
 	router.Get(api, "/signin", uc.SignIn)
+	router.Get(api, "/:id/profile", uc.Profile)
 }

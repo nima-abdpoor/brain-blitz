@@ -71,3 +71,26 @@ func (ur userRepository) GetUser(username string) (dto.UserDTO, error) {
 	}
 	return result, nil
 }
+
+func (ur userRepository) GetUserById(id string) (dto.UserDTO, error) {
+	var result dto.UserDTO
+	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
+		if user, err := queries.GetUserById(context.Background(), id); err != nil {
+			return err
+		} else {
+			result = dto.UserDTO{
+				ID:             user.ID,
+				Username:       user.Username,
+				HashedPassword: user.Password,
+				DisplayName:    user.DisplayName,
+				CreatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
+				UpdatedAt:      uint64(user.UpdatedAt.Time.UTC().UnixMilli()),
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}

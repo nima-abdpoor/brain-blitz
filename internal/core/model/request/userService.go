@@ -11,5 +11,5 @@ type SignUpRequest struct {
 }
 
 type ProfileRequest struct {
-	ID int `json:"id" binding:"required"`
+	ID int64 `uri:"id" binding:"required"`
 }

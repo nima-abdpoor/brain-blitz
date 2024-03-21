@@ -6,4 +6,5 @@ const (
 	InvalidUserNameErrMsg = "invalid username"
 	InvalidPasswordErrMsg = "invalid password"
 	DuplicateUsername     = "username is duplicate"
+	InvalidAuthentication = "authentication is required"
 )

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -21,7 +22,7 @@ func NewJWTAuthService(secretKey string, expKey string, accessEXP, refreshEXP in
 }
 
 func (auth JWTAuthGenerator) CreateAccessToken(data map[string]string) (string, error) {
-	claims := getJWTClaims(data)
+	claims := toJWTClaims(data)
 	claims[auth.eXPKey] = auth.eXPAccessValue
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	accessToken, err := token.SignedString(auth.secretKey)
@@ -32,7 +33,7 @@ func (auth JWTAuthGenerator) CreateAccessToken(data map[string]string) (string, 
 }
 
 func (auth JWTAuthGenerator) CreateRefreshToken(data map[string]string) (string, error) {
-	claims := getJWTClaims(data)
+	claims := toJWTClaims(data)
 	claims[auth.eXPKey] = auth.eXPAccessValue
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	refreshToken, err := token.SignedString(auth.secretKey)
@@ -42,20 +43,32 @@ func (auth JWTAuthGenerator) CreateRefreshToken(data map[string]string) (string,
 	return refreshToken, nil
 }
 
-func (auth JWTAuthGenerator) ValidateToken(tokenString string) (bool, error) {
+func (auth JWTAuthGenerator) ValidateToken(data []string, tokenString string) (bool, map[string]interface{}, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return auth.secretKey, nil
 	})
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
-	return token.Valid, nil
+	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
+		return false, nil, fmt.Errorf("casting Problem with JWT Claims")
+	} else {
+		return token.Valid, toMapData(data, claims), nil
+	}
 }
 
-func getJWTClaims(data map[string]string) jwt.MapClaims {
+func toJWTClaims(data map[string]string) jwt.MapClaims {
 	claims := jwt.MapClaims{}
 	for key, value := range data {
 		claims[key] = value
 	}
 	return claims
+}
+
+func toMapData(data []string, claims jwt.MapClaims) map[string]interface{} {
+	result := make(map[string]interface{})
+	for _, key := range data {
+		result[key] = claims[key]
+	}
+	return result
 }

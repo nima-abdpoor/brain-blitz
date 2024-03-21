@@ -7,6 +7,7 @@ import (
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 func (uc HttpController) SignIn(ctx *gin.Context) {
@@ -44,11 +45,16 @@ func (uc HttpController) SignUp(ctx *gin.Context) {
 func (uc HttpController) Profile(ctx *gin.Context) {
 	code := http.StatusBadRequest
 	var profileReq request.ProfileRequest
-	if err := ctx.ShouldBindUri(profileReq); err != nil {
+	if err := ctx.ShouldBindUri(&profileReq); err != nil {
 		ctx.JSON(code, "Invalid Id")
 		return
 	}
-	resp, err := uc.Service.UserService.Profile(string(rune(profileReq.ID)))
+	token := ctx.Request.Header.Get("Authorization")
+	if len(token) == 0 {
+		ctx.JSON(http.StatusForbidden, "authentication required")
+		return
+	}
+	resp, err := uc.Service.UserService.Profile(strconv.FormatInt(profileReq.ID, 10), token)
 	if err != nil {
 		msg, code := httpmsg.Error(err)
 		ctx.JSON(code, msg)
