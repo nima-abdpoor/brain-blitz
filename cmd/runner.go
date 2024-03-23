@@ -41,8 +41,8 @@ func main() {
 		UserService: uService,
 		AuthService: authService,
 	}
-	userController := controller.NewUserController(ginInstance, controllerServices)
-	userController.InitRouter()
+	controller := controller.NewController(ginInstance, controllerServices)
+	controller.InitRouter()
 
 	//create httpServer
 	httpServer := http.NewHTTPServer(ginInstance, config.HttpServerConfig{

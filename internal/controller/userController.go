@@ -1,20 +1,27 @@
 package controller
 
 import (
-	"BrainBlitz.com/game/internal/core/entity/error_code"
+	"BrainBlitz.com/game/internal/core/common/router"
 	"BrainBlitz.com/game/internal/core/model/request"
-	"BrainBlitz.com/game/internal/core/model/response"
+	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
 )
 
+func (uc HttpController) InitUserController(api *gin.RouterGroup) {
+	api.Group(api.BasePath() + "/user")
+	router.Post(api, "/signup", uc.SignUp)
+	router.Get(api, "/signin", uc.SignIn)
+	router.Get(api, "/:id/profile", uc.Profile)
+}
+
 func (uc HttpController) SignIn(ctx *gin.Context) {
 	var req request.SignInRequest
 	code := http.StatusOK
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, &invalidRequestResponse)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, errmsg.InvalidUserNameOrPasswordErrMsg)
 		return
 	}
 	res, err := uc.Service.UserService.SignIn(&req)
@@ -27,13 +34,13 @@ func (uc HttpController) SignIn(ctx *gin.Context) {
 }
 
 func (uc HttpController) SignUp(ctx *gin.Context) {
-	req, err := uc.parseRequest(ctx)
 	code := http.StatusOK
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, &invalidRequestResponse)
+	var req request.SignUpRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, errmsg.InvalidUserNameOrPasswordErrMsg)
 		return
 	}
-	resp, err := uc.Service.UserService.SignUp(req)
+	resp, err := uc.Service.UserService.SignUp(&req)
 	if err != nil {
 		msg, code := httpmsg.Error(err)
 		ctx.JSON(code, msg)
@@ -63,19 +70,3 @@ func (uc HttpController) Profile(ctx *gin.Context) {
 		ctx.JSON(code, resp)
 	}
 }
-
-func (uc HttpController) parseRequest(ctx *gin.Context) (*request.SignUpRequest, error) {
-	var req request.SignUpRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		return nil, err
-	}
-	return &req, nil
-}
-
-var (
-	invalidRequestResponse = &response.Response{
-		ErrorCode:    error_code.BadRequest,
-		ErrorMessage: error_code.InvalidRequestErrMsg,
-		Status:       false,
-	}
-)

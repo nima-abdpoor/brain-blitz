@@ -6,7 +6,6 @@ import (
 	"BrainBlitz.com/game/internal/infra/repository/sqlc"
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 )
 
@@ -31,7 +30,7 @@ func (ur userRepository) InsertUser(dto dto.UserDTO) error {
 		Valid: true,
 	}
 	if err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
-		res, err := queries.CreateUser(context.Background(), sqlc.CreateUserParams{
+		_, err := queries.CreateUser(context.Background(), sqlc.CreateUserParams{
 			Username:    dto.Username,
 			Password:    dto.HashedPassword,
 			DisplayName: dto.DisplayName,
@@ -41,7 +40,6 @@ func (ur userRepository) InsertUser(dto dto.UserDTO) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(res)
 		return nil
 	}); err != nil {
 		return err
