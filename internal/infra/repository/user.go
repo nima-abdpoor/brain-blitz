@@ -1,17 +1,12 @@
 package repository
 
 import (
-	"BrainBlitz.com/game/internal/core/dto"
+	entity "BrainBlitz.com/game/entity/user"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/repository/sqlc"
 	"context"
 	"database/sql"
 	"time"
-)
-
-const (
-	duplicateEntryMsg = "Duplicate entry"
-	numberRowInserted = 1
 )
 
 type userRepository struct {
@@ -24,16 +19,16 @@ func NewUserRepository(db repository.Database) repository.UserRepository {
 	}
 }
 
-func (ur userRepository) InsertUser(dto dto.UserDTO) error {
+func (ur userRepository) InsertUser(user entity.User) error {
 	currentTime := sql.NullTime{
 		Time:  time.Now(),
 		Valid: true,
 	}
 	if err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
 		_, err := queries.CreateUser(context.Background(), sqlc.CreateUserParams{
-			Username:    dto.Username,
-			Password:    dto.HashedPassword,
-			DisplayName: dto.DisplayName,
+			Username:    user.Username,
+			Password:    user.HashedPassword,
+			DisplayName: user.DisplayName,
 			CreatedAt:   currentTime,
 			UpdatedAt:   currentTime,
 		})
@@ -47,13 +42,13 @@ func (ur userRepository) InsertUser(dto dto.UserDTO) error {
 	return nil
 }
 
-func (ur userRepository) GetUser(username string) (dto.UserDTO, error) {
-	var result dto.UserDTO
+func (ur userRepository) GetUser(username string) (entity.User, error) {
+	var result entity.User
 	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
 		if user, err := queries.GetUser(context.Background(), username); err != nil {
 			return err
 		} else {
-			result = dto.UserDTO{
+			result = entity.User{
 				ID:             user.ID,
 				Username:       user.Username,
 				HashedPassword: user.Password,
@@ -70,13 +65,13 @@ func (ur userRepository) GetUser(username string) (dto.UserDTO, error) {
 	return result, nil
 }
 
-func (ur userRepository) GetUserById(id string) (dto.UserDTO, error) {
-	var result dto.UserDTO
+func (ur userRepository) GetUserById(id string) (entity.User, error) {
+	var result entity.User
 	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
 		if user, err := queries.GetUserById(context.Background(), id); err != nil {
 			return err
 		} else {
-			result = dto.UserDTO{
+			result = entity.User{
 				ID:             user.ID,
 				Username:       user.Username,
 				HashedPassword: user.Password,

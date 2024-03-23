@@ -1,8 +1,8 @@
 package service
 
 import (
+	entity "BrainBlitz.com/game/entity/user"
 	utils "BrainBlitz.com/game/internal/core/common"
-	"BrainBlitz.com/game/internal/core/dto"
 	"BrainBlitz.com/game/internal/core/entity/error_code"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
@@ -56,7 +56,7 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 			WithMeta(map[string]interface{}{"ERROR_CODE": error_code.BcryptErrorHashingPassword})
 	}
 
-	userDto := dto.UserDTO{
+	userDto := entity.User{
 		Username:       request.Email,
 		HashedPassword: hashPassword,
 		DisplayName:    getDisplayName(request.Email),

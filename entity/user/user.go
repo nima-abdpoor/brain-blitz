@@ -1,8 +1,10 @@
 package entity
 
 type User struct {
-	ID     uint
-	Email  string
-	Name   string
-	Avatar string
+	ID             int64
+	Username       string
+	HashedPassword string
+	DisplayName    string
+	CreatedAt      uint64
+	UpdatedAt      uint64
 }

@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"BrainBlitz.com/game/internal/core/dto"
+	entity "BrainBlitz.com/game/entity/user"
 	"errors"
 )
 
@@ -10,7 +10,7 @@ var (
 )
 
 type UserRepository interface {
-	InsertUser(dto dto.UserDTO) error
-	GetUser(email string) (dto.UserDTO, error)
-	GetUserById(id string) (dto.UserDTO, error)
+	InsertUser(user entity.User) error
+	GetUser(email string) (entity.User, error)
+	GetUserById(id string) (entity.User, error)
 }
