@@ -7,7 +7,7 @@ import (
 	"BrainBlitz.com/game/pkg/email"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
-	"fmt"
+	"log"
 	"strconv"
 )
 
@@ -26,8 +26,8 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 	}
 
 	if user, err := us.userRepo.GetUser(request.Email); err != nil {
-		fmt.Errorf("error In Getting User: %v", err)
-		return response.SignInResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
+		log.Printf("error In Getting User: %v\n", err)
+		return response.SignInResponse{}, err
 	} else {
 		result := utils.CheckPasswordHash(request.Password, user.HashedPassword)
 		if result {
@@ -35,6 +35,7 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 			data["user"] = strconv.FormatInt(user.ID, 10)
 			accessToken, err := us.authService.CreateAccessToken(data)
 			if err != nil {
+				log.Println(err)
 				return response.SignInResponse{}, richerror.New(op).
 					WithKind(richerror.KindUnexpected).
 					WithError(err).
@@ -42,6 +43,7 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 			}
 			refreshToken, err := us.authService.CreateRefreshToken(data)
 			if err != nil {
+				log.Println(err)
 				return response.SignInResponse{}, richerror.New(op).
 					WithKind(richerror.KindUnexpected).
 					WithError(err).

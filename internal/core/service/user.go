@@ -12,7 +12,6 @@ import (
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -85,42 +84,13 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 	}, nil
 }
 
-func getDisplayName(email string) string {
-	return strings.Split(email, "@")[0]
-}
-
-func (us UserService) createFailedResponse(errorCode int, message string) *response.Response {
-	return &response.Response{
-		Status:       false,
-		ErrorCode:    errorCode,
-		ErrorMessage: message,
-	}
-}
-
-func (us UserService) createSuccessResponse(data response.SignUpResponse) *response.Response {
-	return &response.Response{
-		Data:         data,
-		Status:       true,
-		ErrorCode:    error_code.Success,
-		ErrorMessage: error_code.SuccessErrMsg,
-	}
-}
-
-func (us UserService) Profile(id, token string) (response.ProfileResponse, error) {
+func (us UserService) Profile(id string) (response.ProfileResponse, error) {
 	const op = "service.Profile"
 	if user, err := us.userRepo.GetUserById(id); err != nil {
 		fmt.Println(err)
 		_ = fmt.Errorf("error In Getting User: %v", err)
 		return response.ProfileResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
 	} else {
-		valid, data, err := us.authService.ValidateToken([]string{"user"}, token)
-		if err != nil {
-			log.Println(err)
-			return response.ProfileResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindForbidden).WithMessage(errmsg.InvalidAuthentication)
-		}
-		if !valid || (strconv.FormatInt(user.ID, 10) != id) || data["user"] != id {
-			return response.ProfileResponse{}, richerror.New(op).WithKind(richerror.KindForbidden)
-		}
 		return response.ProfileResponse{
 			ID:          strconv.FormatInt(user.ID, 10),
 			Username:    user.Username,
@@ -129,4 +99,8 @@ func (us UserService) Profile(id, token string) (response.ProfileResponse, error
 			UpdatedAt:   user.UpdatedAt,
 		}, nil
 	}
+}
+
+func getDisplayName(email string) string {
+	return strings.Split(email, "@")[0]
 }

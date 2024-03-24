@@ -8,4 +8,6 @@ const (
 	InvalidPasswordErrMsg           = "invalid password"
 	DuplicateUsername               = "username is duplicate"
 	InvalidAuthentication           = "authentication is required"
+	AccessDenied                    = "access denied"
+	UserNotFound                    = "user not found"
 )

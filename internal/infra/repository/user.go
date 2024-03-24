@@ -4,8 +4,11 @@ import (
 	entity "BrainBlitz.com/game/entity/user"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/repository/sqlc"
+	"BrainBlitz.com/game/pkg/errmsg"
+	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -43,6 +46,7 @@ func (ur userRepository) InsertUser(user entity.User) error {
 }
 
 func (ur userRepository) GetUser(username string) (entity.User, error) {
+	const op = "repository.GetUser"
 	var result entity.User
 	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
 		if user, err := queries.GetUser(context.Background(), username); err != nil {
@@ -60,7 +64,10 @@ func (ur userRepository) GetUser(username string) (entity.User, error) {
 		return nil
 	})
 	if err != nil {
-		return result, err
+		if strings.Contains(err.Error(), "no rows") {
+			return result, richerror.New(op).WithKind(richerror.KindNotFound).WithMessage(errmsg.UserNotFound)
+		}
+		return result, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
 	}
 	return result, nil
 }
