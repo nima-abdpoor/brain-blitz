@@ -53,7 +53,7 @@ func (uc HttpController) Profile(ctx *gin.Context) {
 	code := http.StatusBadRequest
 	log.Println("adsfasdfasdfdsf")
 	if userId, exists := ctx.Get(mwConstants.UserId); exists {
-		id, possible := userId.(string)
+		id, possible := userId.(int64)
 		if !possible {
 			ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
 		}

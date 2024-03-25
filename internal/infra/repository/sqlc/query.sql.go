@@ -63,13 +63,13 @@ func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
 	return i, err
 }
 
-const getUserById = `-- name: GetUser :one
+const getUserById = `-- name: GetUserById :one
 SELECT id, username, password, display_name, created_at, updated_at
 FROM user
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetUserById(ctx context.Context, id string) (User, error) {
+func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserById, id)
 	var i User
 	err := row.Scan(

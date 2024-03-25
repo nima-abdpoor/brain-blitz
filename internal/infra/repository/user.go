@@ -72,7 +72,7 @@ func (ur userRepository) GetUser(username string) (entity.User, error) {
 	return result, nil
 }
 
-func (ur userRepository) GetUserById(id string) (entity.User, error) {
+func (ur userRepository) GetUserById(id int64) (entity.User, error) {
 	var result entity.User
 	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
 		if user, err := queries.GetUserById(context.Background(), id); err != nil {

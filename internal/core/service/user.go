@@ -84,7 +84,7 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 	}, nil
 }
 
-func (us UserService) Profile(id string) (response.ProfileResponse, error) {
+func (us UserService) Profile(id int64) (response.ProfileResponse, error) {
 	const op = "service.Profile"
 	if user, err := us.userRepo.GetUserById(id); err != nil {
 		fmt.Println(err)

@@ -39,14 +39,13 @@ func Auth(authService service.AuthGenerator) gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
-		id := strconv.FormatInt(profileReq.ID, 10)
-		if !valid || userId != id {
+		if !valid || userId != strconv.FormatInt(profileReq.ID, 10) {
 			log.Println("is not valid", valid, data["user"], profileReq.ID)
 			ctx.JSON(http.StatusForbidden, errmsg.AccessDenied)
 			ctx.Abort()
 			return
 		}
-		ctx.Set(middleware.UserId, id)
+		ctx.Set(middleware.UserId, profileReq.ID)
 		ctx.Next()
 	}
 }

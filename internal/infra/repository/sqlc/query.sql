@@ -3,7 +3,7 @@ SELECT *
 FROM user
 WHERE username = ? LIMIT 1;
 
--- name: GetUser :one
+-- name: GetUserById :one
 SELECT *
 FROM user
 WHERE id = ? LIMIT 1;
