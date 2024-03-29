@@ -1,5 +1,7 @@
 package entity
 
+import entity "BrainBlitz.com/game/entity/auth"
+
 type User struct {
 	ID             int64
 	Username       string
@@ -7,4 +9,5 @@ type User struct {
 	DisplayName    string
 	CreatedAt      uint64
 	UpdatedAt      uint64
+	Role           entity.Role
 }
