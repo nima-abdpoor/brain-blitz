@@ -1,6 +1,7 @@
 package repository
 
 import (
+	entityAuth "BrainBlitz.com/game/entity/auth"
 	entity "BrainBlitz.com/game/entity/user"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/repository/sqlc"
@@ -8,6 +9,7 @@ import (
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"database/sql"
+	"log"
 	"strings"
 	"time"
 )
@@ -32,10 +34,12 @@ func (ur userRepository) InsertUser(user entity.User) error {
 			Username:    user.Username,
 			Password:    user.HashedPassword,
 			DisplayName: user.DisplayName,
+			Role:        user.Role.String(),
 			CreatedAt:   currentTime,
 			UpdatedAt:   currentTime,
 		})
 		if err != nil {
+			log.Println(err)
 			return err
 		}
 		return nil
@@ -83,6 +87,7 @@ func (ur userRepository) GetUserById(id int64) (entity.User, error) {
 				Username:       user.Username,
 				HashedPassword: user.Password,
 				DisplayName:    user.DisplayName,
+				Role:           entityAuth.MapToRoleEntity(user.Role),
 				CreatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
 				UpdatedAt:      uint64(user.UpdatedAt.Time.UTC().UnixMilli()),
 			}

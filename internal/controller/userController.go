@@ -51,7 +51,6 @@ func (uc HttpController) SignUp(ctx *gin.Context) {
 
 func (uc HttpController) Profile(ctx *gin.Context) {
 	code := http.StatusBadRequest
-	log.Println("adsfasdfasdfdsf")
 	if userId, exists := ctx.Get(mwConstants.UserId); exists {
 		id, possible := userId.(int64)
 		if !possible {

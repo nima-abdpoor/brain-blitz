@@ -1,6 +1,7 @@
 package service
 
 import (
+	authEntity "BrainBlitz.com/game/entity/auth"
 	entity "BrainBlitz.com/game/entity/user"
 	utils "BrainBlitz.com/game/internal/core/common"
 	"BrainBlitz.com/game/internal/core/entity/error_code"
@@ -59,6 +60,7 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 		Username:       request.Email,
 		HashedPassword: hashPassword,
 		DisplayName:    getDisplayName(request.Email),
+		Role:           authEntity.UserRole,
 		CreatedAt:      currentTime,
 		UpdatedAt:      currentTime,
 	}
@@ -95,6 +97,7 @@ func (us UserService) Profile(id int64) (response.ProfileResponse, error) {
 			ID:          strconv.FormatInt(user.ID, 10),
 			Username:    user.Username,
 			DisplayName: user.DisplayName,
+			Role:        user.Role.String(),
 			CreatedAt:   user.CreatedAt,
 			UpdatedAt:   user.UpdatedAt,
 		}, nil

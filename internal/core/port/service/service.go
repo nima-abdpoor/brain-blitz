@@ -1,6 +1,7 @@
 package service
 
 type Service struct {
-	UserService UserService
-	AuthService AuthGenerator
+	UserService           UserService
+	BackofficeUserService BackofficeUserService
+	AuthService           AuthGenerator
 }
