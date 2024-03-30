@@ -1,0 +1,5 @@
+production:
+  dialect: mysql
+  datasource: bbGame:root@tcp(127.0.0.1:3310)/brainBlitz_db?parseTime=true
+  dir: internal/infra/repository/migration
+  table: migrations
