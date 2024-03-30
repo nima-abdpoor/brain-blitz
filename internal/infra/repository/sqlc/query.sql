@@ -1,17 +1,21 @@
 -- name: GetUser :one
 SELECT *
-FROM user
+FROM users
 WHERE username = ? LIMIT 1;
+
+-- name: GetUsers :many
+SELECT id, username, display_name, role, created_at, updated_at
+FROM users;
 
 -- name: GetUserById :one
 SELECT *
-FROM user
+FROM users
 WHERE id = ? LIMIT 1;
 
 -- name: CreateUser :execresult
-INSERT INTO user (username, password, display_name, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO users (username, password, display_name, role, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: DeleteUser :exec
-DELETE FROM user
+DELETE FROM users
 WHERE id = ?;
