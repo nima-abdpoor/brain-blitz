@@ -1,14 +1,22 @@
-version: '1.0'
+version: '1.1'
 
 services:
-  database:
+  BrainBlitz-mongodb:
+    image: mongo:7.0
+    ports:
+     - "27018:27017"
+    container_name: BrainBlitz-mongo
+    volumes:
+      - BrainBlitz-mongo:/data
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: BrainBlitz
+  BrainBlitz-mysql:
     image: mysql:8.0
     ports:
       - "3310:3306"
-    container_name: BrainBlitz
-#    volumes:
-#      - dbdata:/var/lib/mysql
-#    restart: always
+    container_name: BrainBlitz-mysql
+    restart: always
     command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -18,3 +26,4 @@ services:
 
 volumes:
   dbdata:
+  BrainBlitz-mongo:
