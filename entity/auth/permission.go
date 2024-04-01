@@ -8,6 +8,7 @@ type Permission struct {
 type PermissionTitle string
 
 const (
-	UserListPermission   = PermissionTitle("user-list")
-	UserDeletePermission = PermissionTitle("user-delete")
+	UserListPermission   = PermissionTitle("USER_LIST")
+	UserDeletePermission = PermissionTitle("USER_DELETE")
+	UserCreatePermission = PermissionTitle("USER_CREATE")
 )

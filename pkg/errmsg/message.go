@@ -9,5 +9,6 @@ const (
 	DuplicateUsername               = "username is duplicate"
 	InvalidAuthentication           = "authentication is required"
 	AccessDenied                    = "access denied"
+	PermissionRequired              = "permission required"
 	UserNotFound                    = "user not found"
 )

@@ -72,3 +72,8 @@ func toMapData(data []string, claims jwt.MapClaims) map[string]interface{} {
 	}
 	return result
 }
+
+type Claim struct {
+	UserId string
+	Role   string
+}

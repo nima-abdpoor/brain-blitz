@@ -61,6 +61,7 @@ func (ur userRepository) GetUser(username string) (entity.User, error) {
 				Username:       user.Username,
 				HashedPassword: user.Password,
 				DisplayName:    user.DisplayName,
+				Role:           entityAuth.MapToRoleEntity(user.Role),
 				CreatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
 				UpdatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
 			}

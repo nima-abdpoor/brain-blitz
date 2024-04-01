@@ -33,6 +33,7 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 		if result {
 			data := make(map[string]string)
 			data["user"] = strconv.FormatInt(user.ID, 10)
+			data["role"] = user.Role.String()
 			accessToken, err := us.authService.CreateAccessToken(data)
 			if err != nil {
 				log.Println(err)
