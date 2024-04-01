@@ -3,6 +3,7 @@ package middleware
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/service"
+	auth "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/middleware/constants"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"github.com/gin-gonic/gin"
@@ -25,7 +26,7 @@ func Auth(authService service.AuthGenerator) gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
-		valid, data, err := authService.ValidateToken([]string{"user"}, token)
+		valid, data, err := authService.ValidateToken([]string{"user", "role"}, token)
 		if err != nil {
 			log.Println(err)
 			ctx.JSON(http.StatusForbidden, errmsg.InvalidAuthentication)
@@ -39,13 +40,23 @@ func Auth(authService service.AuthGenerator) gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
+		role, possible := data["role"].(string)
+		if !possible {
+			log.Println("cant cast data")
+			ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
+			ctx.Abort()
+			return
+		}
 		if !valid || userId != strconv.FormatInt(profileReq.ID, 10) {
 			log.Println("is not valid", valid, data["user"], profileReq.ID)
 			ctx.JSON(http.StatusForbidden, errmsg.AccessDenied)
 			ctx.Abort()
 			return
 		}
-		ctx.Set(middleware.UserId, profileReq.ID)
+		ctx.Set(middleware.UserId, auth.Claim{
+			UserId: strconv.FormatInt(profileReq.ID, 10),
+			Role:   role,
+		})
 		ctx.Next()
 	}
 }

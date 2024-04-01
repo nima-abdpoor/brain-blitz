@@ -8,6 +8,8 @@ import (
 	"BrainBlitz.com/game/internal/core/service/backofficeUserHandler"
 	"BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
+	repository3 "BrainBlitz.com/game/internal/infra/repository/authorization"
+	"BrainBlitz.com/game/internal/infra/repository/mongo"
 	"github.com/gin-gonic/gin"
 	"log"
 	"os"
@@ -39,11 +41,18 @@ func main() {
 	//create the user service
 	authService := coreService.NewJWTAuthService("salam", "exp", time.Now().Add(time.Hour*24).Unix(), time.Now().Add(time.Hour*24*7).Unix())
 	uService := coreService.NewUserService(userRepo, authService)
+	mongoDB, err := mongo.NewMongoDB()
+	if err != nil {
+		log.Fatal("cant connect to mongo", err)
+	}
+	authorizationRepo := repository3.NewAuthorizationRepo(mongoDB)
+	authorizationService := coreService.NewAuthorizationService(authorizationRepo)
 	backofficeHandler := backofficeUserHandler.New(backofficeRepo)
 	controllerServices := service.Service{
 		UserService:           uService,
 		BackofficeUserService: backofficeHandler,
 		AuthService:           authService,
+		AuthorizationService:  authorizationService,
 	}
 	httpController := controller.NewController(ginInstance, controllerServices)
 	httpController.InitRouter()
