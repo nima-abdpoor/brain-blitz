@@ -66,6 +66,7 @@ func (uc HttpController) Profile(ctx *gin.Context) {
 			ctx.JSON(code, resp)
 		}
 	} else {
+		log.Println("could not get userId from context!")
 		ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
 		return
 	}

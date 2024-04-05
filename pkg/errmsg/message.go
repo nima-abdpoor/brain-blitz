@@ -11,4 +11,5 @@ const (
 	AccessDenied                    = "access denied"
 	PermissionRequired              = "permission required"
 	UserNotFound                    = "user not found"
+	InvalidCategory                 = "invalid category"
 )

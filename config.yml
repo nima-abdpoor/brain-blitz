@@ -14,3 +14,7 @@ redis:
   host: localhost
   db: 0
   password: ""
+
+
+matchMaking:
+  waiting_timeout: "5m"

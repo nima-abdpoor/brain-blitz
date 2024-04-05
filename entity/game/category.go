@@ -1,15 +1,29 @@
 package entity
 
-type Category struct {
-	ID          uint
-	Type        CategoryType
-	Description string
-}
-
-type CategoryType uint8
+type Category uint8
 
 const (
-	CategoryTypeSport CategoryType = iota + 1
+	CategoryTypeSport Category = iota + 1
 	CategoryTypeMusic
 	CategoryTypeTech
 )
+
+const (
+	Sport = "sport"
+	Music = "music"
+	Tech  = "technology"
+)
+
+func MapToCategory(category string) Category {
+	switch category {
+	case Music:
+		return CategoryTypeMusic
+	case Sport:
+		return CategoryTypeSport
+	case Tech:
+		return CategoryTypeTech
+	// todo select randomly
+	default:
+		return 0
+	}
+}

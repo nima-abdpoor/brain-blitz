@@ -10,6 +10,7 @@ services:
     command: redis-server --loglevel warning --protected-mode no
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+      - ENABLE_OVERCOMMIT_MEMORY=yes
     volumes:
       - BrainBlitz-redis-data:/data
   BrainBlitz-mongodb:

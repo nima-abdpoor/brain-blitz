@@ -5,4 +5,5 @@ type Service struct {
 	BackofficeUserService BackofficeUserService
 	AuthService           AuthGenerator
 	AuthorizationService  AuthorizationService
+	MatchMakingService    MatchMakingService
 }

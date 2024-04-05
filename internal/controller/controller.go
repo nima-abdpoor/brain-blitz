@@ -22,4 +22,5 @@ func (uc HttpController) InitRouter() {
 	api := uc.Gin.Group("/api/v1")
 	uc.InitUserController(api)
 	uc.InitBackofficeController(api)
+	uc.InitMatchingController(api)
 }
