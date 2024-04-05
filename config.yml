@@ -8,3 +8,9 @@ mysql:
   port: 3310
   host: localhost
   db_name: brainBlitz_db
+
+redis:
+  port: 6380
+  host: localhost
+  db: 0
+  password: ""

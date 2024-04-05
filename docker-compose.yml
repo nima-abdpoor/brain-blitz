@@ -1,6 +1,17 @@
 version: '1.1'
 
 services:
+  BrainBlitz-redis:
+    image: bitnami/redis:6.2
+    container_name: BrainBlitz-redis
+    restart: always
+    ports:
+      - '6380:6379'
+    command: redis-server --loglevel warning --protected-mode no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - BrainBlitz-redis-data:/data
   BrainBlitz-mongodb:
     image: mongo:7.0
     ports:
@@ -27,3 +38,4 @@ services:
 volumes:
   dbdata:
   BrainBlitz-mongo:
+  BrainBlitz-redis-data:
