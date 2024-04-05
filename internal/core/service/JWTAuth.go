@@ -77,3 +77,11 @@ type Claim struct {
 	UserId string
 	Role   string
 }
+
+type Config struct {
+	SignKey               string `koanf:"sign_key"`
+	AccessExpirationTime  int64  `koanf:"access_expiration_time"`
+	RefreshExpirationTime int64  `koanf:"refresh_expiration_time"`
+	AccessSubject         string `koanf:"access_subject"`
+	RefreshSubject        string `koanf:"refresh_subject"`
+}

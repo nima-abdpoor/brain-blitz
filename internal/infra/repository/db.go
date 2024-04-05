@@ -64,3 +64,11 @@ func (db *database) ExecTx(ctx context.Context, fn func(queries *sqlc.Queries) e
 
 	return tx.Commit()
 }
+
+type Config struct {
+	Username string `koanf:"username"`
+	Password string `koanf:"password"`
+	Port     int    `koanf:"port"`
+	Host     string `koanf:"host"`
+	DBName   string `koanf:"db_name"`
+}

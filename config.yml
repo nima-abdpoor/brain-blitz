@@ -1,0 +1,10 @@
+---
+type: yml
+auth:
+  sign_key: hello
+
+
+mysql:
+  port: 3310
+  host: localhost
+  db_name: brainBlitz_db
