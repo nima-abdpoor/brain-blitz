@@ -3,12 +3,13 @@ package controller
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/middleware"
-	mwConstants "BrainBlitz.com/game/internal/middleware/constants"
+	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func (uc HttpController) InitUserController(api *gin.RouterGroup) {
@@ -51,23 +52,21 @@ func (uc HttpController) SignUp(ctx *gin.Context) {
 
 func (uc HttpController) Profile(ctx *gin.Context) {
 	code := http.StatusBadRequest
-	if userId, exists := ctx.Get(mwConstants.UserId); exists {
-		id, possible := userId.(int64)
-		if !possible {
-			ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
-		}
-		log.Println(id)
-		resp, err := uc.Service.UserService.Profile(id)
-		if err != nil {
-			msg, code := httpmsg.Error(err)
-			ctx.JSON(code, msg)
-		} else {
-			code = http.StatusOK
-			ctx.JSON(code, resp)
-		}
-	} else {
-		log.Println("could not get userId from context!")
-		ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
+	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
+	if err != nil {
+		log.Println("couldn't cast to Claim")
+		msg, code := httpmsg.Error(err)
+		ctx.JSON(code, msg)
+		ctx.Abort()
 		return
+	}
+	id, err := strconv.ParseInt(ctxClaim.UserId, 10, 64)
+	resp, err := uc.Service.UserService.Profile(id)
+	if err != nil {
+		msg, code := httpmsg.Error(err)
+		ctx.JSON(code, msg)
+	} else {
+		code = http.StatusOK
+		ctx.JSON(code, resp)
 	}
 }

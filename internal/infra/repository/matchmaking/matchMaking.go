@@ -24,8 +24,7 @@ func NewMatchMakingRepo(db *redis.Adapter, config Config) repository.MatchMaking
 	}
 }
 
-func (m MatchMaking) AddToWaitingList(category entity.Category, userId int64) error {
-	fmt.Println("here1:", fmt.Sprintf("%s:%v", m.config.WaitingListPrefix, category))
+func (m MatchMaking) AddToWaitingList(category entity.Category, userId string) error {
 	err := redis.ZAdd(m.db.Client(),
 		fmt.Sprintf("%s:%v", m.config.WaitingListPrefix, category),
 		float64(time.Now().UnixMicro()),

@@ -3,10 +3,9 @@ package controller
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/middleware"
-	mwConstants "BrainBlitz.com/game/internal/middleware/constants"
+	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
@@ -23,28 +22,27 @@ func (uc HttpController) InitMatchingController(api *gin.RouterGroup) {
 func (uc HttpController) addToWaitingList(ctx *gin.Context) {
 	var req request.AddToWaitingListRequest
 	code := http.StatusOK
-	if userId, exists := ctx.Get(mwConstants.UserId); exists {
-		id, possible := userId.(int64)
-		if !possible {
-			ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
-		}
-		log.Println(id)
-		err := ctx.BindJSON(&req)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, errmsg.InvalidCategory)
-		}
-		req.UserId = id
-		fmt.Println(req)
-		res, err := uc.Service.MatchMakingService.AddToWaitingList(&req)
-		if err != nil {
-			msg, code := httpmsg.Error(err)
-			ctx.JSON(code, msg)
-		} else {
-			ctx.JSON(code, res)
-		}
+	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
+	if err != nil {
+		log.Println("couldn't cast to Claim")
+		msg, code := httpmsg.Error(err)
+		ctx.JSON(code, msg)
+		ctx.Abort()
+		return
+	}
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errmsg.InvalidCategory)
+		return
+	}
+	req.UserId = ctxClaim.UserId
+	res, err := uc.Service.MatchMakingService.AddToWaitingList(&req)
+	if err != nil {
+		msg, code := httpmsg.Error(err)
+		ctx.JSON(code, msg)
+		return
 	} else {
-		log.Println("could not get userId from context!")
-		ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
+		ctx.JSON(code, res)
 		return
 	}
 }

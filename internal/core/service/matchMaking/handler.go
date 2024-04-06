@@ -8,6 +8,7 @@ import (
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
+	"log"
 	"time"
 )
 
@@ -32,6 +33,7 @@ func (s Service) AddToWaitingList(request *request.AddToWaitingListRequest) (res
 
 	err := s.repo.AddToWaitingList(entity.MapToCategory(request.Category), request.UserId)
 	if err != nil {
+		log.Printf("error in %s:%v", op, err)
 		return response.AddToWaitingListResponse{},
 			richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err).WithMessage(errmsg.SomeThingWentWrong)
 	}
