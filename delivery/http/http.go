@@ -14,6 +14,7 @@ import (
 	"BrainBlitz.com/game/internal/infra/repository/matchmaking"
 	"BrainBlitz.com/game/internal/infra/repository/mongo"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
+	"BrainBlitz.com/game/scheduler"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -85,16 +86,25 @@ func main() {
 	httpServer.Start()
 	defer httpServer.Stop()
 
+	done := make(chan bool)
+	go func() {
+		sch := scheduler.New()
+		sch.Start(done)
+	}()
+
 	// Listen for OS signals to perform a graceful shutdown
 	log.Printf("listening signals on %d ...", os.Getpid())
-	c := make(chan os.Signal, 1)
+	quite := make(chan os.Signal, 1)
 	signal.Notify(
-		c,
+		quite,
+		os.Interrupt,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGQUIT,
 		syscall.SIGTERM,
 	)
-	<-c
+	<-quite
+	done <- true
 	log.Println("graceful shutdown...")
+	time.Sleep(5 * time.Second)
 }
