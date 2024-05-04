@@ -4,7 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/infra/config"
 	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
 	"time"
@@ -22,7 +22,7 @@ type httpServer struct {
 	server *http.Server
 }
 
-func NewHTTPServer(router *gin.Engine, conf config.HttpServerConfig) httpServer {
+func NewHTTPServer(router *echo.Echo, conf config.HttpServerConfig) httpServer {
 	return httpServer{
 		Port: conf.Port,
 		server: &http.Server{

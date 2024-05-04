@@ -2,24 +2,23 @@ package controller
 
 import (
 	"BrainBlitz.com/game/internal/core/port/service"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 type HttpController struct {
-	Gin     *gin.Engine
+	Echo    *echo.Echo
 	Service service.Service
 }
 
-func NewController(gin *gin.Engine, us service.Service) HttpController {
+func NewController(echo *echo.Echo, us service.Service) HttpController {
 	return HttpController{
-		Gin:     gin,
+		Echo:    echo,
 		Service: us,
 	}
 }
 
 func (uc HttpController) InitRouter() {
-	uc.Gin.Use(gin.Logger())
-	api := uc.Gin.Group("/api/v1")
+	api := uc.Echo.Group("/api/v1")
 	uc.InitUserController(api)
 	uc.InitBackofficeController(api)
 	uc.InitMatchingController(api)

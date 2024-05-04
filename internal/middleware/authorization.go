@@ -6,31 +6,27 @@ import (
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"net/http"
 )
 
-func AccessCheck(authService service.AuthorizationService, permissions ...entity.PermissionTitle) gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
-		if err != nil {
-			msg, code := httpmsg.Error(err)
-			ctx.JSON(code, msg)
-			ctx.Abort()
-			return
+func AccessCheck(authService service.AuthorizationService, permissions ...entity.PermissionTitle) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
+			if err != nil {
+				msg, code := httpmsg.Error(err)
+				return ctx.JSON(code, msg)
+			}
+			hasAccess, err := authService.HasAccess(entity.MapToRoleEntity(ctxClaim.Role), permissions...)
+			if err != nil {
+				msg, code := httpmsg.Error(err)
+				return ctx.JSON(code, msg)
+			}
+			if !hasAccess {
+				return ctx.JSON(http.StatusForbidden, errmsg.PermissionRequired)
+			}
+			return next(ctx)
 		}
-		hasAccess, err := authService.HasAccess(entity.MapToRoleEntity(ctxClaim.Role), permissions...)
-		if err != nil {
-			msg, code := httpmsg.Error(err)
-			ctx.JSON(code, msg)
-			ctx.Abort()
-			return
-		}
-		if !hasAccess {
-			ctx.JSON(http.StatusForbidden, errmsg.PermissionRequired)
-			ctx.Abort()
-			return
-		}
-		ctx.Next()
 	}
 }

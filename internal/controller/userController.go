@@ -6,67 +6,63 @@ import (
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
 	"strconv"
 )
 
-func (uc HttpController) InitUserController(api *gin.RouterGroup) {
+func (uc HttpController) InitUserController(api *echo.Group) {
 	api.POST("/signUp", uc.SignUp)
 	api.GET("/signIn", uc.SignIn)
-	api.GET("/:id/profile", middleware.Auth(uc.Service.AuthService), uc.Profile)
+	api.GET("/:id/profile", uc.Profile, middleware.Auth(uc.Service.AuthService))
 }
 
-func (uc HttpController) SignIn(ctx *gin.Context) {
+func (uc HttpController) SignIn(ctx echo.Context) error {
 	var req request.SignInRequest
 	code := http.StatusOK
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, errmsg.InvalidUserNameOrPasswordErrMsg)
-		return
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, errmsg.InvalidUserNameOrPasswordErrMsg)
 	}
 	res, err := uc.Service.UserService.SignIn(&req)
 	if err != nil {
 		msg, code := httpmsg.Error(err)
-		ctx.JSON(code, msg)
+		return ctx.JSON(code, msg)
 	} else {
-		ctx.JSON(code, res)
+		return ctx.JSON(code, res)
 	}
 }
 
-func (uc HttpController) SignUp(ctx *gin.Context) {
+func (uc HttpController) SignUp(ctx echo.Context) error {
 	code := http.StatusOK
 	var req request.SignUpRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, errmsg.InvalidUserNameOrPasswordErrMsg)
-		return
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, errmsg.InvalidUserNameOrPasswordErrMsg)
 	}
 	resp, err := uc.Service.UserService.SignUp(&req)
 	if err != nil {
 		msg, code := httpmsg.Error(err)
-		ctx.JSON(code, msg)
+		return ctx.JSON(code, msg)
 	} else {
-		ctx.JSON(code, resp)
+		return ctx.JSON(code, resp)
 	}
 }
 
-func (uc HttpController) Profile(ctx *gin.Context) {
+func (uc HttpController) Profile(ctx echo.Context) error {
 	code := http.StatusBadRequest
 	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
 	if err != nil {
 		log.Println("couldn't cast to Claim")
 		msg, code := httpmsg.Error(err)
-		ctx.JSON(code, msg)
-		ctx.Abort()
-		return
+		return ctx.JSON(code, msg)
 	}
 	id, err := strconv.ParseInt(ctxClaim.UserId, 10, 64)
 	resp, err := uc.Service.UserService.Profile(id)
 	if err != nil {
 		msg, code := httpmsg.Error(err)
-		ctx.JSON(code, msg)
+		return ctx.JSON(code, msg)
 	} else {
 		code = http.StatusOK
-		ctx.JSON(code, resp)
+		return ctx.JSON(code, resp)
 	}
 }

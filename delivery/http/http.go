@@ -16,7 +16,8 @@ import (
 	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/scheduler"
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"log"
 	"os"
 	"os/signal"
@@ -29,9 +30,10 @@ func main() {
 	cfg := config.Load("config.yml")
 	fmt.Printf("cfg: %+v\n", cfg)
 
-	// Create a new instance of the Gin router
-	ginInstance := gin.New()
-	ginInstance.Use(gin.Recovery())
+	// Create a new instance of the Echo router
+	echoInstance := echo.New()
+	echoInstance.Use(middleware.Logger())
+	echoInstance.Use(middleware.Recover())
 
 	db, err := repository.NewDB(mysqlConfig.DatabaseConfig{
 		Driver:                 "mysql",
@@ -75,11 +77,11 @@ func main() {
 		AuthorizationService:  authorizationService,
 		MatchMakingService:    matchMakingService,
 	}
-	httpController := controller.NewController(ginInstance, controllerServices)
+	httpController := controller.NewController(echoInstance, controllerServices)
 	httpController.InitRouter()
 
 	//create httpServer
-	httpServer := http.NewHTTPServer(ginInstance, mysqlConfig.HttpServerConfig{
+	httpServer := http.NewHTTPServer(echoInstance, mysqlConfig.HttpServerConfig{
 		Port: 8000,
 	})
 
