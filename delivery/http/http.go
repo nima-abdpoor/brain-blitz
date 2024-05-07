@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -89,9 +90,11 @@ func main() {
 	defer httpServer.Stop()
 
 	done := make(chan bool)
+	var wg sync.WaitGroup
 	go func() {
-		sch := scheduler.New()
-		sch.Start(done)
+		sch := scheduler.New(matchMakingService, cfg.Scheduler)
+		wg.Add(1)
+		sch.Start(done, &wg)
 	}()
 
 	// Listen for OS signals to perform a graceful shutdown
@@ -109,4 +112,5 @@ func main() {
 	done <- true
 	log.Println("graceful shutdown...")
 	time.Sleep(5 * time.Second)
+	wg.Wait()
 }

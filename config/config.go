@@ -6,6 +6,7 @@ import (
 	"BrainBlitz.com/game/internal/infra/repository"
 	"BrainBlitz.com/game/internal/infra/repository/matchmaking"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
+	"BrainBlitz.com/game/scheduler"
 )
 
 type HTTPServer struct {
@@ -19,4 +20,5 @@ type Config struct {
 	Redis              redis.Config              `koanf:"redis"`
 	MatchMakingPrefix  matchmaking.Config        `koanf:"matchMaking"`
 	MatchMakingTimeOut matchMakingHandler.Config `koanf:"matchMaking"`
+	Scheduler          scheduler.Config          `koanf:"scheduler"`
 }

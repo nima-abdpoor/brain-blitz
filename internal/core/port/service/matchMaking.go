@@ -7,4 +7,5 @@ import (
 
 type MatchMakingService interface {
 	AddToWaitingList(request *request.AddToWaitingListRequest) (response.AddToWaitingListResponse, error)
+	MatchWaitUsers(request *request.MatchWaitedUsersRequest) (response.MatchWaitedUsersResponse, error)
 }

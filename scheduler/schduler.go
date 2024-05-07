@@ -1,27 +1,48 @@
 package scheduler
 
 import (
+	"BrainBlitz.com/game/internal/core/model/request"
+	"BrainBlitz.com/game/internal/core/port/service"
 	"fmt"
+	"github.com/go-co-op/gocron"
+	"sync"
 	"time"
 )
 
 type Scheduler struct {
+	sch      *gocron.Scheduler
+	matchSvc service.MatchMakingService
+	conf     Config
 }
 
-func New() Scheduler {
-	return Scheduler{}
+type Config struct {
+	Interval int `koanf:"interval"`
 }
 
-func (Scheduler Scheduler) Start(done <-chan bool) {
-	for {
-		select {
-		case d := <-done:
-			fmt.Println("scheduler exiting...", d)
-			return
-		default:
-			now := time.Now()
-			fmt.Println("scheduler now", now)
-			time.Sleep(5 * time.Second)
-		}
+func New(matchSvc service.MatchMakingService, conf Config) Scheduler {
+	return Scheduler{
+		sch:      gocron.NewScheduler(time.UTC),
+		matchSvc: matchSvc,
+		conf:     conf,
 	}
+}
+
+func (s Scheduler) Start(done <-chan bool, wg *sync.WaitGroup) {
+	const op = "scheduler.Start"
+
+	defer wg.Done()
+
+	if _, err := s.sch.Every(s.conf.Interval).Second().Do(s.MatchWaitedUsers); err != nil {
+		fmt.Println(op, err)
+	}
+	s.sch.StartAsync()
+
+	<-done
+	//wait to finish job
+	fmt.Println("stopping scheduler...")
+	s.sch.Stop()
+}
+
+func (s Scheduler) MatchWaitedUsers() {
+	_, _ = s.matchSvc.MatchWaitUsers(&request.MatchWaitedUsersRequest{})
 }
