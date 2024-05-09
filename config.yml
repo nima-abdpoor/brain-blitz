@@ -18,3 +18,7 @@ redis:
 
 matchMaking:
   waiting_timeout: "5m"
+
+presence_service:
+  Prefix: "presence"
+  expiration_time: "60m"

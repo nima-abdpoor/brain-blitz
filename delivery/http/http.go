@@ -8,11 +8,13 @@ import (
 	coreService "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/core/service/backofficeUserHandler"
 	matchMakingHandler "BrainBlitz.com/game/internal/core/service/matchMaking"
+	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	mysqlConfig "BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
 	repository3 "BrainBlitz.com/game/internal/infra/repository/authorization"
 	"BrainBlitz.com/game/internal/infra/repository/matchmaking"
 	"BrainBlitz.com/game/internal/infra/repository/mongo"
+	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/scheduler"
 	"fmt"
@@ -71,12 +73,17 @@ func main() {
 	matchMakingRepo := matchmaking.NewMatchMakingRepo(redisDB, cfg.MatchMakingPrefix)
 	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, cfg.MatchMakingTimeOut)
 
+	// presence
+	presenceRepo := presence.New(redisDB)
+	presenceS := presenceService.New(presenceRepo, cfg.Presence)
+
 	controllerServices := service.Service{
 		UserService:           uService,
 		BackofficeUserService: backofficeHandler,
 		AuthService:           authService,
 		AuthorizationService:  authorizationService,
 		MatchMakingService:    matchMakingService,
+		Presence:              presenceS,
 	}
 	httpController := controller.NewController(echoInstance, controllerServices)
 	httpController.InitRouter()

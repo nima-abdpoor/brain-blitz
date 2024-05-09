@@ -15,7 +15,9 @@ import (
 func (uc HttpController) InitUserController(api *echo.Group) {
 	api.POST("/signUp", uc.SignUp)
 	api.GET("/signIn", uc.SignIn)
-	api.GET("/:id/profile", uc.Profile, middleware.Auth(uc.Service.AuthService))
+	api.GET("/:id/profile", uc.Profile,
+		middleware.Auth(uc.Service.AuthService),
+		middleware.Presence(uc.Service.Presence))
 }
 
 func (uc HttpController) SignIn(ctx echo.Context) error {

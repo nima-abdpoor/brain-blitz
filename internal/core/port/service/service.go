@@ -6,4 +6,5 @@ type Service struct {
 	AuthService           AuthGenerator
 	AuthorizationService  AuthorizationService
 	MatchMakingService    MatchMakingService
+	Presence              PresenceService
 }

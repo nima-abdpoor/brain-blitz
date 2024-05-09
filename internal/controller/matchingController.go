@@ -16,6 +16,7 @@ func (uc HttpController) InitMatchingController(api *echo.Group) {
 	api.POST("/:id/addToWaitingList",
 		uc.addToWaitingList,
 		middleware.Auth(uc.Service.AuthService),
+		middleware.Presence(uc.Service.Presence),
 	)
 }
 
