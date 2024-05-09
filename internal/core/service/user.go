@@ -12,9 +12,11 @@ import (
 	"BrainBlitz.com/game/pkg/email"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -86,9 +88,10 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 	}, nil
 }
 
-func (us UserService) Profile(id int64) (response.ProfileResponse, error) {
+func (us UserService) Profile(ctx context.Context, id int64) (response.ProfileResponse, error) {
 	const op = "service.Profile"
-	if user, err := us.userRepo.GetUserById(id); err != nil {
+	time.Sleep(time.Second * 8)
+	if user, err := us.userRepo.GetUserById(ctx, id); err != nil {
 		fmt.Println(err)
 		_ = fmt.Errorf("error In Getting User: %v", err)
 		return response.ProfileResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)

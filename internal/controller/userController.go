@@ -6,6 +6,7 @@ import (
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 func (uc HttpController) InitUserController(api *echo.Group) {
 	api.POST("/signUp", uc.SignUp)
 	api.GET("/signIn", uc.SignIn)
-	api.GET("/:id/profile", uc.Profile, middleware.Auth(uc.Service.AuthService))
+	api.GET("/:id/profile", uc.Profile, middleware.TimeoutMiddleware, middleware.Auth(uc.Service.AuthService))
 }
 
 func (uc HttpController) SignIn(ctx echo.Context) error {
@@ -57,9 +58,10 @@ func (uc HttpController) Profile(ctx echo.Context) error {
 		return ctx.JSON(code, msg)
 	}
 	id, err := strconv.ParseInt(ctxClaim.UserId, 10, 64)
-	resp, err := uc.Service.UserService.Profile(id)
+	resp, err := uc.Service.UserService.Profile(ctx.Request().Context(), id)
 	if err != nil {
 		msg, code := httpmsg.Error(err)
+		fmt.Println(msg, "::", err.Error())
 		return ctx.JSON(code, msg)
 	} else {
 		code = http.StatusOK
