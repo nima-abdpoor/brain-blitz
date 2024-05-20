@@ -1,5 +1,7 @@
 package entity
 
+import "strconv"
+
 type Category uint8
 
 const (
@@ -14,6 +16,10 @@ const (
 	Tech  = "technology"
 )
 
+func GetCategories() []Category {
+	return []Category{CategoryTypeSport, CategoryTypeMusic, CategoryTypeTech}
+}
+
 func MapToCategory(category string) Category {
 	switch category {
 	case Music:
@@ -26,4 +32,8 @@ func MapToCategory(category string) Category {
 	default:
 		return 0
 	}
+}
+
+func (c Category) String() string {
+	return strconv.Itoa(int(c))
 }

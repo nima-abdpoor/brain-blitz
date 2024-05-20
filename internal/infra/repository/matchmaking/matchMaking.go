@@ -4,7 +4,9 @@ import (
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
+	"context"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -14,7 +16,8 @@ type MatchMaking struct {
 }
 
 type Config struct {
-	WaitingListPrefix string `koanf:"waitingListPrefix"`
+	WaitingListPrefix           string `koanf:"waitingListPrefix"`
+	MinTimeWaitingListSelection string `koanf:"mint_time_list_selection"`
 }
 
 func NewMatchMakingRepo(db *redis.Adapter, config Config) repository.MatchMakingRepository {
@@ -31,4 +34,24 @@ func (m MatchMaking) AddToWaitingList(category entity.Category, userId string) e
 		userId,
 	)
 	return err
+}
+
+func (m MatchMaking) GetWaitingListByCategory(ctx context.Context, category entity.Category) ([]entity.WaitingMember, error) {
+	key := fmt.Sprintf("%s:%v", m.config.WaitingListPrefix, category)
+	mintTime := strconv.Itoa(int(time.Now().Add(-2 * time.Hour).UnixMicro()))
+	maxTime := strconv.Itoa(int(time.Now().UnixMicro()))
+	if list, err := redis.ZRange(ctx, m.db.Client(), key, mintTime, maxTime); err != nil {
+		return nil, err
+	} else {
+		result := make([]entity.WaitingMember, 0)
+		for _, z := range list {
+			userId, _ := strconv.Atoi(z.Member.(string))
+			result = append(result, entity.WaitingMember{
+				UserId:    uint(userId),
+				TimeStamp: int64(z.Score),
+				Category:  category,
+			})
+		}
+		return result, nil
+	}
 }

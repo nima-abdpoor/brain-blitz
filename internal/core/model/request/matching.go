@@ -5,4 +5,6 @@ type AddToWaitingListRequest struct {
 	UserId   string
 }
 
-type MatchWaitedUsersRequest struct{}
+type MatchWaitedUsersRequest struct {
+	Category string `json:"category"`
+}

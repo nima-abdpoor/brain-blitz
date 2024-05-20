@@ -1,13 +1,25 @@
 package matchMakingHandler
 
 import (
+	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
+	"BrainBlitz.com/game/pkg/richerror"
+	"context"
 	"fmt"
-	"time"
 )
 
-func (s Service) MatchWaitUsers(req *request.MatchWaitedUsersRequest) (response.MatchWaitedUsersResponse, error) {
-	fmt.Println("waited users matched.", time.Now())
-	return response.MatchWaitedUsersResponse{}, nil
+func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUsersRequest) (response.MatchWaitedUsersResponse, error) {
+	const op = "matchMakingHandler.MatchWaitUsers"
+	var rErr error = nil
+	for _, category := range entity.GetCategories() {
+		result, err := s.repo.GetWaitingListByCategory(ctx, category)
+		for _, res := range result {
+			fmt.Println(op, res)
+		}
+		if err != nil {
+			rErr = richerror.New(op).WithError(err)
+		}
+	}
+	return response.MatchWaitedUsersResponse{}, rErr
 }

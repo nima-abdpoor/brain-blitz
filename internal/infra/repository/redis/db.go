@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
@@ -39,4 +40,14 @@ func ZAdd(client *redis.Client, key string, score float64, member interface{}) e
 		key,
 		redis.Z{Score: score, Member: member}).Result()
 	return err
+}
+
+func ZRange(ctx context.Context, client *redis.Client, key, min, max string) ([]redis.Z, error) {
+	const op = "Redis.ZRange"
+	if result, err := client.ZRangeByScoreWithScores(ctx, key, &redis.ZRangeBy{Min: min, Max: max}).Result(); err != nil {
+		fmt.Println(op, err)
+		return nil, richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err)
+	} else {
+		return result, nil
+	}
 }

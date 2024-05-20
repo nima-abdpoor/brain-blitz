@@ -3,6 +3,7 @@ package scheduler
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/service"
+	"context"
 	"fmt"
 	"github.com/go-co-op/gocron"
 	"sync"
@@ -16,7 +17,8 @@ type Scheduler struct {
 }
 
 type Config struct {
-	Interval int `koanf:"interval"`
+	Interval         int           `koanf:"interval"`
+	MatchUserTimeOut time.Duration `koanf:"match_user_time_out"`
 }
 
 func New(matchSvc service.MatchMakingService, conf Config) Scheduler {
@@ -44,5 +46,10 @@ func (s Scheduler) Start(done <-chan bool, wg *sync.WaitGroup) {
 }
 
 func (s Scheduler) MatchWaitedUsers() {
-	_, _ = s.matchSvc.MatchWaitUsers(&request.MatchWaitedUsersRequest{})
+	const op = "scheduler.MatchWaitedUsers"
+	ctx, cancel := context.WithTimeout(context.Background(), s.conf.MatchUserTimeOut)
+	defer cancel()
+	if _, err := s.matchSvc.MatchWaitUsers(ctx, &request.MatchWaitedUsersRequest{}); err != nil {
+		fmt.Println(op, err)
+	}
 }
