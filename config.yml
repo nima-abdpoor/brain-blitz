@@ -19,10 +19,11 @@ redis:
 matchMaking:
   waiting_timeout: "5m"
   mint_time_list_selection: "-2h"
+  presence_prefix: "presence"
 
 presence_service:
   Prefix: "presence"
   expiration_time: "60m"
 
 scheduler:
-  match_user_time_out: "10m"
+  match_user_time_out: "1m"

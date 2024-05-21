@@ -31,7 +31,7 @@ func New(matchSvc service.MatchMakingService, conf Config) Scheduler {
 
 func (s Scheduler) Start(done <-chan bool, wg *sync.WaitGroup) {
 	const op = "scheduler.Start"
-
+	fmt.Println(op, "scheduler started...")
 	defer wg.Done()
 
 	if _, err := s.sch.Every(s.conf.Interval).Second().Do(s.MatchWaitedUsers); err != nil {

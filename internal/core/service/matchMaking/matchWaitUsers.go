@@ -7,6 +7,7 @@ import (
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
+	"strconv"
 )
 
 func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUsersRequest) (response.MatchWaitedUsersResponse, error) {
@@ -16,6 +17,11 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 		result, err := s.repo.GetWaitingListByCategory(ctx, category)
 		for _, res := range result {
 			fmt.Println(op, res)
+			if presenceRes, err := s.presenceClient.GetPresenceByUserID(ctx, strconv.Itoa(int(res.UserId))); err != nil {
+				fmt.Println(op, res, err)
+			} else {
+				fmt.Println(op, presenceRes)
+			}
 		}
 		if err != nil {
 			rErr = richerror.New(op).WithError(err)

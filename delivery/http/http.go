@@ -71,7 +71,8 @@ func main() {
 	// matchMaking
 	redisDB := redis.New(cfg.Redis)
 	matchMakingRepo := matchmaking.NewMatchMakingRepo(redisDB, cfg.MatchMakingPrefix)
-	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, cfg.MatchMakingTimeOut)
+	presenceClient := matchmaking.NewPresenceRepo(redisDB, cfg.MatchMakingPrefix)
+	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, presenceClient, cfg.MatchMakingTimeOut)
 
 	// presence
 	presenceRepo := presence.New(redisDB)
