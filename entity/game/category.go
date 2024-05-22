@@ -34,6 +34,20 @@ func MapToCategory(category string) Category {
 	}
 }
 
+func MapFromCategory(category Category) string {
+	switch category {
+	case CategoryTypeMusic:
+		return Music
+	case CategoryTypeSport:
+		return Sport
+	case CategoryTypeTech:
+		return Tech
+	// todo select randomly
+	default:
+		return "Unknown"
+	}
+}
+
 func (c Category) String() string {
 	return strconv.Itoa(int(c))
 }

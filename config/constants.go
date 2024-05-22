@@ -10,5 +10,5 @@ const (
 	RefreshTokenExpireDuration = time.Hour * 24 * 7
 	AuthMiddlewareContextKey   = "claims"
 	WaitingListPrefix          = "waitingList"
-	SchedulerInterval          = 10
+	SchedulerInterval          = 20
 )

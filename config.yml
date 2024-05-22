@@ -17,8 +17,9 @@ redis:
 
 
 matchMaking:
-  waiting_timeout: "5m"
-  mint_time_list_selection: "-2h"
+  waiting_timeout: "2m"
+  least_presence: "-2m"
+  mint_time_list_selection: "-2m"
   presence_prefix: "presence"
 
 presence_service:

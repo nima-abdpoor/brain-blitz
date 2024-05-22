@@ -17,9 +17,9 @@ type MatchMaking struct {
 }
 
 type Config struct {
-	WaitingListPrefix           string `koanf:"waitingListPrefix"`
-	MinTimeWaitingListSelection string `koanf:"mint_time_list_selection"`
-	PresencePrefix              string `koanf:"presence_prefix"`
+	WaitingListPrefix           string        `koanf:"waitingListPrefix"`
+	MinTimeWaitingListSelection time.Duration `koanf:"mint_time_list_selection"`
+	PresencePrefix              string        `koanf:"presence_prefix"`
 }
 
 func NewMatchMakingRepo(db *redis.Adapter, config Config) repository.MatchMakingRepository {
@@ -47,7 +47,7 @@ func (m MatchMaking) AddToWaitingList(category entity.Category, userId string) e
 
 func (m MatchMaking) GetWaitingListByCategory(ctx context.Context, category entity.Category) ([]entity.WaitingMember, error) {
 	key := fmt.Sprintf("%s:%v", m.config.WaitingListPrefix, category)
-	mintTime := strconv.Itoa(int(time.Now().Add(-2 * time.Hour).UnixMicro()))
+	mintTime := strconv.Itoa(int(time.Now().Add(m.config.MinTimeWaitingListSelection).UnixMicro()))
 	maxTime := strconv.Itoa(int(time.Now().UnixMicro()))
 	if list, err := redis.ZRange(ctx, m.db.Client(), key, mintTime, maxTime); err != nil {
 		return nil, err

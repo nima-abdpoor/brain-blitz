@@ -20,6 +20,7 @@ type Service struct {
 
 type Config struct {
 	WaitingTimeout time.Duration `koanf:"waiting_timeout"`
+	LeastPresence  time.Duration `koanf:"least_presence"`
 }
 
 func NewMatchMakingService(repo repository.MatchMakingRepository, presenceClient repository.PresenceClient, config Config) service.MatchMakingService {
