@@ -13,6 +13,7 @@ require (
 	github.com/knadh/koanf/v2 v2.1.1
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/redis/go-redis/v9 v9.5.1
+	github.com/thoas/go-funk v0.9.3
 	go.mongodb.org/mongo-driver v1.14.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.22.0

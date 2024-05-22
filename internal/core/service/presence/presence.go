@@ -34,7 +34,7 @@ func (s service) Upsert(context context.Context, request request.UpsertPresenceR
 		s.repo.Upsert(
 			context,
 			fmt.Sprintf("%s:%s", s.config.Prefix, request.UserID),
-			time.Now().UnixMicro(),
+			time.Now().UnixMilli(),
 			s.config.ExpirationTime); err != nil {
 		return response.UpsertPresenceResponse{}, richerror.New(op).WithError(err)
 	}

@@ -13,18 +13,21 @@ import (
 )
 
 type Service struct {
-	repo   repository.MatchMakingRepository
-	config Config
+	repo           repository.MatchMakingRepository
+	presenceClient repository.PresenceClient
+	config         Config
 }
 
 type Config struct {
 	WaitingTimeout time.Duration `koanf:"waiting_timeout"`
+	LeastPresence  time.Duration `koanf:"least_presence"`
 }
 
-func NewMatchMakingService(repo repository.MatchMakingRepository, config Config) service.MatchMakingService {
+func NewMatchMakingService(repo repository.MatchMakingRepository, presenceClient repository.PresenceClient, config Config) service.MatchMakingService {
 	return Service{
-		repo:   repo,
-		config: config,
+		repo:           repo,
+		presenceClient: presenceClient,
+		config:         config,
 	}
 }
 
