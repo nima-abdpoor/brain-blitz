@@ -1,127 +1,130 @@
 package service
 
 import (
-	"BrainBlitz.com/game/internal/core/dto"
-	"BrainBlitz.com/game/internal/core/entity/error_code"
+	entity "BrainBlitz.com/game/entity/user"
 	"BrainBlitz.com/game/internal/core/model/request"
-	"BrainBlitz.com/game/internal/core/model/response"
-	"BrainBlitz.com/game/internal/core/port/repository"
-	"errors"
+	"BrainBlitz.com/game/pkg/errmsg"
+	"BrainBlitz.com/game/pkg/richerror"
 	"testing"
 )
 
 type mockUserRepository struct{}
-type mockDuplicateUserRepository struct{}
+type mockAuthGenerator struct{}
 type mockInvalidUserRepository struct{}
 
-func (m *mockUserRepository) InsertUser(dto dto.UserDTO) error {
-	if dto.Username == "test_user" {
-		return repository.DuplicateUser
-	}
+func (m mockAuthGenerator) CreateAccessToken(data map[string]string) (string, error) {
+	return "AccessToken", nil
+}
+
+func (m mockAuthGenerator) CreateRefreshToken(data map[string]string) (string, error) {
+	return "RefreshToken", nil
+}
+
+func (m mockAuthGenerator) ValidateToken(data []string, token string) (bool, map[string]interface{}, error) {
+	return true, nil, nil
+}
+
+func (m *mockUserRepository) InsertUser(user entity.User) error {
 	return nil
 }
 
-func (m *mockDuplicateUserRepository) InsertUser(dto dto.UserDTO) error {
-	return repository.DuplicateUser
+func (m *mockUserRepository) GetUser(email string) (entity.User, error) {
+	return entity.User{}, nil
 }
 
-func (m *mockInvalidUserRepository) InsertUser(dto dto.UserDTO) error {
-	return errors.New("")
+func (m *mockUserRepository) GetUserById(id int64) (entity.User, error) {
+	return entity.User{}, nil
+}
+
+func (m *mockInvalidUserRepository) InsertUser(user entity.User) error {
+	return richerror.New("service.test_GetUser").WithKind(richerror.KindUnexpected).WithMessage(errmsg.SomeThingWentWrong)
+}
+func (m *mockInvalidUserRepository) GetUser(email string) (entity.User, error) {
+	return entity.User{}, richerror.New("service.test_GetUser").WithKind(richerror.KindUnexpected)
+}
+func (m *mockInvalidUserRepository) GetUserById(id int64) (entity.User, error) {
+	return entity.User{}, richerror.New("service.test_GetUser").WithKind(richerror.KindUnexpected).WithMessage(errmsg.SomeThingWentWrong)
 }
 
 func TestUserService_SignUp_Success(t *testing.T) {
-	userService := NewUserService(&mockUserRepository{})
+	userRepo := &mockUserRepository{}
+	authGenerator := &mockAuthGenerator{}
+	userService := NewUserService(userRepo, authGenerator)
 	req := request.SignUpRequest{
 		Email:    "testasf@gmail.com",
 		Password: "12345",
 	}
-	res := userService.SignUp(&req)
-	if !res.Status {
-		t.Errorf("Expected status to be true, got false")
+	res, err := userService.SignUp(&req)
+	if err != nil {
+		t.Errorf("expected error to be nil, got %v", err)
+		return
 	}
-	data := res.Data.(response.SignUpResponse)
-	if data.DisplayName == "" {
+	if res.DisplayName == "" {
 		t.Errorf("expected non-empty display name, got empty")
+	}
+	if res.DisplayName != "testasf" {
+		t.Errorf("display name is wrong!")
 	}
 }
 
 func TestUserService_SignUp_InvalidUsername(t *testing.T) {
 	userRepo := &mockUserRepository{}
-	userService := NewUserService(userRepo)
+	authGenerator := &mockAuthGenerator{}
+
+	userService := NewUserService(userRepo, authGenerator)
 
 	req := &request.SignUpRequest{
 		Email:    "",
 		Password: "12345",
 	}
 
-	res := userService.SignUp(req)
-	if res.Status {
-		t.Errorf("expected status to be false, got true")
+	_, err := userService.SignUp(req)
+	if err == nil {
+		t.Errorf("expected error to be nil, got %v", err)
+		return
 	}
-	if res.ErrorCode != error_code.BadRequest {
-		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
+	if err.Error() != errmsg.InvalidUserNameErrMsg {
+		t.Errorf("expected error to be %v, got %v", errmsg.InvalidUserNameErrMsg, err)
 	}
 }
 
 func TestUserService_SignUp_InvalidPassword(t *testing.T) {
 	userRepo := &mockUserRepository{}
-	userService := NewUserService(userRepo)
+	authGenerator := &mockAuthGenerator{}
+
+	userService := NewUserService(userRepo, authGenerator)
 
 	req := &request.SignUpRequest{
 		Email:    "asdflkjasfd@gmail.com",
 		Password: "",
 	}
 
-	res := userService.SignUp(req)
-	if res.Status {
-		t.Errorf("expected status to be false, got true")
+	_, err := userService.SignUp(req)
+	if err == nil {
+		t.Errorf("expected error not to be nil, got %v", err)
+		return
 	}
-	if res.ErrorCode != error_code.BadRequest {
-		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
-	}
-	if res.ErrorMessage != invalidPasswordErrMsg {
-		t.Errorf("expected error message to be %s, got %s", invalidPasswordErrMsg, res.ErrorCode)
-	}
-}
-
-func TestUserService_SignUp_DuplicateUser(t *testing.T) {
-	userRepo := &mockDuplicateUserRepository{}
-	userService := NewUserService(userRepo)
-
-	req := &request.SignUpRequest{
-		Email:    "asdflkjasfd@gmail.com",
-		Password: "fasf",
-	}
-
-	res := userService.SignUp(req)
-
-	if res.Status {
-		t.Errorf("expected status to be false, got true")
-	}
-	if res.ErrorCode != error_code.DuplicateUser {
-		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
+	if err.Error() != errmsg.InvalidPasswordErrMsg {
+		t.Errorf("expected error to be %v, got %v", errmsg.InvalidPasswordErrMsg, err)
+		return
 	}
 }
 
 func TestUserService_SignUp_InternalError(t *testing.T) {
 	userRepo := &mockInvalidUserRepository{}
-	userService := NewUserService(userRepo)
+	authGenerator := &mockAuthGenerator{}
+
+	userService := NewUserService(userRepo, authGenerator)
 
 	req := &request.SignUpRequest{
 		Email:    "asdflkjasfd@gmail.com",
 		Password: "fasf",
 	}
 
-	res := userService.SignUp(req)
+	_, err := userService.SignUp(req)
 
-	if res.Status {
-		t.Errorf("expected status to be false, got true")
-	}
-	if res.ErrorCode == error_code.DuplicateUser {
-		t.Errorf("expected error code to be BadRequest, got %s", res.ErrorCode)
-	}
-
-	if res.ErrorMessage != error_code.InternalErrMsg {
-		t.Errorf("expected error message to be %s, got %s", error_code.InternalErrMsg, res.ErrorMessage)
+	if err == nil {
+		t.Errorf("expected error not to be nil, got %v", err)
+		return
 	}
 }
