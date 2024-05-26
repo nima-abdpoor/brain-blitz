@@ -46,6 +46,7 @@ func (m *mockInvalidUserRepository) GetUserById(id int64) (entity.User, error) {
 	return entity.User{}, richerror.New("service.test_GetUser").WithKind(richerror.KindUnexpected).WithMessage(errmsg.SomeThingWentWrong)
 }
 
+// signUp tests
 func TestUserService_SignUp_Success(t *testing.T) {
 	userRepo := &mockUserRepository{}
 	authGenerator := &mockAuthGenerator{}
