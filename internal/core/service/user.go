@@ -17,10 +17,6 @@ import (
 	"strings"
 )
 
-const (
-	invalidPasswordErrMsg = "invalid password"
-)
-
 type UserService struct {
 	userRepo    repository.UserRepository
 	authService service.AuthGenerator
@@ -74,7 +70,7 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 				WithKind(richerror.KindInvalid).
 				WithMessage(errmsg.DuplicateUsername)
 		}
-		fmt.Errorf("errorIn: %v", err)
+		fmt.Println(op, err)
 		return response.SignUpResponse{}, richerror.New(op).
 			WithError(err).
 			WithKind(richerror.KindUnexpected)
