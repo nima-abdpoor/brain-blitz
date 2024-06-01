@@ -20,11 +20,13 @@ matchMaking:
   waiting_timeout: "2m"
   least_presence: "-2m"
   mint_time_list_selection: "-2m"
-  presence_prefix: "presence"
 
 presence_service:
   Prefix: "presence"
   expiration_time: "60m"
+
+presence:
+  presence_prefix: "presence"
 
 scheduler:
   match_user_time_out: "1m"

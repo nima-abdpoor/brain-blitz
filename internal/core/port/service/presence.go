@@ -9,3 +9,7 @@ import (
 type PresenceService interface {
 	Upsert(context context.Context, request request.UpsertPresenceRequest) (response.UpsertPresenceResponse, error)
 }
+
+type PresenceClient interface {
+	GetPresence(context context.Context, request request.GetPresenceRequest) (response.GetPresenceResponse, error)
+}
