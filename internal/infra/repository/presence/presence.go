@@ -26,6 +26,13 @@ func New(db *redis.Adapter, config Config) repository.PresenceRepository {
 	}
 }
 
+func NewPresenceClient(db *redis.Adapter, config Config) repository.PresenceClient {
+	return Presence{
+		db:     db,
+		config: config,
+	}
+}
+
 func (p Presence) Upsert(ctx context.Context, key string, timestamp int64, expTime time.Duration) error {
 	const op = "presence.Upsert"
 	if _, err := p.db.Client().Set(ctx, key, timestamp, expTime).Result(); err != nil {

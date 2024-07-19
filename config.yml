@@ -30,3 +30,7 @@ presence:
 
 scheduler:
   match_user_time_out: "1m"
+
+kafka:
+  host: "127.0.0.1"
+  port: "9092"

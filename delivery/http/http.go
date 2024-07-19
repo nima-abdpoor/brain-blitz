@@ -1,6 +1,7 @@
 package main
 
 import (
+	"BrainBlitz.com/game/adapter/broker/kafka"
 	"BrainBlitz.com/game/config"
 	"BrainBlitz.com/game/internal/controller"
 	"BrainBlitz.com/game/internal/core/port/service"
@@ -38,6 +39,7 @@ func main() {
 	echoInstance.Use(middleware.Logger())
 	echoInstance.Use(middleware.Recover())
 
+	//todo from config
 	db, err := repository.NewDB(mysqlConfig.DatabaseConfig{
 		Driver:                 "mysql",
 		Url:                    "bbGame:root@tcp(127.0.0.1:3310)/brainBlitz_db?charset=utf8mb4&parseTime=true&loc=UTC&tls=false&readTimeout=3s&writeTimeout=3s&timeout=3s&clientFoundRows=true",
@@ -57,6 +59,7 @@ func main() {
 	backofficeHandler := backofficeUserHandler.New(backofficeRepo)
 
 	//create the user service
+	//todo mv secret key into env files
 	authService := coreService.NewJWTAuthService("salam", "exp", time.Now().Add(time.Hour*24).Unix(), time.Now().Add(time.Hour*24*7).Unix())
 	uService := coreService.NewUserService(userRepo, authService)
 
@@ -68,14 +71,18 @@ func main() {
 	authorizationRepo := repository3.NewAuthorizationRepo(mongoDB)
 	authorizationService := coreService.NewAuthorizationService(authorizationRepo)
 
-	// matchMaking
-	redisDB := redis.New(cfg.Redis)
-	matchMakingRepo := matchmaking.NewMatchMakingRepo(redisDB, cfg.MatchMakingPrefix)
-	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, cfg.MatchMakingTimeOut)
-
 	// presence
+	//todo resolve two instances of presence client
+	redisDB := redis.New(cfg.Redis)
 	presenceRepo := presence.New(redisDB, cfg.GetPresence)
 	presenceS := presenceService.New(presenceRepo, cfg.Presence)
+	presenceClientRepo := presence.NewPresenceClient(redisDB, cfg.GetPresence)
+
+	// matchMaking
+	kafkaPublisher := kafka.NewKafkaPublisher(cfg.Kafka)
+	kafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
+	matchMakingRepo := matchmaking.NewMatchMakingRepo(redisDB, cfg.MatchMakingPrefix)
+	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, presenceClientRepo, kafkaPublisher, kafkaConsumer, cfg.MatchMakingTimeOut)
 
 	controllerServices := service.Service{
 		UserService:           uService,

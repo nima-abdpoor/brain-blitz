@@ -9,4 +9,5 @@ import (
 type MatchMakingService interface {
 	AddToWaitingList(request *request.AddToWaitingListRequest) (response.AddToWaitingListResponse, error)
 	MatchWaitUsers(ctx context.Context, request *request.MatchWaitedUsersRequest) (response.MatchWaitedUsersResponse, error)
+	StartMatchMaker()
 }
