@@ -5,5 +5,5 @@ type UpsertPresenceRequest struct {
 }
 
 type GetPresenceRequest struct {
-	UserID string
+	UserID []string
 }

@@ -7,7 +7,9 @@ import (
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/thoas/go-funk"
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -15,6 +17,7 @@ import (
 
 func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUsersRequest) (response.MatchWaitedUsersResponse, error) {
 	const op = "matchMakingHandler.MatchWaitUsers"
+	matchMakingTopic := "matchMaking_v1_matchUsers"
 	var rErr error = nil
 	var readyUsers []entity.MatchedUsers
 	var finalUsers []entity.MatchedUsers
@@ -66,10 +69,40 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 		fmt.Println(op, "readyUsers for category:", readyUser)
 	}
 
-	// todo remove this users from waiting list
+	// todo remove these users from waiting list
 	// todo rpc call to create a match for this users
 	for _, user := range finalUsers {
 		fmt.Println(op, "finalUsers for category:", user)
+	}
+	producer := s.publisherBroker.Publish(nil)
+	switch producer.(type) {
+	case *kafka.Producer:
+		{
+			p := producer.(*kafka.Producer)
+			defer p.Close()
+			tt := time.Now()
+			err := p.Produce(&kafka.Message{
+				TopicPartition: kafka.TopicPartition{
+					Topic:     &matchMakingTopic,
+					Partition: kafka.PartitionAny,
+				},
+				Value: []byte("salam" + tt.String()),
+			}, nil)
+			if err != nil {
+				//todo add metrics
+				//todo add logger
+				log.Printf("error in producing message for topic:%s with error:%v", matchMakingTopic, err)
+			} else {
+				//todo add metrics
+				log.Println("publishing message...", time.Now())
+			}
+		}
+	default:
+		{
+			//todo add metrics
+			//todo add logger
+			log.Printf("Unhandled type of publisherBroker %s", producer)
+		}
 	}
 	return response.MatchWaitedUsersResponse{}, rErr
 }

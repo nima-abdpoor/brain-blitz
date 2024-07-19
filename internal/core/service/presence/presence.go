@@ -21,6 +21,10 @@ type service struct {
 	config Config
 }
 
+type GetPresenceService struct {
+	getPresenceRepo repository.PresenceClient
+}
+
 func New(repo repository.PresenceRepository, config Config) s.PresenceService {
 	return service{
 		repo:   repo,
@@ -39,4 +43,16 @@ func (s service) Upsert(context context.Context, request request.UpsertPresenceR
 		return response.UpsertPresenceResponse{}, richerror.New(op).WithError(err)
 	}
 	return response.UpsertPresenceResponse{}, nil
+}
+
+func (s GetPresenceService) GetPresence(ctx context.Context, request request.GetPresenceRequest) (response.GetPresenceResponse, error) {
+	const op = "presenceservice.GetPresenceByID"
+
+	if rsp, err := s.getPresenceRepo.GetPresence(ctx, request.UserID); err != nil {
+		return response.GetPresenceResponse{}, richerror.New(op).WithError(err)
+	} else {
+		return response.GetPresenceResponse{
+			UserIdToTimestamp: rsp,
+		}, nil
+	}
 }

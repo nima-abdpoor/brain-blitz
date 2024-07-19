@@ -1,11 +1,13 @@
 package config
 
 import (
+	"BrainBlitz.com/game/adapter/broker/kafka"
 	"BrainBlitz.com/game/internal/core/service"
 	matchMakingHandler "BrainBlitz.com/game/internal/core/service/matchMaking"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	"BrainBlitz.com/game/internal/infra/repository"
 	"BrainBlitz.com/game/internal/infra/repository/matchmaking"
+	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/scheduler"
 )
@@ -23,4 +25,6 @@ type Config struct {
 	MatchMakingTimeOut matchMakingHandler.Config `koanf:"matchMaking"`
 	Presence           presenceService.Config    `koanf:"presence_service"`
 	Scheduler          scheduler.Config          `koanf:"scheduler"`
+	GetPresence        presence.Config           `koanf:"presence"`
+	Kafka              kafka.Config              `koanf:"kafka"`
 }

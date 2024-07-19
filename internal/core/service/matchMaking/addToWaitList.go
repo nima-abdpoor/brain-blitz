@@ -1,6 +1,7 @@
 package matchMakingHandler
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
@@ -13,9 +14,11 @@ import (
 )
 
 type Service struct {
-	repo           repository.MatchMakingRepository
-	presenceClient repository.PresenceClient
-	config         Config
+	repo            repository.MatchMakingRepository
+	presenceClient  repository.PresenceClient
+	publisherBroker broker.PublisherBroker
+	consumerBroker  broker.ConsumerBroker
+	config          Config
 }
 
 type Config struct {
@@ -23,11 +26,13 @@ type Config struct {
 	LeastPresence  time.Duration `koanf:"least_presence"`
 }
 
-func NewMatchMakingService(repo repository.MatchMakingRepository, presenceClient repository.PresenceClient, config Config) service.MatchMakingService {
+func NewMatchMakingService(repo repository.MatchMakingRepository, presenceClient repository.PresenceClient, publisherBroker broker.PublisherBroker, consumerBroker broker.ConsumerBroker, config Config) service.MatchMakingService {
 	return Service{
-		repo:           repo,
-		presenceClient: presenceClient,
-		config:         config,
+		repo:            repo,
+		presenceClient:  presenceClient,
+		publisherBroker: publisherBroker,
+		consumerBroker:  consumerBroker,
+		config:          config,
 	}
 }
 
