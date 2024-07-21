@@ -9,7 +9,7 @@ import (
 )
 
 func NewMongoDB() (*mongo.Collection, error) {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27018/")
+	clientOptions := options.Client().ApplyURI("mongodb://BrainBlitz-mongodb:27017/")
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Println(fmt.Sprintf("connecting to mongoDB failed %v\n", err))

@@ -1,6 +1,22 @@
 version: '2.4'
 
 services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - BrainBlitz-mysql
+      - BrainBlitz-redis
+      - BrainBlitz-mongodb
+      - kafka
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=bbGame
+      - DB_PASSWORD=root
+      - DB_NAME=brainBlitz_db
+
   BrainBlitz-redis:
     image: bitnami/redis:6.2
     container_name: BrainBlitz-redis
@@ -16,7 +32,7 @@ services:
   BrainBlitz-mongodb:
     image: mongo:7.0
     ports:
-     - "27018:27017"
+     - "27017:27017"
     container_name: BrainBlitz-mongo
     volumes:
       - BrainBlitz-mongo:/data
@@ -26,7 +42,7 @@ services:
   BrainBlitz-mysql:
     image: mysql:8.0
     ports:
-      - "3310:3306"
+      - "3306:3306"
     container_name: BrainBlitz-mysql
     restart: always
     command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
