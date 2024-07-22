@@ -4,6 +4,7 @@ import (
 	"BrainBlitz.com/game/adapter/broker/kafka"
 	"BrainBlitz.com/game/config"
 	"BrainBlitz.com/game/internal/controller"
+	repository2 "BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
 	coreService "BrainBlitz.com/game/internal/core/service"
@@ -40,15 +41,10 @@ func main() {
 	echoInstance.Use(middleware.Recover())
 
 	//todo from config
-	db, err := repository.NewDB(mysqlConfig.DatabaseConfig{
-		Driver:                 "mysql",
-		Url:                    "bbGame:root@tcp(127.0.0.1:3310)/brainBlitz_db?charset=utf8mb4&parseTime=true&loc=UTC&tls=false&readTimeout=3s&writeTimeout=3s&timeout=3s&clientFoundRows=true",
-		ConnMaxLifeTimeMinutes: 3,
-		MaxOpenCons:            10,
-		MaxIdleCons:            1,
-	})
-	if err != nil {
-		log.Fatalf("failed to new database err=%s\n", err.Error())
+	db, err := getMysqlDB()
+	for err != nil {
+		db, err = getMysqlDB()
+		time.Sleep(time.Duration(5_000) * time.Millisecond)
 	}
 
 	//create the UserRepository
@@ -127,4 +123,20 @@ func main() {
 	log.Println("graceful shutdown...")
 	time.Sleep(5 * time.Second)
 	wg.Wait()
+}
+
+func getMysqlDB() (repository2.Database, error) {
+	db, err := repository.NewDB(mysqlConfig.DatabaseConfig{
+		Driver:                 "mysql",
+		Url:                    "bbGame:root@tcp(BrainBlitz-mysql:3306)/brainBlitz_db?charset=utf8mb4&parseTime=true&loc=UTC&tls=false&readTimeout=3s&writeTimeout=3s&timeout=3s&clientFoundRows=true",
+		ConnMaxLifeTimeMinutes: 3,
+		MaxOpenCons:            10,
+		MaxIdleCons:            1,
+	})
+	if err != nil {
+		log.Printf("failed to new database err=%s\n\n", err.Error())
+		return nil, err
+	} else {
+		return db, nil
+	}
 }
