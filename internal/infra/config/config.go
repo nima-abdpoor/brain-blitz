@@ -2,10 +2,6 @@ package config
 
 import "google.golang.org/grpc/keepalive"
 
-type HttpServerConfig struct {
-	Port uint
-}
-
 type DatabaseConfig struct {
 	Driver                 string
 	Url                    string

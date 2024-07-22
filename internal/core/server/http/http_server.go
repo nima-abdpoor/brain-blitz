@@ -1,7 +1,6 @@
 package http
 
 import (
-	"BrainBlitz.com/game/internal/infra/config"
 	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -17,12 +16,16 @@ type HttpServer interface {
 	Stop()
 }
 
+type Config struct {
+	Port uint
+}
+
 type httpServer struct {
 	Port   uint
 	server *http.Server
 }
 
-func NewHTTPServer(router *echo.Echo, conf config.HttpServerConfig) httpServer {
+func NewHTTPServer(router *echo.Echo, conf Config) httpServer {
 	return httpServer{
 		Port: conf.Port,
 		server: &http.Server{

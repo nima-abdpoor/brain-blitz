@@ -8,8 +8,8 @@ import (
 	"log"
 )
 
-func NewMongoDB() (*mongo.Collection, error) {
-	clientOptions := options.Client().ApplyURI("mongodb://BrainBlitz-mongodb:27017/")
+func NewMongoDB(config Config) (*mongo.Collection, error) {
+	clientOptions := options.Client().ApplyURI(fmt.Sprintf("%s://%s:%v", config.User, config.Host, config.Port))
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Println(fmt.Sprintf("connecting to mongoDB failed %v\n", err))
@@ -39,4 +39,10 @@ func createAccessControlData(db *mongo.Collection) {
 	if err != nil {
 		log.Println(fmt.Sprintf("failed to insert Data %v\n", err))
 	}
+}
+
+type Config struct {
+	User string `koanf:"user"`
+	Host string `koanf:"host"`
+	Port int    `koanf:"port"`
 }

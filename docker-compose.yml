@@ -11,11 +11,17 @@ services:
       - BrainBlitz-mongodb
       - kafka
     environment:
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=bbGame
-      - DB_PASSWORD=root
-      - DB_NAME=brainBlitz_db
+      - BrainBlitz_HTTP_PORT=8000
+      - BrainBlitz_MYSQL_HOST=BrainBlitz-mysql
+      - BrainBlitz_MYSQL_PORT=3306
+      - BrainBlitz_MYSQL_USER=bbGame
+      - BrainBlitz_MYSQL_PASSOWRD=root
+      - BrainBlitz_MYSQL_NAME=brainBlitz_db
+      - BrainBlitz_MYSQL_RETRY=4s
+      - BrainBlitz_MONGO_HOST=BrainBlitz-mongodb
+      - BrainBlitz_MONGO_PORT=27017
+      - BrainBlitz_REDIS_HOST=BrainBlitz-redis
+      - BrainBlitz_KAFKA_HOST=kafka
 
   BrainBlitz-redis:
     image: bitnami/redis:6.2

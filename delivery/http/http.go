@@ -40,11 +40,10 @@ func main() {
 	echoInstance.Use(middleware.Logger())
 	echoInstance.Use(middleware.Recover())
 
-	//todo from config
-	db, err := getMysqlDB()
+	db, err := getMysqlDB(cfg.Mysql)
 	for err != nil {
-		db, err = getMysqlDB()
-		time.Sleep(time.Duration(5_000) * time.Millisecond)
+		db, err = getMysqlDB(cfg.Mysql)
+		time.Sleep(cfg.Mysql.RetryConnection)
 	}
 
 	//create the UserRepository
@@ -60,7 +59,7 @@ func main() {
 	uService := coreService.NewUserService(userRepo, authService)
 
 	// authorization
-	mongoDB, err := mongo.NewMongoDB()
+	mongoDB, err := mongo.NewMongoDB(cfg.Mongo)
 	if err != nil {
 		log.Fatal("cant connect to mongo", err)
 	}
@@ -92,9 +91,7 @@ func main() {
 	httpController.InitRouter()
 
 	//create httpServer
-	httpServer := http.NewHTTPServer(echoInstance, mysqlConfig.HttpServerConfig{
-		Port: 8000,
-	})
+	httpServer := http.NewHTTPServer(echoInstance, cfg.HTTPServer)
 
 	httpServer.Start()
 	defer httpServer.Stop()
@@ -125,13 +122,13 @@ func main() {
 	wg.Wait()
 }
 
-func getMysqlDB() (repository2.Database, error) {
+func getMysqlDB(config repository.Config) (repository2.Database, error) {
 	db, err := repository.NewDB(mysqlConfig.DatabaseConfig{
 		Driver:                 "mysql",
-		Url:                    "bbGame:root@tcp(BrainBlitz-mysql:3306)/brainBlitz_db?charset=utf8mb4&parseTime=true&loc=UTC&tls=false&readTimeout=3s&writeTimeout=3s&timeout=3s&clientFoundRows=true",
-		ConnMaxLifeTimeMinutes: 3,
-		MaxOpenCons:            10,
-		MaxIdleCons:            1,
+		Url:                    fmt.Sprintf("%s:%s@tcp(%s:%v)/%s?charset=utf8mb4&parseTime=true&loc=UTC&tls=false&readTimeout=3s&writeTimeout=3s&timeout=3s&clientFoundRows=true", config.Username, config.Password, config.Host, config.Port, config.DBName),
+		ConnMaxLifeTimeMinutes: config.ConnMaxLifeTimeMinutes,
+		MaxOpenCons:            config.MaxOpenCons,
+		MaxIdleCons:            config.MaxIdleCons,
 	})
 	if err != nil {
 		log.Printf("failed to new database err=%s\n\n", err.Error())

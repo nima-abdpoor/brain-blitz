@@ -3,15 +3,28 @@ type: yml
 auth:
   sign_key: hello
 
+http:
+  port: 8080
 
 mysql:
-  port: 3310
+  user: bbGame
+  port: 3306
   host: localhost
-  db_name: brainBlitz_db
+  name: brainBlitz_db
+  password: root
+  maxlifetimeminutes: 3
+  maxopencons: 10
+  maxidlecons: 1
+  retry: 5s
+
+mongo:
+  user: mongodb
+  host: localhost
+  port: 27017
 
 redis:
   port: 6379
-  host: BrainBlitz-redis
+  host: "localhost"
   db: 0
   password: ""
 
