@@ -1,9 +1,11 @@
 package match
 
-import entity "BrainBlitz.com/game/entity/game"
+import (
+	entity "BrainBlitz.com/game/entity/game"
+)
 
 func MapFromEntityToProtoMessage(matchedUsers []entity.MatchedUsers) *AllMatchedUsers {
-	finalUsers := make([]*MatchedUsers, len(matchedUsers))
+	finalUsers := make([]*MatchedUsers, 0)
 	for _, user := range matchedUsers {
 		finalUsers = append(finalUsers, &MatchedUsers{
 			UserId:   user.UserId,
@@ -17,7 +19,7 @@ func MapFromEntityToProtoMessage(matchedUsers []entity.MatchedUsers) *AllMatched
 }
 
 func MapToEntityToProtoMessage(users *AllMatchedUsers) []entity.MatchedUsers {
-	finalUsers := make([]entity.MatchedUsers, len(users.Users))
+	finalUsers := make([]entity.MatchedUsers, 0)
 	for _, user := range users.GetUsers() {
 		finalUsers = append(finalUsers, entity.MatchedUsers{
 			UserId:   user.UserId,

@@ -60,6 +60,9 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 	}
 	for _, readyUser := range readyUsers {
 		r := len(readyUser.UserId)
+		if r < 2 {
+			continue
+		}
 		if r%2 != 0 {
 			r--
 		}
@@ -72,7 +75,7 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 
 	// todo remove these users from waiting list
 	// todo rpc call to create a match for this users
-	if len(finalUsers) >= 2 {
+	if len(finalUsers) > 0 {
 		for _, user := range finalUsers {
 			fmt.Println(op, "finalUsers for category:", user)
 		}
