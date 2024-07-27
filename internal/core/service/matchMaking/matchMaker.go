@@ -1,7 +1,9 @@
 package matchMakingHandler
 
 import (
+	"BrainBlitz.com/game/contract/golang/match"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"time"
 )
@@ -31,7 +33,14 @@ func (s Service) StartMatchMaker() {
 				ev := c.Poll(100)
 				switch e := ev.(type) {
 				case *kafka.Message:
-					log.Printf("%s, value of consumer is:%s time:%s\n\n", op, string(e.Value), time.Now().String())
+					users := &match.AllMatchedUsers{}
+					err := proto.Unmarshal(e.Value, users)
+					if err != nil {
+						//todo update metrics
+						log.Printf("%s Error in unmarshaling message: %v\n", op, e)
+					}
+					entityUsers := match.MapToEntityToProtoMessage(users)
+					log.Printf("%s, value of consumer is:%s time:%s\n\n", op, entityUsers, time.Now().String())
 					// application-specific processing
 				case kafka.Error:
 					log.Printf("%s Error in consuming message: %v\n", op, e)

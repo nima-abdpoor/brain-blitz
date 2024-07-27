@@ -3,7 +3,7 @@ syntax = "proto3";
 package match;
 option go_package = "contract/golang/match";
 
-message GetAllMatchedUsers {
+message AllMatchedUsers {
   repeated MatchedUsers users = 1;
 }
 
