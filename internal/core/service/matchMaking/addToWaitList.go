@@ -17,7 +17,6 @@ type Service struct {
 	repo            repository.MatchMakingRepository
 	presenceClient  repository.PresenceClient
 	publisherBroker broker.PublisherBroker
-	consumerBroker  broker.ConsumerBroker
 	config          Config
 }
 
@@ -26,12 +25,11 @@ type Config struct {
 	LeastPresence  time.Duration `koanf:"least_presence"`
 }
 
-func NewMatchMakingService(repo repository.MatchMakingRepository, presenceClient repository.PresenceClient, publisherBroker broker.PublisherBroker, consumerBroker broker.ConsumerBroker, config Config) service.MatchMakingService {
+func NewMatchMakingService(repo repository.MatchMakingRepository, presenceClient repository.PresenceClient, publisherBroker broker.PublisherBroker, config Config) service.MatchMakingService {
 	return Service{
 		repo:            repo,
 		presenceClient:  presenceClient,
 		publisherBroker: publisherBroker,
-		consumerBroker:  consumerBroker,
 		config:          config,
 	}
 }

@@ -1,14 +1,31 @@
-package matchMakingHandler
+package match
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/contract/golang/match"
+	entity "BrainBlitz.com/game/entity/game"
+	"BrainBlitz.com/game/internal/core/model/request"
+	"BrainBlitz.com/game/internal/core/port/repository"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"golang.org/x/net/context"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"time"
 )
 
-func (s Service) StartMatchMaker() {
+type Service struct {
+	repository     repository.MatchManagementRepository
+	consumerBroker broker.ConsumerBroker
+}
+
+func New(repo repository.MatchManagementRepository, consumer broker.ConsumerBroker) Service {
+	return Service{
+		repository:     repo,
+		consumerBroker: consumer,
+	}
+}
+
+func (s Service) StartMatchCreator(req request.StartMatchCreatorRequest) (request.StartMatchCreatorRequest, error) {
 	const op = "matchMakingHandler.StartMatchMaker"
 	matchMakingTopic := "matchMaking_v1_matchUsers"
 	matchMakingGroup := "matchMaking"
@@ -39,7 +56,18 @@ func (s Service) StartMatchMaker() {
 						//todo update metrics
 						log.Printf("%s Error in unmarshaling message: %v\n", op, e)
 					}
+					//todo create match in database
+					//todo publish message: MatchCreated with Id
+					//todo send Acknowledgment to publisher
 					entityUsers := match.MapToEntityToProtoMessage(users)
+					//todo think about context.Background()
+					for _, u := range entityUsers {
+						s.repository.CreateMatch(context.Background(), entity.Game{
+							PlayerIDs: u.UserId,
+							Category:  u.Category,
+							Status:    entity.GameStatusCreated,
+						})
+					}
 					log.Printf("%s, value of consumer is:%s time:%s\n\n", op, entityUsers, time.Now().String())
 					// application-specific processing
 				case kafka.Error:
@@ -57,4 +85,5 @@ func (s Service) StartMatchMaker() {
 			log.Printf("Unhandled type of consumerBroker %s", consumer)
 		}
 	}
+	return request.StartMatchCreatorRequest{}, nil
 }

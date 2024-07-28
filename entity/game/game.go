@@ -4,9 +4,10 @@ import "time"
 
 type Game struct {
 	ID          uint
-	PlayerIDs   []uint
+	PlayerIDs   []uint64
 	QuestionIDs []uint
-	Category    []uint
+	Category    Category
+	Status      GameStatus
 	StartTime   time.Time
 }
 

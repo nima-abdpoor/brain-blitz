@@ -4,17 +4,20 @@ import (
 	"BrainBlitz.com/game/adapter/broker/kafka"
 	"BrainBlitz.com/game/config"
 	"BrainBlitz.com/game/internal/controller"
+	"BrainBlitz.com/game/internal/core/model/request"
 	repository2 "BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
 	coreService "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/core/service/backofficeUserHandler"
+	"BrainBlitz.com/game/internal/core/service/match"
 	matchMakingHandler "BrainBlitz.com/game/internal/core/service/matchMaking"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	mysqlConfig "BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
 	repository3 "BrainBlitz.com/game/internal/infra/repository/authorization"
 	"BrainBlitz.com/game/internal/infra/repository/matchmaking"
+	"BrainBlitz.com/game/internal/infra/repository/matchmanager"
 	"BrainBlitz.com/game/internal/infra/repository/mongo"
 	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
@@ -75,18 +78,25 @@ func main() {
 
 	// matchMaking
 	kafkaPublisher := kafka.NewKafkaPublisher(cfg.Kafka)
-	kafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
 	matchMakingRepo := matchmaking.NewMatchMakingRepo(redisDB, cfg.MatchMakingPrefix)
-	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, presenceClientRepo, kafkaPublisher, kafkaConsumer, cfg.MatchMakingTimeOut)
+	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, presenceClientRepo, kafkaPublisher, cfg.MatchMakingTimeOut)
+
+	// matchManagement
+	kafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
+	matchManagerRepo := matchmanager.New(mongoDB)
+	matchManagerSvc := match.New(matchManagerRepo, kafkaConsumer)
 
 	controllerServices := service.Service{
-		UserService:           uService,
-		BackofficeUserService: backofficeHandler,
-		AuthService:           authService,
-		AuthorizationService:  authorizationService,
-		MatchMakingService:    matchMakingService,
-		Presence:              presenceS,
+		UserService:            uService,
+		BackofficeUserService:  backofficeHandler,
+		AuthService:            authService,
+		AuthorizationService:   authorizationService,
+		MatchMakingService:     matchMakingService,
+		MatchManagementService: matchManagerSvc,
+		Presence:               presenceS,
 	}
+	//todo move this to somewhere better
+	go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
 	httpController := controller.NewController(echoInstance, controllerServices)
 	httpController.InitRouter()
 

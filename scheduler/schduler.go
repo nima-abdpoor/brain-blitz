@@ -34,7 +34,6 @@ func (s Scheduler) Start(done <-chan bool, wg *sync.WaitGroup) {
 	fmt.Println(op, "scheduler started...")
 	defer wg.Done()
 
-	go s.matchSvc.StartMatchMaker()
 	if _, err := s.sch.Every(s.conf.Interval).Second().Do(s.MatchWaitedUsers); err != nil {
 		fmt.Println(op, err)
 	}

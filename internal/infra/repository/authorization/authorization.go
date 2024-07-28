@@ -13,10 +13,10 @@ import (
 )
 
 type Authorization struct {
-	DB *mongo.Collection
+	DB *mongo.Database
 }
 
-func NewAuthorizationRepo(db *mongo.Collection) repository.AuthorizationRepository {
+func NewAuthorizationRepo(db *mongo.Database) repository.AuthorizationRepository {
 	return Authorization{
 		DB: db,
 	}
@@ -27,7 +27,8 @@ func (a Authorization) GetUserPermissionTitles(role entity.Role) ([]entity.Permi
 
 	var accessControl model.AccessControl
 	filter := bson.D{{"role_type", role.String()}}
-	err := a.DB.FindOne(context.Background(), filter).Decode(&accessControl)
+	//todo bind context.Background() to service not hardCoding!
+	err := a.DB.Collection("access_control").FindOne(context.Background(), filter).Decode(&accessControl)
 	if err != nil {
 		log.Println(err)
 		if err == mongo.ErrNoDocuments {
