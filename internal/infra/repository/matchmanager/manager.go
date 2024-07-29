@@ -4,6 +4,7 @@ import (
 	entity "BrainBlitz.com/game/entity/game"
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -29,7 +30,14 @@ func (m MatchManager) CreateMatch(ctx context.Context, game entity.Game) error {
 	if result, err := coll.InsertOne(ctx, doc); err != nil {
 		return err
 	} else {
-		fmt.Println(op, result)
+		dock := &MatchCreation{}
+		fmt.Println(op, "InsertedID:", result.InsertedID)
+		filter := bson.D{{"_id", result.InsertedID}}
+		err = coll.FindOne(ctx, filter).Decode(dock)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(op, dock)
 	}
 	return nil
 }
