@@ -1,6 +1,7 @@
 package matchMakingHandler
 
 import (
+	"BrainBlitz.com/game/contract/golang/match"
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/thoas/go-funk"
+	"google.golang.org/protobuf/proto"
 	"log"
 	"sort"
 	"strconv"
@@ -17,7 +19,6 @@ import (
 
 func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUsersRequest) (response.MatchWaitedUsersResponse, error) {
 	const op = "matchMakingHandler.MatchWaitUsers"
-	matchMakingTopic := "matchMaking_v1_matchUsers"
 	var rErr error = nil
 	var readyUsers []entity.MatchedUsers
 	var finalUsers []entity.MatchedUsers
@@ -49,16 +50,19 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 			return users.Category.String() == member.Category.String()
 		})
 		if index != -1 {
-			readyUsers[index].UserId = append(readyUsers[index].UserId, member.UserId)
+			readyUsers[index].UserId = append(readyUsers[index].UserId, uint64(member.UserId))
 		} else {
 			readyUsers = append(readyUsers, entity.MatchedUsers{
 				Category: member.Category,
-				UserId:   []uint{member.UserId},
+				UserId:   []uint64{uint64(member.UserId)},
 			})
 		}
 	}
 	for _, readyUser := range readyUsers {
 		r := len(readyUser.UserId)
+		if r < 2 {
+			continue
+		}
 		if r%2 != 0 {
 			r--
 		}
@@ -71,8 +75,23 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 
 	// todo remove these users from waiting list
 	// todo rpc call to create a match for this users
-	for _, user := range finalUsers {
-		fmt.Println(op, "finalUsers for category:", user)
+	if len(finalUsers) > 0 {
+		for _, user := range finalUsers {
+			fmt.Println(op, "finalUsers for category:", user)
+		}
+		s.publishFinalUsers(finalUsers)
+	}
+	return response.MatchWaitedUsersResponse{}, rErr
+}
+
+func (s Service) publishFinalUsers(users []entity.MatchedUsers) {
+	const op = "matchMakingHandler.publishFinalUsers"
+	matchMakingTopic := "matchMaking_v1_matchUsers"
+	buff, err := proto.Marshal(match.MapFromEntityToProtoMessage(users))
+	if err != nil {
+		//todo update metrics
+		//todo put logs
+		log.Printf("%s, error in marshaling match message %v", op, err)
 	}
 	producer := s.publisherBroker.Publish(nil)
 	switch producer.(type) {
@@ -80,13 +99,12 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 		{
 			p := producer.(*kafka.Producer)
 			defer p.Close()
-			tt := time.Now()
 			err := p.Produce(&kafka.Message{
 				TopicPartition: kafka.TopicPartition{
 					Topic:     &matchMakingTopic,
 					Partition: kafka.PartitionAny,
 				},
-				Value: []byte("salam" + tt.String()),
+				Value: buff,
 			}, nil)
 			if err != nil {
 				//todo add metrics
@@ -94,7 +112,7 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 				log.Printf("error in producing message for topic:%s with error:%v", matchMakingTopic, err)
 			} else {
 				//todo add metrics
-				log.Println("publishing message...", time.Now())
+				log.Printf("publishing message... %s %s\n", buff, time.Now())
 			}
 		}
 	default:
@@ -104,5 +122,4 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 			log.Printf("Unhandled type of publisherBroker %s", producer)
 		}
 	}
-	return response.MatchWaitedUsersResponse{}, rErr
 }

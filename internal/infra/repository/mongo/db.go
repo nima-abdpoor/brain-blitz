@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-func NewMongoDB(config Config) (*mongo.Collection, error) {
+func NewMongoDB(config Config) (*mongo.Database, error) {
 	clientOptions := options.Client().ApplyURI(fmt.Sprintf("%s://%s:%v", config.User, config.Host, config.Port))
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
@@ -20,18 +20,19 @@ func NewMongoDB(config Config) (*mongo.Collection, error) {
 		log.Println(fmt.Sprintf("ping mongoDB connection failed %v\n", err))
 		return nil, err
 	}
-	collection := client.Database("BrainBlitz").Collection("access_control")
+	//todo add this to config
+	database := client.Database("BrainBlitz")
 	if err != nil {
 		log.Println(fmt.Sprintf("failed to get collection %v\n", err))
 		return nil, err
 	}
 
-	createAccessControlData(collection)
-	return collection, nil
+	createAccessControlData(database)
+	return database, nil
 }
 
-func createAccessControlData(db *mongo.Collection) {
-	result, err := db.InsertOne(context.Background(), &AccessControl{
+func createAccessControlData(db *mongo.Database) {
+	result, err := db.Collection("access_control").InsertOne(context.Background(), &AccessControl{
 		RoleType:    "admin",
 		Permissions: []string{"USER_LIST", "USER_DELETE"},
 	})

@@ -28,7 +28,7 @@ func MapToCategory(category string) Category {
 		return CategoryTypeSport
 	case Tech:
 		return CategoryTypeTech
-	// todo select randomly
+	//todo select randomly
 	default:
 		return 0
 	}

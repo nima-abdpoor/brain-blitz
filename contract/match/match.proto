@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package match;
+option go_package = "contract/golang/match";
+
+message AllMatchedUsers {
+  repeated MatchedUsers users = 1;
+}
+
+message MatchedUsers {
+  repeated uint64 user_id = 1;
+  string category = 2;
+}

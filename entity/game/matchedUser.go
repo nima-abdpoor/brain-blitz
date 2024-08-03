@@ -4,7 +4,7 @@ import "fmt"
 
 type MatchedUsers struct {
 	Category Category
-	UserId   []uint
+	UserId   []uint64
 }
 
 func (m MatchedUsers) String() string {
