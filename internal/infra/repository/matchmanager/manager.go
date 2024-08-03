@@ -2,9 +2,9 @@ package matchmanager
 
 import (
 	entity "BrainBlitz.com/game/entity/game"
+	"BrainBlitz.com/game/pkg/richerror"
 	"context"
-	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -18,7 +18,7 @@ func New(db *mongo.Database) MatchManager {
 	}
 }
 
-func (m MatchManager) CreateMatch(ctx context.Context, game entity.Game) error {
+func (m MatchManager) CreateMatch(ctx context.Context, game entity.Game) (string, error) {
 	const op = "matchmanager.CreateMatch"
 
 	doc := MatchCreation{
@@ -28,16 +28,9 @@ func (m MatchManager) CreateMatch(ctx context.Context, game entity.Game) error {
 	}
 	coll := m.DB.Collection("match")
 	if result, err := coll.InsertOne(ctx, doc); err != nil {
-		return err
+		return "", richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
 	} else {
-		dock := &MatchCreation{}
-		fmt.Println(op, "InsertedID:", result.InsertedID)
-		filter := bson.D{{"_id", result.InsertedID}}
-		err = coll.FindOne(ctx, filter).Decode(dock)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(op, dock)
+		//todo check the possibility of conversion.
+		return result.InsertedID.(primitive.ObjectID).Hex(), nil
 	}
-	return nil
 }

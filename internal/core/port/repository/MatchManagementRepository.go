@@ -6,5 +6,5 @@ import (
 )
 
 type MatchManagementRepository interface {
-	CreateMatch(ctx context.Context, game entity.Game) error
+	CreateMatch(ctx context.Context, game entity.Game) (string, error)
 }

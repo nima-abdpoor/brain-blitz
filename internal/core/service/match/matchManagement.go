@@ -6,6 +6,7 @@ import (
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/repository"
+	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"golang.org/x/net/context"
 	"google.golang.org/protobuf/proto"
@@ -62,11 +63,16 @@ func (s Service) StartMatchCreator(req request.StartMatchCreatorRequest) (reques
 					entityUsers := match.MapToEntityToProtoMessage(users)
 					//todo think about context.Background()
 					for _, u := range entityUsers {
-						s.repository.CreateMatch(context.Background(), entity.Game{
+						if id, err := s.repository.CreateMatch(context.Background(), entity.Game{
 							PlayerIDs: u.UserId,
 							Category:  u.Category,
 							Status:    entity.GameStatusCreated,
-						})
+						}); err != nil {
+							log.Println(op, err)
+						} else {
+							//todo publish id
+							fmt.Println(op, id)
+						}
 					}
 					log.Printf("%s, value of consumer is:%s time:%s\n\n", op, entityUsers, time.Now().String())
 					// application-specific processing
