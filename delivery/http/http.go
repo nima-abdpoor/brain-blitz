@@ -21,10 +21,13 @@ import (
 	"BrainBlitz.com/game/internal/infra/repository/mongo"
 	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
+	"BrainBlitz.com/game/logger"
+	echo2 "BrainBlitz.com/game/pkg/echo"
 	"BrainBlitz.com/game/scheduler"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.uber.org/zap"
 	"log"
 	"os"
 	"os/signal"
@@ -36,11 +39,12 @@ import (
 func main() {
 	// TODO - read config path from command line
 	cfg := config.Load("config.yml")
-	fmt.Printf("cfg: %+v\n", cfg)
+	logger.Logger.Named("main.main").Info("cfg", zap.Any("config", cfg))
 
 	// Create a new instance of the Echo router
 	echoInstance := echo.New()
-	echoInstance.Use(middleware.Logger())
+	echoInstance.Use(middleware.RequestID())
+	echoInstance.Use(middleware.RequestLoggerWithConfig(echo2.RequestLoggerConfig))
 	echoInstance.Use(middleware.Recover())
 
 	db, err := getMysqlDB(cfg.Mysql)
