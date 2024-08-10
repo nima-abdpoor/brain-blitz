@@ -26,6 +26,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"log"
+	http2 "net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
@@ -37,6 +39,10 @@ func main() {
 	// TODO - read config path from command line
 	cfg := config.Load("config.yml")
 	fmt.Printf("cfg: %+v\n", cfg)
+
+	if cfg.Infra.PPROF {
+		go listenPprofService()
+	}
 
 	// Create a new instance of the Echo router
 	echoInstance := echo.New()
@@ -145,5 +151,11 @@ func getMysqlDB(config repository.Config) (repository2.Database, error) {
 		return nil, err
 	} else {
 		return db, nil
+	}
+}
+
+func listenPprofService() {
+	if err := http2.ListenAndServe(":8099", nil); err != nil {
+		fmt.Printf("error in serving PProf %v\n", err)
 	}
 }

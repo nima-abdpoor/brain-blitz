@@ -47,3 +47,6 @@ scheduler:
 kafka:
   host: "kafka"
   port: "9092"
+
+infra:
+  pprof: true
