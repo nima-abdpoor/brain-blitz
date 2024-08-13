@@ -1,9 +1,11 @@
 package http
 
 import (
+	"BrainBlitz.com/game/logger"
 	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"time"
@@ -36,15 +38,13 @@ func NewHTTPServer(router *echo.Echo, conf Config) httpServer {
 }
 
 func (httpServer httpServer) Start() {
+	const op = "http.Start"
 	go func() {
-		if err := httpServer.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf(
-				"failed to stater HttpServer listen port %d, err=%s",
-				httpServer.Port, err.Error(),
-			)
+		if err := httpServer.server.ListenAndServe(); err != nil {
+			logger.Logger.Named(op).Fatal("failed to stater listening HttpServer...", zap.Uint("port", httpServer.Port), zap.Error(err))
 		}
 	}()
-	log.Printf("Start Service with port %d", httpServer.Port)
+	logger.Logger.Named(op).Info("http server started", zap.Uint("port", httpServer.Port))
 }
 
 func (httpServer httpServer) Stop() {

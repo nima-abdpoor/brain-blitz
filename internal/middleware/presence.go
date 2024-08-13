@@ -3,9 +3,11 @@ package middleware
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/service"
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 	"log"
 )
 
@@ -23,7 +25,7 @@ func Presence(service service.PresenceService) echo.MiddlewareFunc {
 			if _, err := service.Upsert(c.Request().Context(), request.UpsertPresenceRequest{
 				UserID: ctxClaim.UserId,
 			}); err != nil {
-				log.Println(op, err.Error())
+				logger.Logger.Named(op).Error("error In upsetting", zap.String("ctxClaim.UserId", ctxClaim.UserId), zap.Error(err))
 			}
 			return next(c)
 		}

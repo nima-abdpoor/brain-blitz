@@ -2,9 +2,10 @@ package kafka
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/logger"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"log"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -29,6 +30,8 @@ func NewKafkaConsumer(config Config) broker.ConsumerBroker {
 }
 
 func (b Broker) Publish(config map[string]string) any {
+	const op = "kafka.Publish"
+
 	//todo refactor to using multiple address instead of single node
 	configMap := kafka.ConfigMap{
 		"bootstrap.servers": fmt.Sprintf("%s:%s", b.config.Host, b.config.Port),
@@ -39,13 +42,13 @@ func (b Broker) Publish(config map[string]string) any {
 	p, err := kafka.NewProducer(&configMap)
 	if err != nil {
 		//todo add metrics
-		//todo add logger
-		log.Printf("error ocured in creating Kafka producer %v\n", err)
+		logger.Logger.Named(op).Error("error occurred in creating Kafka producer", zap.Error(err))
 	}
 	return p
 }
 
 func (b Broker) Consume(config map[string]string) (any, error) {
+	const op = "kafka.Consume"
 	configMap := kafka.ConfigMap{
 		"bootstrap.servers": fmt.Sprintf("%s:%s", b.config.Host, b.config.Port),
 	}
@@ -55,8 +58,7 @@ func (b Broker) Consume(config map[string]string) (any, error) {
 	consumer, err := kafka.NewConsumer(&configMap)
 	if err != nil {
 		//todo add metrics
-		//todo add logger
-		log.Printf("Error ocured in creating comsumer, error:%v", err)
+		logger.Logger.Named(op).Error("Error occurred in creating consumer", zap.Error(err))
 		return nil, err
 	}
 	return consumer, nil

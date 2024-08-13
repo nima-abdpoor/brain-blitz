@@ -7,9 +7,10 @@ import (
 	"BrainBlitz.com/game/internal/core/model/response"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
-	"log"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func (s Service) AddToWaitingList(request *request.AddToWaitingListRequest) (res
 
 	err := s.repo.AddToWaitingList(entity.MapToCategory(request.Category), request.UserId)
 	if err != nil {
-		log.Printf("error in %s:%v", op, err)
+		logger.Logger.Named(op).Error("add to waiting list failed", zap.String("request.UserId", request.UserId), zap.Error(err))
 		return response.AddToWaitingListResponse{},
 			richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err).WithMessage(errmsg.SomeThingWentWrong)
 	}

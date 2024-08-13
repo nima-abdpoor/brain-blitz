@@ -37,9 +37,10 @@ import (
 )
 
 func main() {
+	const op = "main.main"
 	// TODO - read config path from command line
 	cfg := config.Load("config.yml")
-	logger.Logger.Named("main.main").Info("cfg", zap.Any("config", cfg))
+	logger.Logger.Named(op).Info("cfg", zap.Any("config", cfg))
 
 	// Create a new instance of the Echo router
 	echoInstance := echo.New()
@@ -119,7 +120,7 @@ func main() {
 	}()
 
 	// Listen for OS signals to perform a graceful shutdown
-	log.Printf("listening signals on %d ...", os.Getpid())
+	logger.Logger.Named(op).Info("listening signals...", zap.Int("processId", os.Getpid()))
 	quite := make(chan os.Signal, 1)
 	signal.Notify(
 		quite,
@@ -131,12 +132,13 @@ func main() {
 	)
 	<-quite
 	done <- true
-	log.Println("graceful shutdown...")
+	logger.Logger.Named(op).Info("graceful shutdown...")
 	time.Sleep(5 * time.Second)
 	wg.Wait()
 }
 
 func getMysqlDB(config repository.Config) (repository2.Database, error) {
+	const op = "main.getMysqlDB"
 	db, err := repository.NewDB(mysqlConfig.DatabaseConfig{
 		Driver:                 "mysql",
 		Url:                    fmt.Sprintf("%s:%s@tcp(%s:%v)/%s?charset=utf8mb4&parseTime=true&loc=UTC&tls=false&readTimeout=3s&writeTimeout=3s&timeout=3s&clientFoundRows=true", config.Username, config.Password, config.Host, config.Port, config.DBName),
@@ -145,7 +147,7 @@ func getMysqlDB(config repository.Config) (repository2.Database, error) {
 		MaxIdleCons:            config.MaxIdleCons,
 	})
 	if err != nil {
-		log.Printf("failed to new database err=%s\n\n", err.Error())
+		logger.Logger.Named(op).Error("failed to connect to mysql", zap.Error(err))
 		return nil, err
 	} else {
 		return db, nil

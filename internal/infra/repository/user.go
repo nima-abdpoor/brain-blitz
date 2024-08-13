@@ -9,7 +9,6 @@ import (
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"database/sql"
-	"log"
 	"strings"
 	"time"
 )
@@ -39,7 +38,6 @@ func (ur userRepository) InsertUser(user entity.User) error {
 			UpdatedAt:   currentTime,
 		})
 		if err != nil {
-			log.Println(err)
 			return err
 		}
 		return nil

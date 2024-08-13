@@ -4,13 +4,16 @@ import (
 	"BrainBlitz.com/game/internal/core/port/service"
 	auth "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/middleware/constants"
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 )
 
 func Auth(authService service.AuthGenerator) echo.MiddlewareFunc {
+	const op = "middleware.Auth"
 	var id string
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {
@@ -26,17 +29,18 @@ func Auth(authService service.AuthGenerator) echo.MiddlewareFunc {
 			}
 			valid, data, err := authService.ValidateToken([]string{"user", "role"}, token)
 			if err != nil {
-				log.Println(err)
+				logger.Logger.Named(op).Error("error in Validating token", zap.Error(err))
 				return ctx.JSON(http.StatusForbidden, errmsg.InvalidAuthentication)
 			}
 			userId, possible := data["user"].(string)
 			if !possible {
-				log.Println("cant cast data")
+				logger.Logger.Named(op).Error("cant cast data of data[user]")
 				return ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
 			}
 			role, possible := data["role"].(string)
 			if !possible {
-				log.Println("cant cast data")
+				//todo add metrics
+				logger.Logger.Named(op).Error("cant cast data of data[role]")
 				return ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
 			}
 			if !valid || userId != id {
