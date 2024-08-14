@@ -30,11 +30,10 @@ func NewMongoDB(config Config) (*mongo.Database, error) {
 
 func createAccessControlData(db *mongo.Database) {
 	const op = "mongo.createAccessControlData"
-	result, err := db.Collection("access_control").InsertOne(context.Background(), &AccessControl{
+	_, err := db.Collection("access_control").InsertOne(context.Background(), &AccessControl{
 		RoleType:    "admin",
 		Permissions: []string{"USER_LIST", "USER_DELETE"},
 	})
-	fmt.Println(result)
 	if err != nil {
 		logger.Logger.Named(op).Error("failed to seed Data", zap.Error(err))
 	}

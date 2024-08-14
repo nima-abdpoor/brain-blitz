@@ -88,8 +88,8 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 func (us UserService) Profile(id int64) (response.ProfileResponse, error) {
 	const op = "service.Profile"
 	if user, err := us.userRepo.GetUserById(id); err != nil {
-		fmt.Println(err)
-		_ = fmt.Errorf("error In Getting User: %v", err)
+		// todo check if logger needed
+		// todo add metrics
 		return response.ProfileResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
 	} else {
 		return response.ProfileResponse{

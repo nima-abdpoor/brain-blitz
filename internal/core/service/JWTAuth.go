@@ -51,6 +51,7 @@ func (auth JWTAuthGenerator) ValidateToken(data []string, tokenString string) (b
 		return false, nil, err
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
+		// todo add metrics
 		return false, nil, fmt.Errorf("casting Problem with JWT Claims")
 	} else {
 		return token.Valid, toMapData(data, claims), nil

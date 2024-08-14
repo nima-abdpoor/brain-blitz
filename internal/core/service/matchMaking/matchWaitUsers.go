@@ -71,14 +71,14 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 			Category: readyUser.Category,
 			UserId:   readyUser.UserId[:r],
 		})
-		fmt.Println(op, "readyUsers for category:", readyUser)
+		logger.Logger.Named(op).Info("readyUsers for category", zap.Any("readyUsers", readyUser))
 	}
 
 	// todo remove these users from waiting list
 	// todo rpc call to create a match for this users
 	if len(finalUsers) > 0 {
 		for _, user := range finalUsers {
-			fmt.Println(op, "finalUsers for category:", user)
+			logger.Logger.Named(op).Info("finalUsers for category", zap.Any("user", user))
 		}
 		s.publishFinalUsers(finalUsers)
 	}
