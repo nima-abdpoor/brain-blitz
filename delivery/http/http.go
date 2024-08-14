@@ -28,7 +28,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
-	"log"
 	http2 "net/http"
 	_ "net/http/pprof"
 	"os"
