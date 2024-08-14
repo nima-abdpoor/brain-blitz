@@ -28,7 +28,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -69,7 +68,8 @@ func main() {
 	// authorization
 	mongoDB, err := mongo.NewMongoDB(cfg.Mongo)
 	if err != nil {
-		log.Fatal("cant connect to mongo", err)
+		//todo add to metrics
+		logger.Logger.Named(op).Error("cant connect to mongo", zap.Error(err))
 	}
 	authorizationRepo := repository3.NewAuthorizationRepo(mongoDB)
 	authorizationService := coreService.NewAuthorizationService(authorizationRepo)

@@ -8,7 +8,6 @@ import (
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"log"
 )
 
 func Presence(service service.PresenceService) echo.MiddlewareFunc {
@@ -18,7 +17,8 @@ func Presence(service service.PresenceService) echo.MiddlewareFunc {
 
 			ctxClaim, err := claim.GetClaimsFromEchoContext(c)
 			if err != nil {
-				log.Println(op, "couldn't cast to Claim")
+				// todo add metrics
+				logger.Logger.Named(op).Error("couldn't cast to Claim")
 				msg, code := httpmsg.Error(err)
 				return c.JSON(code, msg)
 			}

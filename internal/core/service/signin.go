@@ -10,7 +10,6 @@ import (
 	"BrainBlitz.com/game/pkg/richerror"
 	"fmt"
 	"go.uber.org/zap"
-	"log"
 	"strconv"
 )
 
@@ -39,7 +38,8 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 			data["role"] = user.Role.String()
 			accessToken, err := us.authService.CreateAccessToken(data)
 			if err != nil {
-				log.Println(err)
+				// todo add metrics
+				logger.Logger.Named(op).Error("error creating Access Token", zap.Error(err))
 				return response.SignInResponse{}, richerror.New(op).
 					WithKind(richerror.KindUnexpected).
 					WithError(err).

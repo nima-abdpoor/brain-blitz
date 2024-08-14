@@ -8,7 +8,6 @@ import (
 	"BrainBlitz.com/game/pkg/errmsg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"log"
 	"net/http"
 )
 
@@ -44,7 +43,7 @@ func Auth(authService service.AuthGenerator) echo.MiddlewareFunc {
 				return ctx.JSON(http.StatusInternalServerError, errmsg.SomeThingWentWrong)
 			}
 			if !valid || userId != id {
-				log.Println("is not valid", valid, data["user"], id)
+				// todo add metrics
 				return ctx.JSON(http.StatusForbidden, errmsg.AccessDenied)
 			}
 			ctx.Set(middleware.UserId, auth.Claim{

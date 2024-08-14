@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/protobuf/proto"
-	"log"
 	"time"
 )
 
@@ -70,7 +69,7 @@ func (s Service) StartMatchCreator(req request.StartMatchCreatorRequest) (reques
 							Category:  u.Category,
 							Status:    entity.GameStatusCreated,
 						}); err != nil {
-							log.Println(op, err)
+							logger.Logger.Named(op).Error("error in creating match", zap.Error(err))
 						} else {
 							//todo publish id
 							fmt.Println(op, id)

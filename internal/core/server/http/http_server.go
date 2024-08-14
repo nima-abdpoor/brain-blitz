@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"log"
 	"net/http"
 	"time"
 )
@@ -48,10 +47,11 @@ func (httpServer httpServer) Start() {
 }
 
 func (httpServer httpServer) Stop() {
+	const op = "http.Stop"
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(3)*time.Second)
 	defer cancel()
 	if err := httpServer.server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown err=%s", err.Error())
+		logger.Logger.Named(op).Fatal("Server forced to shutdown", zap.Error(err))
 	}
 }
