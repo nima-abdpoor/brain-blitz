@@ -5,13 +5,14 @@ import (
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/thoas/go-funk"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
-	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -70,14 +71,14 @@ func (s Service) MatchWaitUsers(ctx context.Context, req *request.MatchWaitedUse
 			Category: readyUser.Category,
 			UserId:   readyUser.UserId[:r],
 		})
-		fmt.Println(op, "readyUsers for category:", readyUser)
+		logger.Logger.Named(op).Info("readyUsers for category", zap.Any("readyUsers", readyUser))
 	}
 
 	// todo remove these users from waiting list
 	// todo rpc call to create a match for this users
 	if len(finalUsers) > 0 {
 		for _, user := range finalUsers {
-			fmt.Println(op, "finalUsers for category:", user)
+			logger.Logger.Named(op).Info("finalUsers for category", zap.Any("user", user))
 		}
 		s.publishFinalUsers(finalUsers)
 	}
@@ -90,8 +91,7 @@ func (s Service) publishFinalUsers(users []entity.MatchedUsers) {
 	buff, err := proto.Marshal(match.MapFromEntityToProtoMessage(users))
 	if err != nil {
 		//todo update metrics
-		//todo put logs
-		log.Printf("%s, error in marshaling match message %v", op, err)
+		logger.Logger.Named(op).Error("error in marshaling match message", zap.Error(err))
 	}
 	producer := s.publisherBroker.Publish(nil)
 	switch producer.(type) {
@@ -108,18 +108,16 @@ func (s Service) publishFinalUsers(users []entity.MatchedUsers) {
 			}, nil)
 			if err != nil {
 				//todo add metrics
-				//todo add logger
-				log.Printf("error in producing message for topic:%s with error:%v", matchMakingTopic, err)
+				logger.Logger.Named(op).Error("error in producing message.", zap.String("topic", matchMakingTopic), zap.Error(err))
 			} else {
 				//todo add metrics
-				log.Printf("publishing message... %s %s\n", buff, time.Now())
+				logger.Logger.Named(op).Info("publishing message...", zap.String("time", time.Now().String()))
 			}
 		}
 	default:
 		{
 			//todo add metrics
-			//todo add logger
-			log.Printf("Unhandled type of publisherBroker %s", producer)
+			logger.Logger.Named(op).Error("Unhandled type of publisherBroker", zap.Any("producer", producer))
 		}
 	}
 }

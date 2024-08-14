@@ -9,10 +9,12 @@ import (
 	"BrainBlitz.com/game/internal/core/model/response"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/email"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"fmt"
+	"go.uber.org/zap"
 	"strconv"
 	"strings"
 )
@@ -70,7 +72,8 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 				WithKind(richerror.KindInvalid).
 				WithMessage(errmsg.DuplicateUsername)
 		}
-		fmt.Println(op, err)
+		//todo add to metrics
+		logger.Logger.Named(op).Error("Error in inserting User", zap.String("userDto", fmt.Sprint(userDto)), zap.Error(err))
 		return response.SignUpResponse{}, richerror.New(op).
 			WithError(err).
 			WithKind(richerror.KindUnexpected)
@@ -85,8 +88,8 @@ func (us UserService) SignUp(request *request.SignUpRequest) (response.SignUpRes
 func (us UserService) Profile(id int64) (response.ProfileResponse, error) {
 	const op = "service.Profile"
 	if user, err := us.userRepo.GetUserById(id); err != nil {
-		fmt.Println(err)
-		_ = fmt.Errorf("error In Getting User: %v", err)
+		// todo check if logger needed
+		// todo add metrics
 		return response.ProfileResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
 	} else {
 		return response.ProfileResponse{

@@ -9,7 +9,6 @@ import (
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"log"
 )
 
 type Authorization struct {
@@ -30,7 +29,7 @@ func (a Authorization) GetUserPermissionTitles(role entity.Role) ([]entity.Permi
 	//todo bind context.Background() to service not hardCoding!
 	err := a.DB.Collection("access_control").FindOne(context.Background(), filter).Decode(&accessControl)
 	if err != nil {
-		log.Println(err)
+		// todo check if logger needed
 		if err == mongo.ErrNoDocuments {
 			return []entity.PermissionTitle{}, nil
 		}

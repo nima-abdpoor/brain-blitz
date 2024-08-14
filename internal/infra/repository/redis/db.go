@@ -1,10 +1,12 @@
 package redis
 
 import (
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -45,7 +47,7 @@ func ZAdd(client *redis.Client, key string, score float64, member interface{}) e
 func ZRange(ctx context.Context, client *redis.Client, key, min, max string) ([]redis.Z, error) {
 	const op = "Redis.ZRange"
 	if result, err := client.ZRangeByScoreWithScores(ctx, key, &redis.ZRangeBy{Min: min, Max: max}).Result(); err != nil {
-		fmt.Println(op, err)
+		logger.Logger.Named(op).Error("error in ZRangeByScore", zap.Error(err))
 		return nil, richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err)
 	} else {
 		return result, nil

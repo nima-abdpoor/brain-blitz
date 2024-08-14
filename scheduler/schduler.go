@@ -3,9 +3,10 @@ package scheduler
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/service"
+	"BrainBlitz.com/game/logger"
 	"context"
-	"fmt"
 	"github.com/go-co-op/gocron"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -31,17 +32,17 @@ func New(matchSvc service.MatchMakingService, conf Config) Scheduler {
 
 func (s Scheduler) Start(done <-chan bool, wg *sync.WaitGroup) {
 	const op = "scheduler.Start"
-	fmt.Println(op, "scheduler started...")
+	logger.Logger.Named(op).Info("starting scheduler...")
 	defer wg.Done()
 
 	if _, err := s.sch.Every(s.conf.Interval).Second().Do(s.MatchWaitedUsers); err != nil {
-		fmt.Println(op, err)
+		logger.Logger.Named(op).Error("error in calling MatchWaitedUsers", zap.Error(err))
 	}
 	s.sch.StartAsync()
 
 	<-done
 	//wait to finish job
-	fmt.Println("stopping scheduler...")
+	logger.Logger.Named(op).Info("stopping scheduler...")
 	s.sch.Stop()
 }
 
@@ -50,6 +51,7 @@ func (s Scheduler) MatchWaitedUsers() {
 	ctx, cancel := context.WithTimeout(context.Background(), s.conf.MatchUserTimeOut)
 	defer cancel()
 	if _, err := s.matchSvc.MatchWaitUsers(ctx, &request.MatchWaitedUsersRequest{}); err != nil {
-		fmt.Println(op, err)
+		// todo add metrics
+		logger.Logger.Named(op).Error("error in MatchWaitedUsers", zap.Error(err))
 	}
 }

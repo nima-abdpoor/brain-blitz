@@ -6,7 +6,6 @@ import (
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/repository/sqlc"
 	"context"
-	"log"
 )
 
 type BackofficeUser struct {
@@ -24,7 +23,6 @@ func (backofficeUser BackofficeUser) ListUsers() ([]entity.User, error) {
 	users := []entity.User{}
 	err := backofficeUser.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
 		if result, err := queries.GetUsers(context.Background()); err != nil {
-			log.Println(err)
 			return err
 		} else {
 			for _, user := range result {

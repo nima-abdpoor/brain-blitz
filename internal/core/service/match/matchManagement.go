@@ -6,11 +6,12 @@ import (
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/repository"
+	"BrainBlitz.com/game/logger"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/protobuf/proto"
-	"log"
 	"time"
 )
 
@@ -55,7 +56,7 @@ func (s Service) StartMatchCreator(req request.StartMatchCreatorRequest) (reques
 					err := proto.Unmarshal(e.Value, users)
 					if err != nil {
 						//todo update metrics
-						log.Printf("%s Error in unmarshaling message: %v\n", op, e)
+						logger.Logger.Named(op).Error("Error in unmarshalling message", zap.Error(err))
 					}
 					//todo create match in database
 					//todo publish message: MatchCreated with Id
@@ -68,27 +69,26 @@ func (s Service) StartMatchCreator(req request.StartMatchCreatorRequest) (reques
 							Category:  u.Category,
 							Status:    entity.GameStatusCreated,
 						}); err != nil {
-							log.Println(op, err)
+							logger.Logger.Named(op).Error("error in creating match", zap.Error(err))
 						} else {
 							//todo publish id
 							fmt.Println(op, id)
 						}
 					}
-					log.Printf("%s, value of consumer is:%s time:%s\n\n", op, entityUsers, time.Now().String())
+					logger.Logger.Named(op).Info("consumer received message", zap.String("message", fmt.Sprint(entityUsers)), zap.String("time", time.Now().String()))
 					// application-specific processing
 				case kafka.Error:
-					log.Printf("%s Error in consuming message: %v\n", op, e)
+					logger.Logger.Named(op).Error("Error in consuming message", zap.Error(e))
 					run = false
 				default:
-					//log.Printf("%s Ignoring this uknow type %v\n", op, e)
+					logger.Logger.Named(op).Error("Unknown message type", zap.Any("message", e))
 				}
 			}
 		}
 	default:
 		{
 			//todo add metrics
-			//todo add logger
-			log.Printf("Unhandled type of consumerBroker %s", consumer)
+			logger.Logger.Named(op).Error("Unhandled type of consumerBroker", zap.Any("consumer", consumer))
 		}
 	}
 	return request.StartMatchCreatorRequest{}, nil

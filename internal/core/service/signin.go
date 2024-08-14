@@ -4,10 +4,12 @@ import (
 	utils "BrainBlitz.com/game/internal/core/common"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/model/response"
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/email"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
-	"log"
+	"fmt"
+	"go.uber.org/zap"
 	"strconv"
 )
 
@@ -26,7 +28,7 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 	}
 
 	if user, err := us.userRepo.GetUser(request.Email); err != nil {
-		log.Printf("error In Getting User: %v\n", err)
+		logger.Logger.Named(op).Error("error In Getting User", zap.String("email", request.Email), zap.Error(err))
 		return response.SignInResponse{}, err
 	} else {
 		result := utils.CheckPasswordHash(request.Password, user.HashedPassword)
@@ -36,7 +38,8 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 			data["role"] = user.Role.String()
 			accessToken, err := us.authService.CreateAccessToken(data)
 			if err != nil {
-				log.Println(err)
+				// todo add metrics
+				logger.Logger.Named(op).Error("error creating Access Token", zap.Error(err))
 				return response.SignInResponse{}, richerror.New(op).
 					WithKind(richerror.KindUnexpected).
 					WithError(err).
@@ -44,7 +47,7 @@ func (us UserService) SignIn(request *request.SignInRequest) (response.SignInRes
 			}
 			refreshToken, err := us.authService.CreateRefreshToken(data)
 			if err != nil {
-				log.Println(err)
+				logger.Logger.Named(op).Error("error In Creating Refresh Token", zap.String("data", fmt.Sprint(data)), zap.Error(err))
 				return response.SignInResponse{}, richerror.New(op).
 					WithKind(richerror.KindUnexpected).
 					WithError(err).

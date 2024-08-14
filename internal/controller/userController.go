@@ -3,11 +3,11 @@ package controller
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/middleware"
+	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -51,10 +51,12 @@ func (uc HttpController) SignUp(ctx echo.Context) error {
 }
 
 func (uc HttpController) Profile(ctx echo.Context) error {
+	const op = "controller.Profile"
 	code := http.StatusBadRequest
 	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
 	if err != nil {
-		log.Println("couldn't cast to Claim")
+		//todo add to metrics
+		logger.Logger.Named(op).Error("couldn't cast to Claim claim.GetClaimsFromEchoContext")
 		msg, code := httpmsg.Error(err)
 		return ctx.JSON(code, msg)
 	}
