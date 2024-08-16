@@ -8,7 +8,7 @@ http:
 
 mysql:
   user: bbGame
-  port: 3306
+  port: 3310
   host: localhost
   name: brainBlitz_db
   password: root
@@ -20,19 +20,19 @@ mysql:
 mongo:
   user: mongodb
   host: localhost
-  port: 27017
+  port: 27018
 
 redis:
-  port: 6379
+  port: 6380
   host: "localhost"
   db: 0
   password: ""
 
 
 matchMaking:
-  waiting_timeout: "2m"
-  least_presence: "-2m"
-  mint_time_list_selection: "-2m"
+  waiting_timeout: "20m"
+  least_presence: "-20m"
+  mint_time_list_selection: "-20m"
 
 presence_service:
   Prefix: "presence"

@@ -12,6 +12,7 @@ import (
 	"BrainBlitz.com/game/internal/core/service/backofficeUserHandler"
 	"BrainBlitz.com/game/internal/core/service/match"
 	matchMakingHandler "BrainBlitz.com/game/internal/core/service/matchMaking"
+	"BrainBlitz.com/game/internal/core/service/notification"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	mysqlConfig "BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
@@ -97,6 +98,9 @@ func main() {
 	matchManagerRepo := matchmanager.New(mongoDB)
 	matchManagerSvc := match.New(matchManagerRepo, kafkaConsumer)
 
+	// notification
+	notificationSrv := notification.New(cfg.Notification)
+
 	controllerServices := service.Service{
 		UserService:            uService,
 		BackofficeUserService:  backofficeHandler,
@@ -105,6 +109,7 @@ func main() {
 		MatchMakingService:     matchMakingService,
 		MatchManagementService: matchManagerSvc,
 		Presence:               presenceS,
+		Notification:           notificationSrv,
 	}
 	//todo move this to somewhere better
 	go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
