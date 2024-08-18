@@ -8,6 +8,7 @@ import (
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"strconv"
 )
@@ -15,6 +16,8 @@ import (
 func (uc HttpController) InitUserController(api *echo.Group) {
 	api.POST("/signUp", uc.SignUp)
 	api.GET("/signIn", uc.SignIn)
+	http.Handle("/metrics", promhttp.Handler())
+	http.ListenAndServe(":8094", nil)
 	api.GET("/:id/profile", uc.Profile,
 		middleware.Auth(uc.Service.AuthService),
 		middleware.Presence(uc.Service.Presence))

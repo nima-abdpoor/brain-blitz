@@ -22,6 +22,7 @@ import (
 	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/monitoring/prometheus"
 	echo2 "BrainBlitz.com/game/pkg/echo"
 	"BrainBlitz.com/game/scheduler"
 	"fmt"
@@ -38,6 +39,8 @@ import (
 )
 
 func main() {
+	counter := prometheus.GetNewCounter("salam", "help for salam")
+	prometheus.RegisterCounter()
 	const op = "main.main"
 	// TODO - read config path from command line
 	cfg := config.Load("config.yml")
@@ -52,6 +55,10 @@ func main() {
 	echoInstance.Use(middleware.RequestID())
 	echoInstance.Use(middleware.RequestLoggerWithConfig(echo2.RequestLoggerConfig))
 	echoInstance.Use(middleware.Recover())
+	go func() {
+		prometheus.IncreaseCounter(counter)
+		time.Sleep(10 * time.Second)
+	}()
 
 	db, err := getMysqlDB(cfg.Mysql)
 	for err != nil {
