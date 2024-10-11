@@ -96,10 +96,12 @@ func main() {
 	// matchManagement
 	kafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
 	matchManagerRepo := matchmanager.New(mongoDB)
-	matchManagerSvc := match.New(matchManagerRepo, kafkaConsumer)
+	matchManagerSvc := match.New(matchManagerRepo, kafkaConsumer, kafkaPublisher)
 
 	// notification
-	notificationSrv := notification.New(cfg.Notification)
+	//notificationKafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
+	connections := make(notification.IdToConnection)
+	notificationSrv := notification.New(cfg.Notification, kafkaConsumer, connections)
 
 	controllerServices := service.Service{
 		UserService:            uService,
@@ -113,6 +115,7 @@ func main() {
 	}
 	//todo move this to somewhere better
 	go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
+	go notificationSrv.StartNotifyMatchCreation(request.StartNotifyMatchCreationRequest{})
 	httpController := controller.NewController(echoInstance, controllerServices)
 	httpController.InitRouter()
 

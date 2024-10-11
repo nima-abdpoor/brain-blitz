@@ -10,7 +10,7 @@ import (
 
 func (uc HttpController) InitNotificationController(api *echo.Group) {
 	api = api.Group("/game")
-	api.POST("/:id/init", uc.initGame,
+	api.GET("/:id/init", uc.initGame,
 		middleware.Auth(uc.Service.AuthService),
 		middleware.Presence(uc.Service.Presence),
 	)
@@ -19,7 +19,9 @@ func (uc HttpController) InitNotificationController(api *echo.Group) {
 func (uc HttpController) initGame(ctx echo.Context) error {
 	const op = "notification.initGame"
 
-	_, err := uc.Service.Notification.InitGame(ctx, &request.InitGameRequest{})
+	_, err := uc.Service.Notification.InitGame(ctx, &request.InitGameRequest{
+		Id: ctx.Param("id"),
+	})
 	if err != nil {
 		// todo add metrics
 		logger.Logger.Named(op).Error("error in initializing game notification", zap.Error(err))

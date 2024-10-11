@@ -7,4 +7,5 @@ import (
 
 type Notification interface {
 	InitGame(ctx echo.Context, request *request.InitGameRequest) (request.InitGameResponse, error)
+	StartNotifyMatchCreation(req request.StartNotifyMatchCreationRequest) (request.StartNotifyMatchCreationResponse, error)
 }

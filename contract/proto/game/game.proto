@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package game;
+option go_package = "contract/golang/game";
+
+message GameCreationInfo {
+  string id = 1;
+  repeated uint64 user_id = 2;
+}
