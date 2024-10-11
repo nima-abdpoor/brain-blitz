@@ -132,7 +132,7 @@ func writeMessage(connections IdToConnection, ids []uint64, msg string) error {
 
 	for _, id := range ids {
 		if connection, exists := connections[id]; !exists {
-			return richerror.New(op).WithMessage(fmt.Sprintf("id: %s not found", id))
+			return richerror.New(op).WithMessage(fmt.Sprintf("id: %d not found", id))
 		} else {
 			err := wsutil.WriteServerMessage(connection, ws.OpText, []byte(msg))
 			if err != nil {
