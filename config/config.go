@@ -5,6 +5,7 @@ import (
 	"BrainBlitz.com/game/internal/core/server/http"
 	"BrainBlitz.com/game/internal/core/service"
 	matchMakingHandler "BrainBlitz.com/game/internal/core/service/matchMaking"
+	"BrainBlitz.com/game/internal/core/service/notification"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	"BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
@@ -28,4 +29,5 @@ type Config struct {
 	GetPresence        presence.Config           `koanf:"presence"`
 	Kafka              kafka.Config              `koanf:"kafka"`
 	Infra              config.Infra              `koanf:"infra"`
+	Notification       notification.Config       `koanf:"notification"`
 }
