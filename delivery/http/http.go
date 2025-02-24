@@ -4,7 +4,6 @@ import (
 	"BrainBlitz.com/game/adapter/broker/kafka"
 	"BrainBlitz.com/game/config"
 	"BrainBlitz.com/game/internal/controller"
-	"BrainBlitz.com/game/internal/core/model/request"
 	repository2 "BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
@@ -22,14 +21,14 @@ import (
 	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/logger"
-	"BrainBlitz.com/game/monitoring/prometheus"
+	"BrainBlitz.com/game/metrics"
 	echo2 "BrainBlitz.com/game/pkg/echo"
 	"BrainBlitz.com/game/scheduler"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
-	http2 "net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -39,26 +38,16 @@ import (
 )
 
 func main() {
-	counter := prometheus.GetNewCounter("salam", "help for salam")
-	prometheus.RegisterCounter()
 	const op = "main.main"
 	// TODO - read config path from command line
 	cfg := config.Load("config.yml")
 	logger.Logger.Named(op).Info("cfg", zap.Any("config", cfg))
-
-	if cfg.Infra.PPROF {
-		go listenPprofService()
-	}
 
 	// Create a new instance of the Echo router
 	echoInstance := echo.New()
 	echoInstance.Use(middleware.RequestID())
 	echoInstance.Use(middleware.RequestLoggerWithConfig(echo2.RequestLoggerConfig))
 	echoInstance.Use(middleware.Recover())
-	go func() {
-		prometheus.IncreaseCounter(counter)
-		time.Sleep(10 * time.Second)
-	}()
 
 	db, err := getMysqlDB(cfg.Mysql)
 	for err != nil {
@@ -114,12 +103,24 @@ func main() {
 		Presence:               presenceS,
 	}
 	//todo move this to somewhere better
-	go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
+	//go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
 	httpController := controller.NewController(echoInstance, controllerServices)
 	httpController.InitRouter()
 
 	//create httpServer
 	httpServer := http.NewHTTPServer(echoInstance, cfg.HTTPServer)
+
+	if cfg.Feature.Infra {
+		if cfg.Feature.Metrics {
+			metrics.InitMetrics()
+			prometheusHttpHandler := promhttp.Handler()
+			infraHttpController := controller.NewInfraHttpController(prometheusHttpHandler)
+			infraHttpController.InitRouter()
+			InfraHttpServer := http.NewInfraHTTPServer(prometheusHttpHandler, cfg.HTTPServer)
+			defer InfraHttpServer.StopInfraServer()
+			InfraHttpServer.StartInfraServer()
+		}
+	}
 
 	httpServer.Start()
 	defer httpServer.Stop()
@@ -164,11 +165,5 @@ func getMysqlDB(config repository.Config) (repository2.Database, error) {
 		return nil, err
 	} else {
 		return db, nil
-	}
-}
-
-func listenPprofService() {
-	if err := http2.ListenAndServe(":8099", nil); err != nil {
-		fmt.Printf("error in serving PProf %v\n", err)
 	}
 }

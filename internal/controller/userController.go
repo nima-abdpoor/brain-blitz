@@ -4,11 +4,11 @@ import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/middleware"
 	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/metrics"
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"strconv"
 )
@@ -16,8 +16,6 @@ import (
 func (uc HttpController) InitUserController(api *echo.Group) {
 	api.POST("/signUp", uc.SignUp)
 	api.GET("/signIn", uc.SignIn)
-	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(":8094", nil)
 	api.GET("/:id/profile", uc.Profile,
 		middleware.Auth(uc.Service.AuthService),
 		middleware.Presence(uc.Service.Presence))
@@ -39,6 +37,7 @@ func (uc HttpController) SignIn(ctx echo.Context) error {
 }
 
 func (uc HttpController) SignUp(ctx echo.Context) error {
+	metrics.TestMetric.Inc()
 	code := http.StatusOK
 	var req request.SignUpRequest
 	if err := ctx.Bind(&req); err != nil {
@@ -55,10 +54,11 @@ func (uc HttpController) SignUp(ctx echo.Context) error {
 
 func (uc HttpController) Profile(ctx echo.Context) error {
 	const op = "controller.Profile"
+	metrics.TestMetric.Inc()
 	code := http.StatusBadRequest
 	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
 	if err != nil {
-		//todo add to metrics
+		metrics.FailedClaimCounter.Inc()
 		logger.Logger.Named(op).Error("couldn't cast to Claim claim.GetClaimsFromEchoContext")
 		msg, code := httpmsg.Error(err)
 		return ctx.JSON(code, msg)

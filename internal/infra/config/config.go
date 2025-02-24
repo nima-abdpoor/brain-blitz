@@ -15,7 +15,3 @@ type GrpcServerConfig struct {
 	KeepaliveParams keepalive.ServerParameters
 	KeepalivePolicy keepalive.EnforcementPolicy
 }
-
-type Infra struct {
-	PPROF bool `koanf:"pprof"`
-}

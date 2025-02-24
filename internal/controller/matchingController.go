@@ -4,6 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/middleware"
 	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/metrics"
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
@@ -26,7 +27,7 @@ func (uc HttpController) addToWaitingList(ctx echo.Context) error {
 	code := http.StatusOK
 	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
 	if err != nil {
-		//todo add to metrics
+		metrics.FailedClaimCounter.Inc()
 		logger.Logger.Named(op).Error("couldn't cast to Claim claim.GetClaimsFromEchoContext")
 		msg, code := httpmsg.Error(err)
 		return ctx.JSON(code, msg)
