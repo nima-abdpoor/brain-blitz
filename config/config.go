@@ -29,6 +29,5 @@ type Config struct {
 	Scheduler          scheduler.Config          `koanf:"scheduler"`
 	GetPresence        presence.Config           `koanf:"presence"`
 	Kafka              kafka.Config              `koanf:"kafka"`
-	Infra              config.Infra              `koanf:"infra"`
 	Notification       notification.Config       `koanf:"notification"`
 }

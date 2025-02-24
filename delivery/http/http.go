@@ -4,6 +4,7 @@ import (
 	"BrainBlitz.com/game/adapter/broker/kafka"
 	"BrainBlitz.com/game/config"
 	"BrainBlitz.com/game/internal/controller"
+	"BrainBlitz.com/game/internal/core/model/request"
 	repository2 "BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
