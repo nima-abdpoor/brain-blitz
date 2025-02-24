@@ -4,6 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/metrics"
 	"context"
 	"github.com/go-co-op/gocron"
 	"go.uber.org/zap"
@@ -51,7 +52,9 @@ func (s Scheduler) MatchWaitedUsers() {
 	ctx, cancel := context.WithTimeout(context.Background(), s.conf.MatchUserTimeOut)
 	defer cancel()
 	if _, err := s.matchSvc.MatchWaitUsers(ctx, &request.MatchWaitedUsersRequest{}); err != nil {
-		// todo add metrics
+		metrics.FailedMatchedUserCounter.Inc()
 		logger.Logger.Named(op).Error("error in MatchWaitedUsers", zap.Error(err))
+	} else {
+		metrics.SucceedMatchedUserCounter.Inc()
 	}
 }

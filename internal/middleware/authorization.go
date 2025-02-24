@@ -3,6 +3,7 @@ package middleware
 import (
 	entity "BrainBlitz.com/game/entity/auth"
 	"BrainBlitz.com/game/internal/core/port/service"
+	"BrainBlitz.com/game/metrics"
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
@@ -15,6 +16,7 @@ func AccessCheck(authService service.AuthorizationService, permissions ...entity
 		return func(ctx echo.Context) error {
 			ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
 			if err != nil {
+				metrics.FailedClaimCounter.Inc()
 				msg, code := httpmsg.Error(err)
 				return ctx.JSON(code, msg)
 			}

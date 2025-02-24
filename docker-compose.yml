@@ -38,7 +38,7 @@ services:
   BrainBlitz-mongodb:
     image: mongo:7.0
     ports:
-     - "27017:27017"
+     - "27018:27017"
     container_name: BrainBlitz-mongo
     volumes:
       - BrainBlitz-mongo:/data
@@ -48,7 +48,7 @@ services:
   BrainBlitz-mysql:
     image: mysql:8.0
     ports:
-      - "3306:3306"
+      - "3310:3306"
     container_name: BrainBlitz-mysql
     restart: always
     command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
@@ -74,3 +74,5 @@ volumes:
   dbdata:
   BrainBlitz-mongo:
   BrainBlitz-redis-data:
+  prometheus_data: { }
+  grafana_data: { }

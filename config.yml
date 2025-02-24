@@ -5,6 +5,7 @@ auth:
 
 http:
   port: 8080
+  infraPort: 8094
 
 mysql:
   user: bbGame
@@ -48,5 +49,6 @@ kafka:
   host: "kafka"
   port: "9092"
 
-infra:
-  pprof: true
+feature:
+  Infra: true
+  metrics: true

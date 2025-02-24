@@ -4,6 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/middleware"
 	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/metrics"
 	"BrainBlitz.com/game/pkg/claim"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/httpmsg"
@@ -36,6 +37,7 @@ func (uc HttpController) SignIn(ctx echo.Context) error {
 }
 
 func (uc HttpController) SignUp(ctx echo.Context) error {
+	metrics.TestMetric.Inc()
 	code := http.StatusOK
 	var req request.SignUpRequest
 	if err := ctx.Bind(&req); err != nil {
@@ -52,10 +54,11 @@ func (uc HttpController) SignUp(ctx echo.Context) error {
 
 func (uc HttpController) Profile(ctx echo.Context) error {
 	const op = "controller.Profile"
+	metrics.TestMetric.Inc()
 	code := http.StatusBadRequest
 	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
 	if err != nil {
-		//todo add to metrics
+		metrics.FailedClaimCounter.Inc()
 		logger.Logger.Named(op).Error("couldn't cast to Claim claim.GetClaimsFromEchoContext")
 		msg, code := httpmsg.Error(err)
 		return ctx.JSON(code, msg)
