@@ -11,6 +11,7 @@ import (
 	"BrainBlitz.com/game/internal/core/service/backofficeUserHandler"
 	"BrainBlitz.com/game/internal/core/service/match"
 	matchMakingHandler "BrainBlitz.com/game/internal/core/service/matchMaking"
+	"BrainBlitz.com/game/internal/core/service/notification"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	mysqlConfig "BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
@@ -91,7 +92,12 @@ func main() {
 	// matchManagement
 	kafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
 	matchManagerRepo := matchmanager.New(mongoDB)
-	matchManagerSvc := match.New(matchManagerRepo, kafkaConsumer)
+	matchManagerSvc := match.New(matchManagerRepo, kafkaConsumer, kafkaPublisher)
+
+	// notification
+	//notificationKafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
+	connections := make(notification.IdToConnection)
+	notificationSrv := notification.New(cfg.Notification, kafkaConsumer, connections)
 
 	controllerServices := service.Service{
 		UserService:            uService,
@@ -101,9 +107,11 @@ func main() {
 		MatchMakingService:     matchMakingService,
 		MatchManagementService: matchManagerSvc,
 		Presence:               presenceS,
+		Notification:           notificationSrv,
 	}
 	//todo move this to somewhere better
-	//go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
+	go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
+	go notificationSrv.StartNotifyMatchCreation(request.StartNotifyMatchCreationRequest{})
 	httpController := controller.NewController(echoInstance, controllerServices)
 	httpController.InitRouter()
 

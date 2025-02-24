@@ -8,4 +8,5 @@ type Service struct {
 	MatchMakingService     MatchMakingService
 	MatchManagementService MatchManagementService
 	Presence               PresenceService
+	Notification           Notification
 }

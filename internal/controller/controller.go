@@ -34,6 +34,7 @@ func (uc HttpController) InitRouter() {
 	uc.InitUserController(api)
 	uc.InitBackofficeController(api)
 	uc.InitMatchingController(api)
+	uc.InitNotificationController(api)
 }
 
 func (uc InfraHttpController) InitRouter() {
