@@ -4,7 +4,7 @@ import (
 	entity "BrainBlitz.com/game/entity/auth"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	model "BrainBlitz.com/game/internal/infra/repository/mongo"
-	"BrainBlitz.com/game/pkg/errmsg"
+	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"

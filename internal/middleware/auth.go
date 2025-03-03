@@ -5,7 +5,7 @@ import (
 	auth "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/middleware/constants"
 	"BrainBlitz.com/game/logger"
-	"BrainBlitz.com/game/pkg/errmsg"
+	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"net/http"

@@ -2,10 +2,10 @@ package service
 
 import (
 	authEntity "BrainBlitz.com/game/entity/auth"
-	utils "BrainBlitz.com/game/internal/core/common"
 	"BrainBlitz.com/game/internal/core/entity/error_code"
 	"BrainBlitz.com/game/logger"
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
+	utils2 "BrainBlitz.com/game/pkg/common"
 	"BrainBlitz.com/game/pkg/email"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"
@@ -48,9 +48,9 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 			WithMeta(map[string]interface{}{"password": request.Password})
 	}
 
-	currentTime := utils.GetUTCCurrentMillis()
+	currentTime := utils2.GetUTCCurrentMillis()
 
-	hashPassword, err := utils.HashPassword(request.Password)
+	hashPassword, err := utils2.HashPassword(request.Password)
 	if err != nil {
 		return SignUpResponse{}, richerror.New(op).
 			WithKind(richerror.KindUnexpected).
@@ -104,7 +104,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 		logger.Logger.Named(op).Error("error In Getting User", zap.String("email", request.Email), zap.Error(err))
 		return LoginResponse{}, err
 	} else {
-		result := utils.CheckPasswordHash(request.Password, user.HashedPassword)
+		result := utils2.CheckPasswordHash(request.Password, user.HashedPassword)
 		if result {
 			data := make(map[string]string)
 			data["user"] = strconv.FormatInt(user.ID, 10)

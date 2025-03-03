@@ -5,7 +5,7 @@ import (
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/metrics"
 	"BrainBlitz.com/game/pkg/claim"
-	"BrainBlitz.com/game/pkg/errmsg"
+	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
 	"net/http"
