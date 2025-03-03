@@ -125,9 +125,9 @@ func (repo UserRepository) GetUserById(ctx context.Context, id int64) (service.U
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return result, fmt.Errorf("result with id %s not found", id)
+			return result, fmt.Errorf("result with id %d not found", id)
 		}
-		return result, fmt.Errorf("error retrieving user with id: %s, error: %v", id, err)
+		return result, fmt.Errorf("error retrieving user with id: %d, error: %v", id, err)
 	}
 	result.Role = entityAuth.MapToRoleEntity(role)
 	result.CreatedAt = uint64(createdAt.Time.UTC().UnixMilli())
