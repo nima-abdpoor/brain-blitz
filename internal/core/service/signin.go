@@ -14,7 +14,7 @@ import (
 )
 
 func (us UserService) SignIn(request *request.SignInRequest) (response.SignInResponse, error) {
-	const op = "service.SignIn"
+	const op = "service.Login"
 	if !email.IsValid(request.Email) {
 		return response.SignInResponse{}, richerror.New(op).
 			WithMeta(map[string]interface{}{"email": request.Email}).
