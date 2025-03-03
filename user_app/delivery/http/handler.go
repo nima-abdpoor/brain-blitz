@@ -2,7 +2,7 @@ package http
 
 import (
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
-	"BrainBlitz.com/game/pkg/statuscode"
+	"BrainBlitz.com/game/pkg/httpmsg"
 	"BrainBlitz.com/game/pkg/validator"
 	"BrainBlitz.com/game/user_app/service"
 	"github.com/labstack/echo/v4"
@@ -31,7 +31,8 @@ func (h Handler) SignUp(ctx echo.Context) error {
 		if vErr, ok := err.(validator.Error); ok {
 			return ctx.JSON(vErr.StatusCode(), vErr)
 		}
-		return ctx.JSON(statuscode.MapToHTTPStatusCode(err.(errmsg.ErrorResponse)), err)
+		msg, code := httpmsg.Error(err)
+		return ctx.JSON(code, msg)
 	}
 
 	return ctx.JSON(http.StatusOK, service.SignUpResponse{
@@ -51,7 +52,8 @@ func (h Handler) Login(ctx echo.Context) error {
 		if vErr, ok := err.(validator.Error); ok {
 			return ctx.JSON(vErr.StatusCode(), vErr)
 		}
-		return ctx.JSON(statuscode.MapToHTTPStatusCode(err.(errmsg.ErrorResponse)), err)
+		msg, code := httpmsg.Error(err)
+		return ctx.JSON(code, msg)
 	}
 
 	return ctx.JSON(http.StatusOK, service.LoginResponse{
@@ -73,7 +75,8 @@ func (h Handler) Profile(ctx echo.Context) error {
 		if vErr, ok := err.(validator.Error); ok {
 			return ctx.JSON(vErr.StatusCode(), vErr)
 		}
-		return ctx.JSON(statuscode.MapToHTTPStatusCode(err.(errmsg.ErrorResponse)), err)
+		msg, code := httpmsg.Error(err)
+		return ctx.JSON(code, msg)
 	}
 
 	return ctx.JSON(http.StatusOK, service.ProfileResponse{

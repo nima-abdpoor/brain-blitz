@@ -33,9 +33,9 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) RegisterRoutes() {
-	v1 := s.HTTPServer.Router.Group("/v1")
+	v1 := s.HTTPServer.Router.Group("/api/v1")
 	v1.GET("/health-check", s.healthCheck)
 	v1.POST("/signup", s.Handler.SignUp)
 	v1.POST("/login", s.Handler.Login)
-	v1.POST("/profile", s.Handler.Profile)
+	v1.GET("/:id/profile", s.Handler.Profile)
 }
