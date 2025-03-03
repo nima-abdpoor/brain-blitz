@@ -4,7 +4,7 @@ import (
 	"BrainBlitz.com/game/internal/core/port/service"
 	auth "BrainBlitz.com/game/internal/core/service"
 	middlewareConsts "BrainBlitz.com/game/internal/middleware/constants"
-	"BrainBlitz.com/game/pkg/errmsg"
+	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
