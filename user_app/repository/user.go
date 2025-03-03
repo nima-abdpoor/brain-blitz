@@ -3,15 +3,18 @@ package repository
 import (
 	entityAuth "BrainBlitz.com/game/entity/auth"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
-	"BrainBlitz.com/game/internal/infra/repository/sqlc"
-	"BrainBlitz.com/game/pkg/errmsg"
-	"BrainBlitz.com/game/pkg/richerror"
 	"BrainBlitz.com/game/user_app/service"
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
+)
+
+var (
+	ErrDuplicateKey = "duplicate key"
 )
 
 type Config struct{}
@@ -31,78 +34,103 @@ func NewUserRepository(config Config, db *sql.DB, logger *slog.Logger) UserRepos
 	}
 }
 
-func (ur UserRepository) InsertUser(user service.User) error {
+func (repo UserRepository) InsertUser(ctx context.Context, user service.User) (int, error) {
+	query := "INSERT INTO users (username, password, display_name, role, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id;"
+
+	stmt, err := repo.PostgreSQL.PrepareContext(ctx, query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	// should we do this automatically by defining function in postgres or not?
 	currentTime := sql.NullTime{
 		Time:  time.Now(),
 		Valid: true,
 	}
-	if err := ur.PostgreSQL.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
-		_, err := queries.CreateUser(context.Background(), sqlc.CreateUserParams{
-			Username:    user.Username,
-			Password:    user.HashedPassword,
-			DisplayName: user.DisplayName,
-			Role:        user.Role.String(),
-			CreatedAt:   currentTime,
-			UpdatedAt:   currentTime,
-		})
-		if err != nil {
-			return err
+
+	var userId int
+	err = stmt.QueryRowContext(ctx, user.Username, user.HashedPassword, user.DisplayName, user.Role.String(), currentTime, currentTime).Scan(&userId)
+	if err != nil {
+		if strings.Contains(err.Error(), ErrDuplicateKey) {
+			return 0, fmt.Errorf("customer with user name %s already exists: %w", user.Username, err)
 		}
-		return nil
-	}); err != nil {
-		return err
+		return 0, fmt.Errorf("failed to insert user %v (username: %s)", user.Username, err)
 	}
-	return nil
+
+	return userId, nil
 }
 
-func (ur UserRepository) GetUser(username string) (service.User, error) {
-	const op = "repository.GetUser"
-	var result service.User
-	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
-		if user, err := queries.GetUser(context.Background(), username); err != nil {
-			return err
-		} else {
-			result = service.User{
-				ID:             user.ID,
-				Username:       user.Username,
-				HashedPassword: user.Password,
-				DisplayName:    user.DisplayName,
-				Role:           entityAuth.MapToRoleEntity(user.Role),
-				CreatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
-				UpdatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
-			}
-		}
-		return nil
-	})
+func (repo UserRepository) GetUser(ctx context.Context, username string) (service.User, error) {
+	query := "SELECT id, username, password, display_name, role, created_at, updated_at FROM users WHERE username = $1 LIMIT 1"
+
+	stmt, err := repo.PostgreSQL.PrepareContext(ctx, query)
 	if err != nil {
-		if strings.Contains(err.Error(), "no rows") {
-			return result, richerror.New(op).WithKind(richerror.KindNotFound).WithMessage(errmsg.UserNotFound)
-		}
-		return result, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
+		return service.User{}, fmt.Errorf("failed to prepare find result by ID statement: %w", err)
 	}
+	defer stmt.Close()
+
+	var result service.User
+	var role string
+	var createdAt sql.NullTime
+	var updatedAt sql.NullTime
+
+	row := stmt.QueryRowContext(ctx, username)
+	err = row.Scan(
+		&result.ID,
+		&result.Username,
+		&result.HashedPassword,
+		&result.DisplayName,
+		&role,
+		&createdAt,
+		&updatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return result, fmt.Errorf("result with username %s not found", username)
+		}
+		return result, fmt.Errorf("error retrieving user with username: %s, error: %v", username, err)
+	}
+	result.Role = entityAuth.MapToRoleEntity(role)
+	result.CreatedAt = uint64(createdAt.Time.UTC().UnixMilli())
+	result.UpdatedAt = uint64(updatedAt.Time.UTC().UnixMilli())
 	return result, nil
 }
 
-func (ur UserRepository) GetUserById(id int64) (service.User, error) {
-	var result service.User
-	err := ur.DB.ExecTx(context.Background(), func(queries *sqlc.Queries) error {
-		if user, err := queries.GetUserById(context.Background(), id); err != nil {
-			return err
-		} else {
-			result = service.User{
-				ID:             user.ID,
-				Username:       user.Username,
-				HashedPassword: user.Password,
-				DisplayName:    user.DisplayName,
-				Role:           entityAuth.MapToRoleEntity(user.Role),
-				CreatedAt:      uint64(user.CreatedAt.Time.UTC().UnixMilli()),
-				UpdatedAt:      uint64(user.UpdatedAt.Time.UTC().UnixMilli()),
-			}
-		}
-		return nil
-	})
+func (repo UserRepository) GetUserById(ctx context.Context, id int64) (service.User, error) {
+	query := "SELECT id, username, password, display_name, role, created_at, updated_at FROM users WHERE id = $1 LIMIT 1"
+
+	stmt, err := repo.PostgreSQL.PrepareContext(ctx, query)
 	if err != nil {
-		return result, err
+		return service.User{}, fmt.Errorf("failed to prepare find result by ID: %d statement: %w", id, err)
 	}
+	defer stmt.Close()
+
+	var result service.User
+	var role string
+	var createdAt sql.NullTime
+	var updatedAt sql.NullTime
+
+	row := stmt.QueryRowContext(ctx, id)
+	err = row.Scan(
+		&result.ID,
+		&result.Username,
+		&result.HashedPassword,
+		&result.DisplayName,
+		&role,
+		&createdAt,
+		&updatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return result, fmt.Errorf("result with id %s not found", id)
+		}
+		return result, fmt.Errorf("error retrieving user with id: %s, error: %v", id, err)
+	}
+	result.Role = entityAuth.MapToRoleEntity(role)
+	result.CreatedAt = uint64(createdAt.Time.UTC().UnixMilli())
+	result.UpdatedAt = uint64(updatedAt.Time.UTC().UnixMilli())
 	return result, nil
 }

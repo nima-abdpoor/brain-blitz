@@ -8,7 +8,7 @@ import (
 	"BrainBlitz.com/game/pkg/postgresql"
 	g "BrainBlitz.com/game/user_app/delivery/grpc"
 	"BrainBlitz.com/game/user_app/delivery/http"
-	repository2 "BrainBlitz.com/game/user_app/repository"
+	"BrainBlitz.com/game/user_app/repository"
 	"BrainBlitz.com/game/user_app/service"
 	"context"
 	"fmt"
@@ -35,13 +35,13 @@ func Setup(config Config, postgresConn *postgresql.Database, logger *slog.Logger
 	redisAdapter := redis.New(config.Redis)
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
-	repository := repository2.NewUserRepository(config.Repository, postgresConn.DB, logger)
-	userService := service.NewService(repository, *cache)
+	userRepository := repository.NewUserRepository(config.Repository, postgresConn.DB, logger)
+	userService := service.NewService(userRepository, *cache)
 	userHandler := http.NewHandler(userService)
 	grpcHandler := g.NewHandler(userService, logger)
 
 	return Application{
-		Repository:   repository,
+		Repository:   userRepository,
 		Service:      userService,
 		UserHandler:  userHandler,
 		HTTPServer:   http.New(httpserver.New(config.HTTPServer), userHandler, logger),

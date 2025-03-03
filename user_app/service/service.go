@@ -11,6 +11,7 @@ import (
 	"BrainBlitz.com/game/pkg/email"
 	"BrainBlitz.com/game/pkg/errmsg"
 	"BrainBlitz.com/game/pkg/richerror"
+	"context"
 	"fmt"
 	"go.uber.org/zap"
 	"strconv"
@@ -18,9 +19,9 @@ import (
 )
 
 type Repository interface {
-	InsertUser(user User) error
-	GetUser(email string) (User, error)
-	GetUserById(id int64) (User, error)
+	InsertUser(ctx context.Context, user User) (int, error)
+	GetUser(ctx context.Context, email string) (User, error)
+	GetUserById(ctx context.Context, id int64) (User, error)
 }
 
 type Service struct {
