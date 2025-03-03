@@ -8,7 +8,7 @@ import (
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/logger"
-	"BrainBlitz.com/game/pkg/errmsg"
+	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"go.uber.org/zap"
 	"time"

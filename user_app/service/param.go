@@ -1,20 +1,27 @@
-package response
+package service
 
-type Response struct {
-	Data         interface{} `json:"data"`
-	Status       bool        `json:"status"`
-	ErrorCode    int         `json:"errorCode"`
-	ErrorMessage string      `json:"errorMessage"`
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 
-type SignInResponse struct {
+type LoginResponse struct {
 	ID           string `json:"id"`
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }
 
+type SignUpRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type SignUpResponse struct {
 	DisplayName string `json:"displayName"`
+}
+
+type ProfileRequest struct {
+	ID int64 `param:"id" binding:"required"`
 }
 
 type ProfileResponse struct {

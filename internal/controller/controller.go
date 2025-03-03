@@ -31,7 +31,6 @@ func NewInfraHttpController(handler http.Handler) InfraHttpController {
 
 func (uc HttpController) InitRouter() {
 	api := uc.Echo.Group("/api/v1")
-	uc.InitUserController(api)
 	uc.InitBackofficeController(api)
 	uc.InitMatchingController(api)
 	uc.InitNotificationController(api)

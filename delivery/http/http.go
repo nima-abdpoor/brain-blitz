@@ -57,9 +57,6 @@ func main() {
 		time.Sleep(cfg.Mysql.RetryConnection)
 	}
 
-	//create the UserRepository
-	userRepo := repository.NewUserRepository(db)
-
 	// backoffice
 	backofficeRepo := repository.New(db)
 	backofficeHandler := backofficeUserHandler.New(backofficeRepo)
@@ -67,7 +64,6 @@ func main() {
 	//create the user service
 	//todo mv secret key into env files
 	authService := coreService.NewJWTAuthService("salam", "exp", time.Now().Add(time.Hour*24).Unix(), time.Now().Add(time.Hour*24*7).Unix())
-	uService := coreService.NewUserService(userRepo, authService)
 
 	// authorization
 	mongoDB, err := mongo.NewMongoDB(cfg.Mongo)
@@ -101,7 +97,6 @@ func main() {
 	notificationSrv := notification.New(cfg.Notification, kafkaConsumer, connections)
 
 	controllerServices := service.Service{
-		UserService:            uService,
 		BackofficeUserService:  backofficeHandler,
 		AuthService:            authService,
 		AuthorizationService:   authorizationService,

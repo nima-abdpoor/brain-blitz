@@ -1,7 +1,7 @@
 package httpmsg
 
 import (
-	"BrainBlitz.com/game/pkg/errmsg"
+	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"net/http"
 )
