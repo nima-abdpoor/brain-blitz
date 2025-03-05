@@ -2,7 +2,6 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
-	match "BrainBlitz.com/game/contract/match/golang"
 	"BrainBlitz.com/game/logger"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"
@@ -126,7 +125,7 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 func (svc Service) publishFinalUsers(users []MatchedUsers) {
 	const op = "matchMakingHandler.publishFinalUsers"
 	matchMakingTopic := "matchMaking_v1_matchUsers"
-	buff, err := proto.Marshal(match.MapFromEntityToProtoMessage(users))
+	buff, err := proto.Marshal(MapFromEntityToProtoMessage(users))
 	if err != nil {
 		//todo update metrics
 		logger.Logger.Named(op).Error("error in marshaling match message", zap.Error(err))
