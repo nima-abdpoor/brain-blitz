@@ -20,7 +20,7 @@ func main() {
 		Prefix:       "MATCH_",
 		Delimiter:    ".",
 		Separator:    "__",
-		YamlFilePath: filepath.Join(workingDir, "deploy", "user", "development", "config.yaml"),
+		YamlFilePath: filepath.Join(workingDir, "deploy", "match", "development", "config.yaml"),
 		CallbackEnv:  nil,
 	}
 

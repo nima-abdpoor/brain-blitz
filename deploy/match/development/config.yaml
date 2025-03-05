@@ -1,0 +1,22 @@
+total_shutdown_timeout: 15s
+
+http_server:
+  port: 5002
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+redis:
+  host: match-redis
+  Port: 6381
+
+scheduler:
+  interval: 10
+  match_user_time_out: "1m"
+
+
+logger:
+  file_path: "logs/match/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
