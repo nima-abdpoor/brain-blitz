@@ -1,14 +1,13 @@
-package match
+package golang
 
 import (
-	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/match_app/service"
 )
 
 func MapFromEntityToProtoMessage(matchedUsers []service.MatchedUsers) *AllMatchedUsers {
-	finalUsers := make([]*service.MatchedUsers, 0)
+	finalUsers := make([]*MatchedUsers, 0)
 	for _, user := range matchedUsers {
-		finalUsers = append(finalUsers, &service.MatchedUsers{
+		finalUsers = append(finalUsers, &MatchedUsers{
 			UserId:   user.UserId,
 			Category: service.MapFromCategory(user.Category),
 		})
@@ -19,12 +18,12 @@ func MapFromEntityToProtoMessage(matchedUsers []service.MatchedUsers) *AllMatche
 	}
 }
 
-func MapToEntityToProtoMessage(users *AllMatchedUsers) []entity.MatchedUsers {
-	finalUsers := make([]entity.MatchedUsers, 0)
+func MapToEntityToProtoMessage(users *AllMatchedUsers) []service.MatchedUsers {
+	finalUsers := make([]service.MatchedUsers, 0)
 	for _, user := range users.GetUsers() {
-		finalUsers = append(finalUsers, entity.MatchedUsers{
+		finalUsers = append(finalUsers, service.MatchedUsers{
 			UserId:   user.UserId,
-			Category: entity.MapToCategory(user.Category),
+			Category: service.MapToCategory(user.Category),
 		})
 	}
 	return finalUsers

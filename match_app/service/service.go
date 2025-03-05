@@ -2,7 +2,7 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
-	"BrainBlitz.com/game/contract/golang/match"
+	match "BrainBlitz.com/game/contract/match/golang"
 	"BrainBlitz.com/game/logger"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"

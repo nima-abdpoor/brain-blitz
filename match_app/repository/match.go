@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"BrainBlitz.com/game/internal/infra/repository/redis"
+	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/match_app/service"
 	"context"
 	"fmt"
@@ -21,27 +21,28 @@ type MatchMakingRepository struct {
 	db     *redis.Adapter
 }
 
-func NewUserRepository(config Config, logger *slog.Logger) service.Repository {
+func NewRepository(config Config, logger *slog.Logger, redis *redis.Adapter) service.Repository {
 	return MatchMakingRepository{
 		Config: config,
 		Logger: logger,
+		db:     redis,
 	}
 }
 
 func (m MatchMakingRepository) AddToWaitingList(ctx context.Context, category service.Category, userId string) error {
-	err := redis.ZAdd(m.db.Client(),
-		fmt.Sprintf("%s:%v", m.Config.WaitingListPrefix, category),
-		float64(time.Now().UnixMicro()),
-		userId,
-	)
-	return err
+	return m.db.ZAdd(
+		ctx,
+		fmt.Sprintf("%s:%v", m.Config.WaitingListPrefix, category), redis.Z{
+			Score:  float64(time.Now().UnixMicro()),
+			Member: userId,
+		})
 }
 
 func (m MatchMakingRepository) GetWaitingListByCategory(ctx context.Context, category service.Category) ([]service.WaitingMember, error) {
 	key := fmt.Sprintf("%s:%v", m.Config.WaitingListPrefix, category)
-	mintTime := strconv.Itoa(int(time.Now().Add(m.Config.MinTimeWaitingListSelection).UnixMicro()))
-	maxTime := strconv.Itoa(int(time.Now().UnixMicro()))
-	if list, err := redis.ZRange(ctx, m.db.Client(), key, mintTime, maxTime); err != nil {
+	mintTime := time.Now().Add(m.Config.MinTimeWaitingListSelection).UnixMicro()
+	maxTime := time.Now().UnixMicro()
+	if err, list := m.db.ZRange(ctx, key, mintTime, maxTime, true); err != nil {
 		return nil, err
 	} else {
 		result := make([]service.WaitingMember, 0)
