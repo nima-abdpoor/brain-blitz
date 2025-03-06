@@ -65,7 +65,7 @@ func (app Application) Start() {
 	}
 
 	wg.Wait()
-	app.Logger.Info("user_app stopped")
+	app.Logger.Info("match_app stopped")
 }
 
 func startServers(app Application, done <-chan bool, wg *sync.WaitGroup) {
