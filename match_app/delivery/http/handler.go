@@ -1,6 +1,8 @@
 package http
 
 import (
+	auth "BrainBlitz.com/game/internal/core/service"
+	middleware "BrainBlitz.com/game/internal/middleware/constants"
 	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/match_app/service"
 	"BrainBlitz.com/game/metrics"
@@ -23,6 +25,11 @@ func NewHandler(userService service.Service) Handler {
 
 func (handler Handler) addToWaitingList(ctx echo.Context) error {
 	const op = "controller.addToWaitingList"
+	//todo we should remove this
+	id := ctx.Param("id")
+	ctx.Set(middleware.UserId, auth.Claim{
+		UserId: id,
+	})
 
 	var req service.AddToWaitingListRequest
 	code := http.StatusOK

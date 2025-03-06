@@ -12,7 +12,7 @@ import (
 
 type Config struct {
 	WaitingListPrefix           string        `koanf:"waitingListPrefix"`
-	MinTimeWaitingListSelection time.Duration `koanf:"mint_time_list_selection"`
+	MinTimeWaitingListSelection time.Duration `koanf:"min_time_list_selection"`
 }
 
 type MatchMakingRepository struct {
@@ -40,8 +40,8 @@ func (m MatchMakingRepository) AddToWaitingList(ctx context.Context, category se
 
 func (m MatchMakingRepository) GetWaitingListByCategory(ctx context.Context, category service.Category) ([]service.WaitingMember, error) {
 	key := fmt.Sprintf("%s:%v", m.Config.WaitingListPrefix, category)
-	mintTime := time.Now().Add(m.Config.MinTimeWaitingListSelection).UnixMicro()
-	maxTime := time.Now().UnixMicro()
+	mintTime := int(time.Now().Add(m.Config.MinTimeWaitingListSelection).UnixMicro())
+	maxTime := int(time.Now().UnixMicro())
 	if err, list := m.db.ZRange(ctx, key, mintTime, maxTime, true); err != nil {
 		return nil, err
 	} else {

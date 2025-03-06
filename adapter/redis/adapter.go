@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/labstack/gommon/log"
 	"github.com/redis/go-redis/v9"
+	"strconv"
 )
 
 type Config struct {
@@ -50,12 +51,24 @@ func (a Adapter) ZAdd(ctx context.Context, key string, members ...Z) error {
 	return cmd.Err()
 }
 
-func (a Adapter) ZRange(ctx context.Context, key string, start, stop int64, withScores bool) (error, []Z) {
+func (a Adapter) ZRange(ctx context.Context, key string, start, stop int, withScores bool) (error, []Z) {
 	var cmd *redis.ZSliceCmd
 	if withScores {
-		cmd = a.client.ZRangeWithScores(ctx, key, start, stop)
+		cmd = a.client.ZRangeByScoreWithScores(ctx, key, &redis.ZRangeBy{Min: strconv.Itoa(start), Max: strconv.Itoa(stop)})
+		if cmd.Err() != nil {
+			return nil, nil
+		} else {
+			var zRanges []Z
+			for _, value := range cmd.Val() {
+				zRanges = append(zRanges, Z{
+					Member: value.Member,
+					Score:  value.Score,
+				})
+			}
+			return nil, zRanges
+		}
 	} else {
-		res := a.client.ZRange(ctx, key, start, stop)
+		res := a.client.ZRange(ctx, key, int64(start), int64(stop))
 		if res.Err() != nil {
 			return res.Err(), nil
 		} else {
@@ -67,17 +80,5 @@ func (a Adapter) ZRange(ctx context.Context, key string, start, stop int64, with
 			}
 			return nil, zRanges
 		}
-	}
-	if cmd.Err() != nil {
-		return nil, nil
-	} else {
-		var zRanges []Z
-		for _, value := range cmd.Val() {
-			zRanges = append(zRanges, Z{
-				Member: value.Member,
-				Score:  value.Score,
-			})
-		}
-		return nil, zRanges
 	}
 }

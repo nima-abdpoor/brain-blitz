@@ -6,12 +6,20 @@ http_server:
     allow_origins: "*"
   shutdown_context_timeout: "10s"
 
+repository:
+  waitingListPrefix: "waiting_users"
+  min_time_list_selection: "-20m"
+
+service:
+  waiting_timeout: "20m"
+  least_presence: "-20m"
+
 redis:
-  host: match-redis
+  host: 127.0.0.1
   Port: 6381
 
 scheduler:
-  interval: 10
+  interval: 15
   match_user_time_out: "1m"
 
 

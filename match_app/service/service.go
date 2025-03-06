@@ -6,10 +6,8 @@ import (
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/thoas/go-funk"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 	"sort"
 	"time"
 )
@@ -123,38 +121,39 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 }
 
 func (svc Service) publishFinalUsers(users []MatchedUsers) {
+	//todo implement me
 	const op = "matchMakingHandler.publishFinalUsers"
-	matchMakingTopic := "matchMaking_v1_matchUsers"
-	buff, err := proto.Marshal(MapFromEntityToProtoMessage(users))
-	if err != nil {
-		//todo update metrics
-		logger.Logger.Named(op).Error("error in marshaling match message", zap.Error(err))
-	}
-	producer := svc.publisherBroker.Publish(nil)
-	switch producer.(type) {
-	case *kafka.Producer:
-		{
-			p := producer.(*kafka.Producer)
-			defer p.Close()
-			err := p.Produce(&kafka.Message{
-				TopicPartition: kafka.TopicPartition{
-					Topic:     &matchMakingTopic,
-					Partition: kafka.PartitionAny,
-				},
-				Value: buff,
-			}, nil)
-			if err != nil {
-				//todo add metrics
-				logger.Logger.Named(op).Error("error in producing message.", zap.String("topic", matchMakingTopic), zap.Error(err))
-			} else {
-				//todo add metrics
-				logger.Logger.Named(op).Info("publishing message...", zap.String("time", time.Now().String()))
-			}
-		}
-	default:
-		{
-			//todo add metrics
-			logger.Logger.Named(op).Error("Unhandled type of publisherBroker", zap.Any("producer", producer))
-		}
-	}
+	//matchMakingTopic := "matchMaking_v1_matchUsers"
+	//buff, err := proto.Marshal(MapFromEntityToProtoMessage(users))
+	//if err != nil {
+	//	//todo update metrics
+	//	logger.Logger.Named(op).Error("error in marshaling match message", zap.Error(err))
+	//}
+	//producer := svc.publisherBroker.Publish(nil)
+	//switch producer.(type) {
+	//case *kafka.Producer:
+	//	{
+	//		p := producer.(*kafka.Producer)
+	//		defer p.Close()
+	//		err := p.Produce(&kafka.Message{
+	//			TopicPartition: kafka.TopicPartition{
+	//				Topic:     &matchMakingTopic,
+	//				Partition: kafka.PartitionAny,
+	//			},
+	//			Value: buff,
+	//		}, nil)
+	//		if err != nil {
+	//			//todo add metrics
+	//			logger.Logger.Named(op).Error("error in producing message.", zap.String("topic", matchMakingTopic), zap.Error(err))
+	//		} else {
+	//			//todo add metrics
+	//			logger.Logger.Named(op).Info("publishing message...", zap.String("time", time.Now().String()))
+	//		}
+	//	}
+	//default:
+	//	{
+	//		//todo add metrics
+	//		logger.Logger.Named(op).Error("Unhandled type of publisherBroker", zap.Any("producer", producer))
+	//	}
+	//}
 }
