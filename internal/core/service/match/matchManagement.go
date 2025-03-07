@@ -3,11 +3,12 @@ package match
 import (
 	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/contract/golang/game"
-	"BrainBlitz.com/game/contract/golang/match"
+	"BrainBlitz.com/game/contract/match/golang"
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/match_app/service"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"go.uber.org/zap"
@@ -55,7 +56,7 @@ func (s Service) StartMatchCreator(req request.StartMatchCreatorRequest) (reques
 				ev := c.Poll(100)
 				switch e := ev.(type) {
 				case *kafka.Message:
-					users := &match.AllMatchedUsers{}
+					users := &golang.AllMatchedUsers{}
 					err := proto.Unmarshal(e.Value, users)
 					if err != nil {
 						//todo update metrics
@@ -64,13 +65,13 @@ func (s Service) StartMatchCreator(req request.StartMatchCreatorRequest) (reques
 					//todo create match in database
 					//todo publish message: MatchCreated with Id
 					//todo send Acknowledgment to publisher
-					entityUsers := match.MapToEntityToProtoMessage(users)
+					entityUsers := service.MapToEntityToProtoMessage(users)
 					//todo think about context.Background()
 					for _, u := range entityUsers {
 						if id, err := s.repository.CreateMatch(context.Background(), entity.Game{
 							PlayerIDs: u.UserId,
-							Category:  u.Category,
-							Status:    entity.GameStatusCreated,
+							//Category:  u.Category,
+							Status: entity.GameStatusCreated,
 						}); err != nil {
 							logger.Logger.Named(op).Error("error in creating match", zap.Error(err))
 						} else {

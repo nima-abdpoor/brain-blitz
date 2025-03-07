@@ -10,22 +10,17 @@ import (
 	"BrainBlitz.com/game/internal/core/server/http"
 	coreService "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/core/service/backofficeUserHandler"
-	"BrainBlitz.com/game/internal/core/service/match"
-	matchMakingHandler "BrainBlitz.com/game/internal/core/service/matchMaking"
 	"BrainBlitz.com/game/internal/core/service/notification"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	mysqlConfig "BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
 	repository3 "BrainBlitz.com/game/internal/infra/repository/authorization"
-	"BrainBlitz.com/game/internal/infra/repository/matchmaking"
-	"BrainBlitz.com/game/internal/infra/repository/matchmanager"
 	"BrainBlitz.com/game/internal/infra/repository/mongo"
 	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/metrics"
 	echo2 "BrainBlitz.com/game/pkg/echo"
-	"BrainBlitz.com/game/scheduler"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -79,17 +74,11 @@ func main() {
 	redisDB := redis.New(cfg.Redis)
 	presenceRepo := presence.New(redisDB, cfg.GetPresence)
 	presenceS := presenceService.New(presenceRepo, cfg.Presence)
-	presenceClientRepo := presence.NewPresenceClient(redisDB, cfg.GetPresence)
 
 	// matchMaking
-	kafkaPublisher := kafka.NewKafkaPublisher(cfg.Kafka)
-	matchMakingRepo := matchmaking.NewMatchMakingRepo(redisDB, cfg.MatchMakingPrefix)
-	matchMakingService := matchMakingHandler.NewMatchMakingService(matchMakingRepo, presenceClientRepo, kafkaPublisher, cfg.MatchMakingTimeOut)
 
 	// matchManagement
 	kafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
-	matchManagerRepo := matchmanager.New(mongoDB)
-	matchManagerSvc := match.New(matchManagerRepo, kafkaConsumer, kafkaPublisher)
 
 	// notification
 	//notificationKafkaConsumer := kafka.NewKafkaConsumer(cfg.Kafka)
@@ -97,13 +86,11 @@ func main() {
 	notificationSrv := notification.New(cfg.Notification, kafkaConsumer, connections)
 
 	controllerServices := service.Service{
-		BackofficeUserService:  backofficeHandler,
-		AuthService:            authService,
-		AuthorizationService:   authorizationService,
-		MatchMakingService:     matchMakingService,
-		MatchManagementService: matchManagerSvc,
-		Presence:               presenceS,
-		Notification:           notificationSrv,
+		BackofficeUserService: backofficeHandler,
+		AuthService:           authService,
+		AuthorizationService:  authorizationService,
+		Presence:              presenceS,
+		Notification:          notificationSrv,
 	}
 	//todo move this to somewhere better
 	go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
@@ -129,13 +116,7 @@ func main() {
 	httpServer.Start()
 	defer httpServer.Stop()
 
-	done := make(chan bool)
 	var wg sync.WaitGroup
-	go func() {
-		sch := scheduler.New(matchMakingService, cfg.Scheduler)
-		wg.Add(1)
-		sch.Start(done, &wg)
-	}()
 
 	// Listen for OS signals to perform a graceful shutdown
 	logger.Logger.Named(op).Info("listening signals...", zap.Int("processId", os.Getpid()))
@@ -149,7 +130,6 @@ func main() {
 		syscall.SIGTERM,
 	)
 	<-quite
-	done <- true
 	logger.Logger.Named(op).Info("graceful shutdown...")
 	time.Sleep(5 * time.Second)
 	wg.Wait()
