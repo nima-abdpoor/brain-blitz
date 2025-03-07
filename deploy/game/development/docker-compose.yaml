@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+  user-db:
+    image: postgres:17.2-alpine
+    container_name: BB-user-postgres
+    environment:
+      - 'POSTGRES_DB=user_db'
+      - 'POSTGRES_USER=user_admin'
+      - 'POSTGRES_PASSWORD=password123'
+    restart: always
+    ports:
+      - '5433:5432'
+    volumes:
+      - user-db:/var/lib/postgresql/data
+
+  user-redis:
+    image: bitnami/redis:6.2
+    container_name: BB-user-redis
+    restart: always
+    ports:
+      - '6380:6379'
+    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - user-redis:/data
+
+volumes:
+  user-db:
+  user-redis:
