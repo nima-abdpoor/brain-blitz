@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  match-redis:
+    image: bitnami/redis:6.2
+    container_name: BB-match-redis
+    restart: always
+    ports:
+      - '6381:6379'
+    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - user-redis:/data
+
+volumes:
+  user-redis:

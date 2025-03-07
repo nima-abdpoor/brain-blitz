@@ -1,8 +1,8 @@
 package repository
 
 import (
+	"BrainBlitz.com/game/adapter/redis"
 	entityAuth "BrainBlitz.com/game/entity/auth"
-	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/user_app/service"
 	"context"
 	"database/sql"

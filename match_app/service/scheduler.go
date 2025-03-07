@@ -1,57 +1,53 @@
-package scheduler
+package service
 
 import (
-	"BrainBlitz.com/game/internal/core/model/request"
-	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/metrics"
 	"context"
 	"github.com/go-co-op/gocron"
 	"go.uber.org/zap"
-	"sync"
 	"time"
 )
 
-type Scheduler struct {
-	sch      *gocron.Scheduler
-	matchSvc service.MatchMakingService
-	conf     Config
-}
-
-type Config struct {
+type SchedulerConfig struct {
 	Interval         int           `koanf:"interval"`
 	MatchUserTimeOut time.Duration `koanf:"match_user_time_out"`
 }
 
-func New(matchSvc service.MatchMakingService, conf Config) Scheduler {
+type Scheduler struct {
+	scheduler *gocron.Scheduler
+	service   Service
+	config    SchedulerConfig
+}
+
+func NewScheduler(matchSvc Service, conf SchedulerConfig) Scheduler {
 	return Scheduler{
-		sch:      gocron.NewScheduler(time.UTC),
-		matchSvc: matchSvc,
-		conf:     conf,
+		scheduler: gocron.NewScheduler(time.UTC),
+		service:   matchSvc,
+		config:    conf,
 	}
 }
 
-func (s Scheduler) Start(done <-chan bool, wg *sync.WaitGroup) {
+func (s Scheduler) Start(done <-chan bool) {
 	const op = "scheduler.Start"
 	logger.Logger.Named(op).Info("starting scheduler...")
-	defer wg.Done()
 
-	if _, err := s.sch.Every(s.conf.Interval).Second().Do(s.MatchWaitedUsers); err != nil {
+	if _, err := s.scheduler.Every(s.config.Interval).Second().Do(s.MatchWaitedUsers); err != nil {
 		logger.Logger.Named(op).Error("error in calling MatchWaitedUsers", zap.Error(err))
 	}
-	s.sch.StartAsync()
+	s.scheduler.StartAsync()
 
 	<-done
 	//wait to finish job
 	logger.Logger.Named(op).Info("stopping scheduler...")
-	s.sch.Stop()
+	s.scheduler.Stop()
 }
 
 func (s Scheduler) MatchWaitedUsers() {
 	const op = "scheduler.MatchWaitedUsers"
-	ctx, cancel := context.WithTimeout(context.Background(), s.conf.MatchUserTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), s.config.MatchUserTimeOut)
 	defer cancel()
-	if _, err := s.matchSvc.MatchWaitUsers(ctx, &request.MatchWaitedUsersRequest{}); err != nil {
+	if _, err := s.service.MatchWaitUsers(ctx, MatchWaitedUsersRequest{}); err != nil {
 		metrics.FailedMatchedUserCounter.Inc()
 		logger.Logger.Named(op).Error("error in MatchWaitedUsers", zap.Error(err))
 	} else {

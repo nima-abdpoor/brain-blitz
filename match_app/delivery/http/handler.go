@@ -1,9 +1,10 @@
-package controller
+package http
 
 import (
-	"BrainBlitz.com/game/internal/core/model/request"
-	"BrainBlitz.com/game/internal/middleware"
+	auth "BrainBlitz.com/game/internal/core/service"
+	middleware "BrainBlitz.com/game/internal/middleware/constants"
 	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/match_app/service"
 	"BrainBlitz.com/game/metrics"
 	"BrainBlitz.com/game/pkg/claim"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
@@ -12,18 +13,25 @@ import (
 	"net/http"
 )
 
-func (uc HttpController) InitMatchingController(api *echo.Group) {
-	api = api.Group("/matching")
-	api.POST("/:id/addToWaitingList",
-		uc.addToWaitingList,
-		middleware.Auth(uc.Service.AuthService),
-		middleware.Presence(uc.Service.Presence),
-	)
+type Handler struct {
+	Service service.Service
 }
 
-func (uc HttpController) addToWaitingList(ctx echo.Context) error {
+func NewHandler(userService service.Service) Handler {
+	return Handler{
+		Service: userService,
+	}
+}
+
+func (handler Handler) addToWaitingList(ctx echo.Context) error {
 	const op = "controller.addToWaitingList"
-	var req request.AddToWaitingListRequest
+	//todo we should remove this
+	id := ctx.Param("id")
+	ctx.Set(middleware.UserId, auth.Claim{
+		UserId: id,
+	})
+
+	var req service.AddToWaitingListRequest
 	code := http.StatusOK
 	ctxClaim, err := claim.GetClaimsFromEchoContext(ctx)
 	if err != nil {
@@ -38,7 +46,7 @@ func (uc HttpController) addToWaitingList(ctx echo.Context) error {
 		return nil
 	}
 	req.UserId = ctxClaim.UserId
-	res, err := uc.Service.MatchMakingService.AddToWaitingList(&req)
+	res, err := handler.Service.AddToWaitingList(ctx.Request().Context(), req)
 	if err != nil {
 		msg, code := httpmsg.Error(err)
 		ctx.JSON(code, msg)
@@ -47,5 +55,4 @@ func (uc HttpController) addToWaitingList(ctx echo.Context) error {
 		ctx.JSON(code, res)
 		return nil
 	}
-	return nil
 }
