@@ -18,10 +18,9 @@ func NewHandler(service service.Service) Handler {
 	}
 }
 
-func (h Handler) Init(ctx echo.Context) error {
+func (h Handler) ProcessGame(ctx echo.Context) error {
 	const op = "game.init"
-
-	err := h.service.ProcessGame(ctx, service.ProcessGameRequest{
+	response, err := h.service.ProcessGame(ctx, service.ProcessGameRequest{
 		Id: ctx.Param("id"),
 	})
 
@@ -33,5 +32,5 @@ func (h Handler) Init(ctx echo.Context) error {
 		return ctx.JSON(code, msg)
 	}
 
-	return ctx.JSON(http.StatusOK, service.ProcessGameResponse{})
+	return ctx.JSON(http.StatusOK, response)
 }

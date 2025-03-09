@@ -3,26 +3,26 @@ package repository
 import (
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/game_app/service"
+	"BrainBlitz.com/game/pkg/mongo"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"log/slog"
 )
 
 type Config struct{}
 
 type GameRepository struct {
-	Config Config
-	Logger *slog.Logger
-	DB     *mongo.Database
+	Config  Config
+	Logger  *slog.Logger
+	MongoDB *mongo.Database
 }
 
 func NewGameRepository(config Config, logger *slog.Logger, db *mongo.Database) service.Repository {
 	return GameRepository{
-		Config: config,
-		Logger: logger,
-		DB:     db,
+		Config:  config,
+		Logger:  logger,
+		MongoDB: db,
 	}
 }
 
@@ -34,7 +34,7 @@ func (m GameRepository) CreateMatch(ctx context.Context, game entity.Game) (stri
 		Category: entity.MapFromCategories(game.Category),
 		Status:   entity.MapToFromGameStatus(game.Status),
 	}
-	coll := m.DB.Collection("game")
+	coll := m.MongoDB.DB.Collection("game")
 	if result, err := coll.InsertOne(ctx, doc); err != nil {
 		return "", richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
 	} else {

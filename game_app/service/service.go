@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-type IdToConnection map[uint64]*net.Conn
+type IdToConnection map[uint64]net.Conn
 
 type Config struct{}
 
@@ -28,10 +28,12 @@ type Service struct {
 	connections IdToConnection
 }
 
-func NewService(config Config, repo Repository) Service {
+func NewService(config Config, repo Repository, ws websocket.WebSocket) Service {
 	return Service{
-		config:     config,
-		repository: repo,
+		config:      config,
+		repository:  repo,
+		webSocket:   ws,
+		connections: IdToConnection{},
 	}
 }
 
@@ -50,7 +52,26 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 		return ProcessGameResponse{}, err
 	}
 
-	svc.connections[id] = connection
-	fmt.Println("idToConnections:", svc.connections)
+	svc.connections[id] = *connection
+	err = svc.writeMessage([]uint64{id}, "salam")
+	if err != nil {
+		return ProcessGameResponse{}, err
+	}
 	return ProcessGameResponse{}, nil
+}
+
+func (svc Service) writeMessage(ids []uint64, msg string) error {
+	const op = "game.service.writeMessage"
+
+	for _, id := range ids {
+		if connection, exists := svc.connections[id]; !exists {
+			return richerror.New(op).WithMessage(fmt.Sprintf("id: %d not found", id))
+		} else {
+			err := svc.webSocket.WriteServerData(connection, websocket.OpText, msg)
+			if err != nil {
+				logger.Logger.Named(op).Error("Error in writing message to client", zap.Error(err))
+			}
+		}
+	}
+	return nil
 }

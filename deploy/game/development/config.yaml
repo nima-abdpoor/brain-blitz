@@ -1,42 +1,21 @@
-total_shutdown_timeout:
-  15s
+total_shutdown_timeout: 15s
 
 http_server:
-  port: 5001
+  port: 5003
   cors:
     allow_origins: "*"
   shutdown_context_timeout: "10s"
 
-grpc_server:
-  port: 6001
-  type: "tcp"
-
-repository:
-  cache_prefix: user
-  cache_enabled: true
-
-cache_config:
-  ttl: "24h"
-  write_ttl: "10s"
-
-postgres_db:
+mongo:
   host: localhost
-  port: 5433
-  user: "user_admin"
-  password: "password123"
-  db_name: user_db
-  ssl_mode: disable
-  max_idle_conns: 15
-  max_open_conns: 100
-  conn_max_lifetime: 5
-  path_of_migration: './user_app/repository/migrations'
-
-redis:
-  host: user-redis
-  Port: 6380
+  port: 27018
+  user: mongodb
+  name: BB-game
+  connect_timeout: 30s
+  disconnect_timeout: 5s
 
 logger:
-  file_path: "logs/user/service.log"
+  file_path: "logs/game/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7

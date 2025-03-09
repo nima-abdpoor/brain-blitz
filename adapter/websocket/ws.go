@@ -23,8 +23,12 @@ func NewWS(config Config) WebSocket {
 
 func (websocket WS) Upgrade(r *http.Request, rw http.ResponseWriter) (*net.Conn, *bufio.ReadWriter, Handshake, error) {
 	conn, readWriter, handShake, err := ws.UpgradeHTTP(r, rw)
+	protocol := ""
+	if err == nil {
+		protocol = handShake.Protocol
+	}
 	return &conn, readWriter, Handshake{
-		Protocol: handShake.Protocol,
+		Protocol: protocol,
 	}, err
 }
 
