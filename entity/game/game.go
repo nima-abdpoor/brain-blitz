@@ -6,7 +6,7 @@ type Game struct {
 	ID          uint
 	PlayerIDs   []uint64
 	QuestionIDs []uint
-	Category    Category
+	Category    []Category
 	Status      GameStatus
 	StartTime   time.Time
 }

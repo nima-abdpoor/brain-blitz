@@ -5,7 +5,6 @@ import (
 	"BrainBlitz.com/game/feature"
 	"BrainBlitz.com/game/internal/core/server/http"
 	"BrainBlitz.com/game/internal/core/service"
-	"BrainBlitz.com/game/internal/core/service/notification"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	"BrainBlitz.com/game/internal/infra/repository"
 	"BrainBlitz.com/game/internal/infra/repository/mongo"
@@ -14,14 +13,13 @@ import (
 )
 
 type Config struct {
-	Feature      feature.Config         `koanf:"feature"`
-	HTTPServer   http.Config            `koanf:"http"`
-	Auth         service.Config         `koanf:"auth"`
-	Mysql        repository.Config      `koanf:"mysql"`
-	Mongo        mongo.Config           `koanf:"mongo"`
-	Redis        redis.Config           `koanf:"redis"`
-	Presence     presenceService.Config `koanf:"presence_service"`
-	GetPresence  presence.Config        `koanf:"presence"`
-	Kafka        kafka.Config           `koanf:"kafka"`
-	Notification notification.Config    `koanf:"notification"`
+	Feature     feature.Config         `koanf:"feature"`
+	HTTPServer  http.Config            `koanf:"http"`
+	Auth        service.Config         `koanf:"auth"`
+	Mysql       repository.Config      `koanf:"mysql"`
+	Mongo       mongo.Config           `koanf:"mongo"`
+	Redis       redis.Config           `koanf:"redis"`
+	Presence    presenceService.Config `koanf:"presence_service"`
+	GetPresence presence.Config        `koanf:"presence"`
+	Kafka       kafka.Config           `koanf:"kafka"`
 }

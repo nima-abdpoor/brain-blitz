@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  game-mongodb:
+    image: mongo:8.0
+    ports:
+     - "27018:27017"
+    container_name: BB-game-mongo
+    volumes:
+      - game-mongodb:/data
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: bb-game
+
+volumes:
+  game-mongodb:

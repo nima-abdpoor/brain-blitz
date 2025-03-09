@@ -48,6 +48,14 @@ func MapFromCategory(category Category) string {
 	}
 }
 
+func MapFromCategories(categories []Category) []string {
+	var result []string
+	for _, category := range categories {
+		result = append(result, MapFromCategory(category))
+	}
+	return result
+}
+
 func (c Category) String() string {
 	return strconv.Itoa(int(c))
 }

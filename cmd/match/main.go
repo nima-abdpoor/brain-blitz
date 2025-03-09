@@ -31,7 +31,7 @@ func main() {
 	logger.Init(cfg.Logger)
 	matchLogger := logger.L()
 
-	matchLogger.Info("match_logger service started...")
+	matchLogger.Info("match service started...")
 
 	app := match_app.Setup(cfg, matchLogger)
 	app.Start()
