@@ -162,7 +162,7 @@ func (c Category) String() string {
 }
 
 type MatchCreation struct {
-	UserId   []uint64
-	Category string
+	Players  []uint64
+	Category []string
 	Status   string
 }

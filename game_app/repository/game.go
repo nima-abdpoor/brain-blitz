@@ -30,8 +30,8 @@ func (m GameRepository) CreateMatch(ctx context.Context, game entity.Game) (stri
 	const op = "game.CreateMatch"
 
 	doc := service.MatchCreation{
-		UserId:   game.PlayerIDs,
-		Category: entity.MapFromCategory(game.Category),
+		Players:  game.PlayerIDs,
+		Category: entity.MapFromCategories(game.Category),
 		Status:   entity.MapToFromGameStatus(game.Status),
 	}
 	coll := m.DB.Collection("game")
