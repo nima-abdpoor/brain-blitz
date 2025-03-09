@@ -6,5 +6,4 @@ type Service struct {
 	AuthorizationService   AuthorizationService
 	MatchManagementService MatchManagementService
 	Presence               PresenceService
-	Notification           Notification
 }
