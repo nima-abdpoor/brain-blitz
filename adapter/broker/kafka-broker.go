@@ -7,27 +7,22 @@ import (
 	"log/slog"
 )
 
-type Config struct {
-	Brokers []string
-}
-
 type KafkaBroker struct {
-	Config   Config
 	Logger   *slog.Logger
 	producer sarama.SyncProducer
 	consumer sarama.Consumer
 }
 
-func NewKafkaBroker(config Config) (*KafkaBroker, error) {
+func NewKafkaBroker(brokers []string) (*KafkaBroker, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Successes = true
 
-	producer, err := sarama.NewSyncProducer(config.Brokers, saramaConfig)
+	producer, err := sarama.NewSyncProducer(brokers, saramaConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	consumer, err := sarama.NewConsumer(config.Brokers, saramaConfig)
+	consumer, err := sarama.NewConsumer(brokers, saramaConfig)
 	if err != nil {
 		return nil, err
 	}

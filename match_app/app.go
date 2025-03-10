@@ -1,6 +1,7 @@
 package match_app
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/match_app/delivery/http"
 	"BrainBlitz.com/game/match_app/repository"
@@ -17,6 +18,7 @@ import (
 
 type Application struct {
 	Config      Config
+	Broker      broker.Broker
 	Repository  service.Repository
 	Service     service.Service
 	Scheduler   service.Scheduler
@@ -31,6 +33,11 @@ func Setup(config Config, logger *slog.Logger) Application {
 	svc := service.NewService(repo, config.Service)
 	scheduler := service.NewScheduler(svc, config.Scheduler)
 	handler := http.NewHandler(svc)
+	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)})
+	if err != nil {
+		logger.Error("Error creating kafka broker", "error", err)
+		panic(err)
+	}
 
 	return Application{
 		Config:      config,
