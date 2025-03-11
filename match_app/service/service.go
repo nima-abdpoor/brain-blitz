@@ -31,11 +31,12 @@ type Service struct {
 	logger     *slog.Logger
 }
 
-func NewService(repository Repository, config Config, broker broker.Broker) Service {
+func NewService(repository Repository, config Config, broker broker.Broker, logger *slog.Logger) Service {
 	return Service{
 		config:     config,
 		repository: repository,
 		broker:     broker,
+		logger:     logger,
 	}
 }
 
@@ -58,6 +59,7 @@ func (svc Service) AddToWaitingList(ctx context.Context, request AddToWaitingLis
 func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersRequest) (MatchWaitedUsersResponse, error) {
 	const op = "matchMakingHandler.MatchWaitUsers"
 	var rErr error = nil
+	svc.publishFinalUsers([]MatchedUsers{})
 	var readyUsers []MatchedUsers
 	var finalUsers []MatchedUsers
 	var waitingMembers []WaitingMember
@@ -124,7 +126,6 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 }
 
 func (svc Service) publishFinalUsers(users []MatchedUsers) {
-	//todo implement me
 	const op = "matchMakingHandler.publishFinalUsers"
 	matchMakingTopic := "matchMaking_v1_matchUsers"
 

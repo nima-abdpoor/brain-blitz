@@ -1,6 +1,7 @@
 package game_app
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/game_app/repository"
 	"BrainBlitz.com/game/game_app/service"
@@ -13,6 +14,7 @@ import (
 type Config struct {
 	HTTPServer           httpserver.Config `koanf:"http_server"`
 	Service              service.Config    `koanf:"service"`
+	Broker               broker.Config     `koanf:"broker"`
 	WebSocket            websocket.Config  `koanf:"websocket"`
 	Repository           repository.Config `koanf:"repository"`
 	MongoDB              mongo.Config      `koanf:"mongo"`

@@ -30,10 +30,10 @@ type Application struct {
 func Setup(config Config, logger *slog.Logger) Application {
 	redisAdapter := redis.New(config.Redis)
 	repo := repository.NewRepository(config.Repository, logger, redisAdapter)
-	svc := service.NewService(repo, config.Service)
+	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
+	svc := service.NewService(repo, config.Service, kafkaBroker, logger)
 	scheduler := service.NewScheduler(svc, config.Scheduler)
 	handler := http.NewHandler(svc)
-	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)})
 	if err != nil {
 		logger.Error("Error creating kafka broker", "error", err)
 		panic(err)

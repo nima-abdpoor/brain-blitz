@@ -13,7 +13,7 @@ type KafkaBroker struct {
 	consumer sarama.Consumer
 }
 
-func NewKafkaBroker(brokers []string) (*KafkaBroker, error) {
+func NewKafkaBroker(brokers []string, logger *slog.Logger) (*KafkaBroker, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Successes = true
 
@@ -27,7 +27,7 @@ func NewKafkaBroker(brokers []string) (*KafkaBroker, error) {
 		return nil, err
 	}
 
-	return &KafkaBroker{producer: producer, consumer: consumer}, nil
+	return &KafkaBroker{producer: producer, consumer: consumer, Logger: logger}, nil
 }
 
 func (k *KafkaBroker) Publish(ctx context.Context, topic string, message []byte) error {

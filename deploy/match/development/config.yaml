@@ -22,6 +22,10 @@ scheduler:
   interval: 15
   match_user_time_out: "1m"
 
+broker:
+  host: "kafka"
+  port: "9092"
+
 
 logger:
   file_path: "logs/match/service.log"
