@@ -13,6 +13,8 @@ services:
       - '5433:5432'
     volumes:
       - user-db:/var/lib/postgresql/data
+    networks:
+      - bb-network
 
   user-redis:
     image: bitnami/redis:6.2
@@ -25,6 +27,24 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     volumes:
       - user-redis:/data
+    networks:
+      - bb-network
+
+  user-service:
+    build:
+      context: .
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: user-service
+    depends_on:
+      - user-db
+      - user-redis
+    networks:
+      - bb-network
+
+networks:
+  bb-network:
 
 volumes:
   user-db:

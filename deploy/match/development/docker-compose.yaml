@@ -12,6 +12,25 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     volumes:
       - user-redis:/data
+    networks:
+      - bb-network
+  match-service:
+    build:
+      context: .
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: match-service
+    depends_on:
+      - match-redis
+    networks:
+      - bb-network
+    environment:
+      - KAFKA_BROKER=kafka:9092
+
+networks:
+  bb-network:
+    external: true
 
 volumes:
   user-redis:
