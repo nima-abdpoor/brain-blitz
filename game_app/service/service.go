@@ -1,7 +1,6 @@
 package service
 
 import (
-	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/websocket"
 	entity "BrainBlitz.com/game/entity/game"
 	"BrainBlitz.com/game/logger"
@@ -25,17 +24,15 @@ type Repository interface {
 type Service struct {
 	config      Config
 	repository  Repository
-	broker      broker.Broker
 	webSocket   websocket.WebSocket
 	connections IdToConnection
 }
 
-func NewService(config Config, repo Repository, ws websocket.WebSocket, broker broker.Broker) Service {
+func NewService(config Config, repo Repository, ws websocket.WebSocket) Service {
 	return Service{
 		config:      config,
 		repository:  repo,
 		webSocket:   ws,
-		broker:      broker,
 		connections: IdToConnection{},
 	}
 }
@@ -63,7 +60,7 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 	return ProcessGameResponse{}, nil
 }
 
-func (svc Service) Consume(message []byte) error {
+func (svc Service) ConsumeMatchCreated(message []byte) error {
 	fmt.Println("==========> message: ", string(message))
 	return nil
 }

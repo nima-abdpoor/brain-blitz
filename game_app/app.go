@@ -21,7 +21,7 @@ type Application struct {
 	Repository  service.Repository
 	Service     service.Service
 	UserHandler http.Handler
-	broker      broker.Broker
+	Consumer    service.Consumer
 	HTTPServer  http.Server
 	Config      Config
 	Logger      *slog.Logger
@@ -30,6 +30,7 @@ type Application struct {
 func Setup(config Config, db *mongo.Database, logger *slog.Logger) Application {
 	gameRepository := repository.NewGameRepository(config.Repository, logger, db)
 	ws := websocket.NewWS(config.WebSocket)
+	gameService := service.NewService(config.Service, gameRepository, ws)
 
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
 	if err != nil {
@@ -37,14 +38,14 @@ func Setup(config Config, db *mongo.Database, logger *slog.Logger) Application {
 		panic(err)
 	}
 
-	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker)
+	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
 	userHandler := http.NewHandler(gameService)
 
 	return Application{
 		Repository:  gameRepository,
 		Service:     gameService,
 		UserHandler: userHandler,
-		broker:      kafkaBroker,
+		Consumer:    consumer,
 		HTTPServer:  http.New(httpserver.New(config.HTTPServer), userHandler, logger),
 		Config:      config,
 		Logger:      logger,
@@ -87,14 +88,9 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()
 	go func() {
-		app.Logger.Info("Consumer Started")
-		matchMakingTopic := "matchMaking_v1_matchUsers"
 		defer wg.Done()
-		ctx := context.WithoutCancel(context.Background())
-		err := app.broker.Consume(ctx, matchMakingTopic, app.Service.Consume)
-		if err != nil {
-			app.Logger.Error("error in consuming", "topic", matchMakingTopic, "error", err)
-		}
+		app.Logger.Info("Consumer Started")
+		app.Consumer.Consume()
 	}()
 }
 
