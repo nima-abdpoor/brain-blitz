@@ -1,6 +1,7 @@
 package game_app
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/game_app/delivery/http"
 	"BrainBlitz.com/game/game_app/repository"
@@ -20,6 +21,7 @@ type Application struct {
 	Repository  service.Repository
 	Service     service.Service
 	UserHandler http.Handler
+	Consumer    service.Consumer
 	HTTPServer  http.Server
 	Config      Config
 	Logger      *slog.Logger
@@ -28,13 +30,22 @@ type Application struct {
 func Setup(config Config, db *mongo.Database, logger *slog.Logger) Application {
 	gameRepository := repository.NewGameRepository(config.Repository, logger, db)
 	ws := websocket.NewWS(config.WebSocket)
-	gameService := service.NewService(config.Service, gameRepository, ws)
+	gameService := service.NewService(config.Service, gameRepository, ws, logger)
+
+	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
+	if err != nil {
+		logger.Error("Error creating kafka broker", "error", err)
+		panic(err)
+	}
+
+	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
 	userHandler := http.NewHandler(gameService)
 
 	return Application{
 		Repository:  gameRepository,
 		Service:     gameService,
 		UserHandler: userHandler,
+		Consumer:    consumer,
 		HTTPServer:  http.New(httpserver.New(config.HTTPServer), userHandler, logger),
 		Config:      config,
 		Logger:      logger,
@@ -78,8 +89,8 @@ func startServers(app Application, wg *sync.WaitGroup) {
 	}()
 	go func() {
 		defer wg.Done()
-
-		app.Logger.Info("Scheduler Started")
+		app.Logger.Info("Consumer Started")
+		app.Consumer.Consume()
 	}()
 }
 

@@ -1,6 +1,7 @@
 package match_app
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/match_app/repository"
 	"BrainBlitz.com/game/match_app/service"
@@ -13,6 +14,7 @@ import (
 type Config struct {
 	HTTPServer           httpserver.Config       `koanf:"http_server"`
 	GRPCServer           grpc.Config             `koanf:"grpc_server"`
+	Broker               broker.Config           `koanf:"broker"`
 	Repository           repository.Config       `koanf:"repository"`
 	Service              service.Config          `koanf:"service"`
 	Scheduler            service.SchedulerConfig `koanf:"scheduler"`

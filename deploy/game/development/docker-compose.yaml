@@ -11,6 +11,23 @@ services:
     restart: always
     environment:
       MONGO_INITDB_DATABASE: bb-game
+    networks:
+      - bb-network
+  game-service:
+    build:
+      context: .
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: game-service
+    depends_on:
+      - game-mongodb
+    networks:
+      - bb-network
+    environment:
+      - KAFKA_BROKER=kafka:9092
+networks:
+  bb-network:
 
 volumes:
   game-mongodb:

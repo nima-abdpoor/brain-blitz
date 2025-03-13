@@ -9,5 +9,5 @@ message AllMatchedUsers {
 
 message MatchedUsers {
   repeated uint64 user_id = 1;
-  string category = 2;
+  repeated string category = 2;
 }
