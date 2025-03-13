@@ -3,7 +3,6 @@ package main
 import (
 	"BrainBlitz.com/game/config"
 	"BrainBlitz.com/game/internal/controller"
-	"BrainBlitz.com/game/internal/core/model/request"
 	repository2 "BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
@@ -12,8 +11,6 @@ import (
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	mysqlConfig "BrainBlitz.com/game/internal/infra/config"
 	"BrainBlitz.com/game/internal/infra/repository"
-	repository3 "BrainBlitz.com/game/internal/infra/repository/authorization"
-	"BrainBlitz.com/game/internal/infra/repository/mongo"
 	"BrainBlitz.com/game/internal/infra/repository/presence"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
 	"BrainBlitz.com/game/logger"
@@ -58,15 +55,6 @@ func main() {
 	//todo mv secret key into env files
 	authService := coreService.NewJWTAuthService("salam", "exp", time.Now().Add(time.Hour*24).Unix(), time.Now().Add(time.Hour*24*7).Unix())
 
-	// authorization
-	mongoDB, err := mongo.NewMongoDB(cfg.Mongo)
-	if err != nil {
-		//todo add to metrics
-		logger.Logger.Named(op).Error("cant connect to mongo", zap.Error(err))
-	}
-	authorizationRepo := repository3.NewAuthorizationRepo(mongoDB)
-	authorizationService := coreService.NewAuthorizationService(authorizationRepo)
-
 	// presence
 	//todo resolve two instances of presence client
 	redisDB := redis.New(cfg.Redis)
@@ -76,11 +64,9 @@ func main() {
 	controllerServices := service.Service{
 		BackofficeUserService: backofficeHandler,
 		AuthService:           authService,
-		AuthorizationService:  authorizationService,
 		Presence:              presenceS,
 	}
 	//todo move this to somewhere better
-	go controllerServices.MatchManagementService.StartMatchCreator(request.StartMatchCreatorRequest{})
 	httpController := controller.NewController(echoInstance, controllerServices)
 	httpController.InitRouter()
 
