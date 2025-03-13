@@ -59,7 +59,6 @@ func (svc Service) AddToWaitingList(ctx context.Context, request AddToWaitingLis
 func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersRequest) (MatchWaitedUsersResponse, error) {
 	const op = "matchMakingHandler.MatchWaitUsers"
 	var rErr error = nil
-	svc.publishFinalUsers([]MatchedUsers{})
 	var readyUsers []MatchedUsers
 	var finalUsers []MatchedUsers
 	var waitingMembers []WaitingMember
@@ -88,13 +87,18 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 	})
 	for _, member := range waitingMembers {
 		index := funk.IndexOf(readyUsers, func(users MatchedUsers) bool {
-			return users.Category.String() == member.Category.String()
+			for _, category := range users.Category {
+				if category.String() == member.Category.String() {
+					return true
+				}
+			}
+			return false
 		})
 		if index != -1 {
 			readyUsers[index].UserId = append(readyUsers[index].UserId, uint64(member.UserId))
 		} else {
 			readyUsers = append(readyUsers, MatchedUsers{
-				Category: member.Category,
+				Category: []Category{member.Category},
 				UserId:   []uint64{uint64(member.UserId)},
 			})
 		}

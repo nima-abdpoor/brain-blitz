@@ -37,12 +37,12 @@ func (c Consumer) Consume() {
 	}
 }
 
-func (c Consumer) getTopics() map[string]func([]byte) error {
+func (c Consumer) getTopics() map[string]func([]byte, context.Context) error {
 	var topics = []string{
 		"matchMaking_v1_matchUsers",
 	}
 
-	result := make(map[string]func([]byte) error)
+	result := make(map[string]func([]byte, context.Context) error)
 	for _, topic := range topics {
 		switch topic {
 		case "matchMaking_v1_matchUsers":

@@ -46,7 +46,7 @@ func (k *KafkaBroker) Publish(ctx context.Context, topic string, message []byte)
 	return nil
 }
 
-func (k *KafkaBroker) Consume(ctx context.Context, topic string, handler func([]byte) error) error {
+func (k *KafkaBroker) Consume(ctx context.Context, topic string, handler func([]byte, context.Context) error) error {
 	partitionConsumer, err := k.consumer.ConsumePartition(topic, 0, sarama.OffsetNewest)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (k *KafkaBroker) Consume(ctx context.Context, topic string, handler func([]
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			if err := handler(msg.Value); err != nil {
+			if err := handler(msg.Value, ctx); err != nil {
 				k.Logger.Error("Error handling message from Kafka", "error", err)
 			}
 		case <-ctx.Done():

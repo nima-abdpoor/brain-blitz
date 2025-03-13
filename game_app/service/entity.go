@@ -9,7 +9,7 @@ type Game struct {
 	ID          uint
 	PlayerIDs   []uint64
 	QuestionIDs []uint
-	Category    Category
+	Category    []Category
 	Status      GameStatus
 	StartTime   time.Time
 }
@@ -157,6 +157,14 @@ func MapFromCategory(category Category) string {
 	}
 }
 
+func MapFromCategories(categories []Category) []string {
+	var result []string
+	for _, category := range categories {
+		result = append(result, MapFromCategory(category))
+	}
+	return result
+}
+
 func (c Category) String() string {
 	return strconv.Itoa(int(c))
 }
@@ -165,4 +173,9 @@ type MatchCreation struct {
 	Players  []uint64
 	Category []string
 	Status   string
+}
+
+type MatchedUsers struct {
+	Category []Category
+	UserId   []uint64
 }

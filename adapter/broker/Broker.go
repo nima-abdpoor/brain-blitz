@@ -17,5 +17,5 @@ type Config struct {
 
 type Broker interface {
 	Publish(ctx context.Context, topic string, message []byte) error
-	Consume(ctx context.Context, topic string, handler func([]byte) error) error
+	Consume(ctx context.Context, topic string, handler func([]byte, context.Context) error) error
 }

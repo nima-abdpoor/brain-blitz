@@ -30,7 +30,7 @@ type Application struct {
 func Setup(config Config, db *mongo.Database, logger *slog.Logger) Application {
 	gameRepository := repository.NewGameRepository(config.Repository, logger, db)
 	ws := websocket.NewWS(config.WebSocket)
-	gameService := service.NewService(config.Service, gameRepository, ws)
+	gameService := service.NewService(config.Service, gameRepository, ws, logger)
 
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
 	if err != nil {

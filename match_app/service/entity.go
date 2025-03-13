@@ -66,10 +66,14 @@ func (wm WaitingMember) String() string {
 }
 
 type MatchedUsers struct {
-	Category Category
+	Category []Category
 	UserId   []uint64
 }
 
 func (m MatchedUsers) String() string {
-	return fmt.Sprintf("matchedUsers: Category: %s==>%s", MapFromCategory(m.Category), fmt.Sprint(m.UserId))
+	categories := ""
+	for _, category := range m.Category {
+		categories += fmt.Sprintf("%s,", MapFromCategory(category))
+	}
+	return fmt.Sprintf("matchedUsers: Category: %s==>%s", categories[:len(categories)-1], fmt.Sprint(m.UserId))
 }

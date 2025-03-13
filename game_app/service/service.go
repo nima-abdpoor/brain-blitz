@@ -2,15 +2,21 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/websocket"
-	entity "BrainBlitz.com/game/entity/game"
+	"BrainBlitz.com/game/contract/match/golang"
 	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
+	"log/slog"
 	"net"
 	"strconv"
+)
+
+const (
+	MatchCreated = "match_created"
 )
 
 type IdToConnection map[uint64]net.Conn
@@ -18,7 +24,7 @@ type IdToConnection map[uint64]net.Conn
 type Config struct{}
 
 type Repository interface {
-	CreateMatch(ctx context.Context, game entity.Game) (string, error)
+	CreateMatch(ctx context.Context, game Game) (string, error)
 }
 
 type Service struct {
@@ -26,13 +32,15 @@ type Service struct {
 	repository  Repository
 	webSocket   websocket.WebSocket
 	connections IdToConnection
+	logger      *slog.Logger
 }
 
-func NewService(config Config, repo Repository, ws websocket.WebSocket) Service {
+func NewService(config Config, repo Repository, ws websocket.WebSocket, logger *slog.Logger) Service {
 	return Service{
 		config:      config,
 		repository:  repo,
 		webSocket:   ws,
+		logger:      logger,
 		connections: IdToConnection{},
 	}
 }
@@ -53,15 +61,41 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 	}
 
 	svc.connections[id] = *connection
-	err = svc.writeMessage([]uint64{id}, "salam")
-	if err != nil {
-		return ProcessGameResponse{}, err
-	}
 	return ProcessGameResponse{}, nil
 }
 
-func (svc Service) ConsumeMatchCreated(message []byte) error {
-	fmt.Println("==========> message: ", string(message))
+func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) error {
+	const op = "game.consumeMatchCreated"
+
+	users := &golang.AllMatchedUsers{}
+	err := proto.Unmarshal(message, users)
+	if err != nil {
+		svc.logger.Error(op, "error in unmarshalling match message", "error", err)
+		return err
+	}
+	matchedUsers := MapFromProtoMessageToEntity(users)
+	createdMatches := make([]MatchedUsers, 0)
+	for _, matchedUser := range matchedUsers {
+		result, err := svc.repository.CreateMatch(ctx, Game{
+			PlayerIDs: matchedUser.UserId,
+			Category:  matchedUser.Category,
+		})
+		if err != nil {
+			svc.logger.Error(op, "error in creating match", "error", err)
+		} else {
+			createdMatches = append(createdMatches, matchedUser)
+		}
+
+		fmt.Println(op, "game created!", result)
+	}
+
+	for _, createdMatch := range createdMatches {
+		err = svc.writeMessage(createdMatch.UserId, MatchCreated)
+		if err != nil {
+			svc.logger.Error(op, "error writing message", "userId", createdMatch.UserId, "message", MatchCreated, "error", err)
+		}
+	}
+
 	return nil
 }
 
