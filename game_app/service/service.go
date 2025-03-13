@@ -70,7 +70,7 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 	users := &golang.AllMatchedUsers{}
 	err := proto.Unmarshal(message, users)
 	if err != nil {
-		svc.logger.Error(op, "error in unmarshalling match message", "error", err)
+		svc.logger.Error(op, "error in unmarshalling match message", slog.String("error", err.Error()))
 		return err
 	}
 	matchedUsers := MapFromProtoMessageToEntity(users)
@@ -81,7 +81,7 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 			Category:  matchedUser.Category,
 		})
 		if err != nil {
-			svc.logger.Error(op, "error in creating match", "error", err)
+			svc.logger.Error(op, "error in creating match", slog.String("error", err.Error()))
 		} else {
 			createdMatches = append(createdMatches, matchedUser)
 		}
@@ -92,7 +92,7 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 	for _, createdMatch := range createdMatches {
 		err = svc.writeMessage(createdMatch.UserId, MatchCreated)
 		if err != nil {
-			svc.logger.Error(op, "error writing message", "userId", createdMatch.UserId, "message", MatchCreated, "error", err)
+			svc.logger.Error(op, "error writing message", "userId", fmt.Sprintf("%v", createdMatch.UserId), "message", MatchCreated, slog.String("error", err.Error()))
 		}
 	}
 
