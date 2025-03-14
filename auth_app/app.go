@@ -23,7 +23,7 @@ type Application struct {
 
 func Setup(config Config, logger *slog.Logger) Application {
 	authService := service.NewService(config.Service, logger)
-	handler := http.NewHandler(authService)
+	handler := http.NewHandler(authService, logger)
 
 	return Application{
 		Service:     authService,

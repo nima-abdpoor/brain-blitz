@@ -31,10 +31,10 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.game.rule=Host(`localhost`) && PathPrefix(`/game-service`)"
       - "traefik.http.middlewares.game-stripprefix.stripprefix.prefixes=/game-service"
-      - "traefik.http.routers.game.middlewares=game-stripprefix"
+      - "traefik.http.routers.game.middlewares=game-stripprefix,auth"
       - "traefik.http.services.game.loadbalancer.server.port=5003"
-#      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service/validate"
-#      - "traefik.http.routers.game.middlewares=auth"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
 
 networks:
   bb-network:

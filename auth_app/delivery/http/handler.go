@@ -5,17 +5,21 @@ import (
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"BrainBlitz.com/game/pkg/validator"
+	"encoding/json"
 	"github.com/labstack/echo/v4"
+	"log/slog"
 	"net/http"
 )
 
 type Handler struct {
 	service service.Service
+	logger  *slog.Logger
 }
 
-func NewHandler(service service.Service) Handler {
+func NewHandler(service service.Service, logger *slog.Logger) Handler {
 	return Handler{
 		service: service,
+		logger:  logger,
 	}
 }
 
@@ -80,6 +84,22 @@ func (h Handler) ValidateToken(ctx echo.Context) error {
 		}
 		msg, _ := httpmsg.Error(err)
 		return ctx.JSON(http.StatusUnauthorized, msg)
+	}
+
+	if response.Valid {
+		for _, data := range response.AdditionalData {
+			switch data.Key {
+			case "id":
+				ctx.Response().Header().Set("X-User-ID", data.Value)
+			case "role":
+				ctx.Response().Header().Set("X-User-Role", data.Value)
+			}
+		}
+		if result, err := json.Marshal(response.AdditionalData); err == nil {
+			ctx.Response().Header().Set("X-Auth-Data", string(result))
+		} else {
+			h.logger.Error("marshal response error", err.Error())
+		}
 	}
 
 	return ctx.JSON(http.StatusOK, response)

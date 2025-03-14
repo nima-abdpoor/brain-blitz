@@ -3,7 +3,8 @@ version: '3.9'
 services:
   auth-service:
     build:
-      context: .
+      context: /home/nima/GolandProjects/brain-blitz
+      dockerfile: deploy/auth/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
@@ -12,6 +13,12 @@ services:
       - bb-network
     environment:
       - SECRET_KEY=SECRET_KEY
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`localhost`) && PathPrefix(`/auth-service`)"
+      - "traefik.http.middlewares.auth-stripprefix.stripprefix.prefixes=/auth-service"
+      - "traefik.http.routers.auth.middlewares=auth-stripprefix"
+      - "traefik.http.services.auth.loadbalancer.server.port=5000"
 
 networks:
   bb-network:
