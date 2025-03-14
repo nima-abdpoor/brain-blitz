@@ -13,7 +13,6 @@ func (uc HttpController) InitBackofficeController(api *echo.Group) {
 	api = api.Group("/backoffice")
 	api.GET("/:id/listUsers",
 		uc.ListUsers,
-		middleware.Auth(uc.Service.AuthService),
 		middleware.AccessCheck(uc.Service.AuthorizationService, entity.UserListPermission, entity.UserDeletePermission),
 	)
 }

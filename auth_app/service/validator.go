@@ -49,20 +49,9 @@ func ValidateCreateRefreshTokenRequest(req CreateRefreshTokenRequest) error {
 }
 
 func ValidateValidateTokenRequest(req ValidateTokenRequest) error {
-	err := validation.ValidateStruct(&req,
-		validation.Field(
-			&req.Token,
-			validation.Required.Error(ErrValidationDataRequired),
-		),
-	)
-
-	if err != nil {
-		return err
-	}
-
 	return validation.ValidateStruct(&req,
 		validation.Field(
-			&req.Data,
+			&req.Token,
 			validation.Required.Error(ErrValidationDataRequired),
 		),
 	)

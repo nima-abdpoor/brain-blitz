@@ -59,10 +59,19 @@ func (h Handler) CreateRefreshToken(ctx echo.Context) error {
 
 func (h Handler) ValidateToken(ctx echo.Context) error {
 	var request service.ValidateTokenRequest
+	if len(ctx.Request().Header.Get(echo.HeaderAuthorization)) == 0 {
+		return ctx.JSON(http.StatusUnauthorized, service.ValidateTokenResponse{
+			Valid: false,
+		})
+	}
 	err := ctx.Bind(&request)
 	if err != nil {
-		return ctx.JSON(http.StatusUnauthorized, nil)
+		return ctx.JSON(http.StatusUnauthorized, service.ValidateTokenResponse{
+			Valid: false,
+		})
 	}
+
+	request.Token = ctx.Request().Header.Get(echo.HeaderAuthorization)
 
 	response, err := h.service.ValidateToken(ctx.Request().Context(), request)
 	if err != nil {

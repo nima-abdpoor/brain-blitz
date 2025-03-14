@@ -10,13 +10,15 @@ func toJWTClaims(data []CreateTokenRequest) jwt.MapClaims {
 	return claims
 }
 
-func toMapData(data []string, claims jwt.MapClaims) []CreateTokenRequest {
+func toMapData(data map[string]struct{}, claims jwt.MapClaims) []CreateTokenRequest {
 	result := make([]CreateTokenRequest, 0)
-	for _, key := range data {
-		result = append(result, CreateTokenRequest{
-			Key:   key,
-			Value: claims[key].(string),
-		})
+	for key, _ := range data {
+		if value, ok := claims[key].(string); ok {
+			result = append(result, CreateTokenRequest{
+				Key:   key,
+				Value: value,
+			})
+		}
 	}
 	return result
 }

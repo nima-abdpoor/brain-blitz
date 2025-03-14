@@ -9,11 +9,19 @@ import (
 	"time"
 )
 
+type AuthManagement interface {
+	CreateAccessToken(ctx context.Context, request CreateAccessTokenRequest) (CreateAccessTokenResponse, error)
+	CreateRefreshToken(ctx context.Context, request CreateRefreshTokenRequest) (CreateRefreshTokenResponse, error)
+	ValidateToken(ctx context.Context, request ValidateTokenRequest) (ValidateTokenResponse, error)
+}
+
 const (
 	expireTimeKey = "exp"
 	jwtIdKey      = "jti"
 	jwtIssuedAt   = "iat"
 )
+
+var additionalData = []string{"id", "role"}
 
 type Config struct {
 	SecretKey              string        `koanf:"secret_key"`
@@ -95,9 +103,16 @@ func (svc Service) ValidateToken(ctx context.Context, request ValidateTokenReque
 		svc.logger.Error(op, "casting Problem with JWT Claims")
 		return ValidateTokenResponse{Valid: false}, fmt.Errorf("casting Problem with JWT Claims")
 	} else {
+		data := make(map[string]struct{})
+		for _, str := range additionalData {
+			data[str] = struct{}{}
+		}
+		for _, str := range request.Data {
+			data[str] = struct{}{}
+		}
 		return ValidateTokenResponse{
 			Valid:          true,
-			AdditionalData: toMapData(request.Data, claims),
+			AdditionalData: toMapData(data, claims),
 		}, nil
 	}
 }
