@@ -6,7 +6,6 @@ import (
 	repository2 "BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
 	"BrainBlitz.com/game/internal/core/server/http"
-	coreService "BrainBlitz.com/game/internal/core/service"
 	"BrainBlitz.com/game/internal/core/service/backofficeUserHandler"
 	presenceService "BrainBlitz.com/game/internal/core/service/presence"
 	mysqlConfig "BrainBlitz.com/game/internal/infra/config"
@@ -51,10 +50,6 @@ func main() {
 	backofficeRepo := repository.New(db)
 	backofficeHandler := backofficeUserHandler.New(backofficeRepo)
 
-	//create the user service
-	//todo mv secret key into env files
-	authService := coreService.NewJWTAuthService("salam", "exp", time.Now().Add(time.Hour*24).Unix(), time.Now().Add(time.Hour*24*7).Unix())
-
 	// presence
 	//todo resolve two instances of presence client
 	redisDB := redis.New(cfg.Redis)
@@ -63,7 +58,6 @@ func main() {
 
 	controllerServices := service.Service{
 		BackofficeUserService: backofficeHandler,
-		AuthService:           authService,
 		Presence:              presenceS,
 	}
 	//todo move this to somewhere better

@@ -18,5 +18,20 @@ services:
     networks:
       - bb-network
 
+  traefik:
+    image: "traefik:v2.10"
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "8080:8080"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
 networks:
   bb-network:
+    external: true

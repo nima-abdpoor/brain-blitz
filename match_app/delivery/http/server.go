@@ -35,5 +35,5 @@ func (svc Server) Stop(ctx context.Context) error {
 func (svc Server) RegisterRoutes() {
 	v1 := svc.HTTPServer.Router.Group("/api/v1")
 	v1.GET("/health-check", svc.healthCheck)
-	v1.POST("/:id/addToWaitingList", svc.Handler.addToWaitingList)
+	v1.POST("/addToWaitingList", svc.Handler.addToWaitingList)
 }
