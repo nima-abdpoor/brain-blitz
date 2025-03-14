@@ -16,7 +16,8 @@ services:
       - bb-network
   match-service:
     build:
-      context: .
+      context: /home/nima/GolandProjects/brain-blitz
+      dockerfile: deploy/match/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
@@ -29,10 +30,12 @@ services:
       - KAFKA_BROKER=kafka:9092
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.match.rule=Host(`match.localhost`)"
-      - "traefik.http.services.match.loadbalancer.server.port=5000"
-      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service/validate"
-      - "traefik.http.routers.match.middlewares=auth"
+      - "traefik.http.routers.match.rule=Host(`localhost`) && PathPrefix(`/match-service`)"
+      - "traefik.http.middlewares.match-stripprefix.stripprefix.prefixes=/match-service"
+      - "traefik.http.routers.match.middlewares=match-stripprefix,auth"
+      - "traefik.http.services.match.loadbalancer.server.port=5002"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
 
 networks:
   bb-network:
