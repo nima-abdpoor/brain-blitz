@@ -1,9 +1,7 @@
 package controller
 
 import (
-	entity "BrainBlitz.com/game/entity/auth"
 	"BrainBlitz.com/game/internal/core/model/request"
-	"BrainBlitz.com/game/internal/middleware"
 	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -11,10 +9,7 @@ import (
 
 func (uc HttpController) InitBackofficeController(api *echo.Group) {
 	api = api.Group("/backoffice")
-	api.GET("/:id/listUsers",
-		uc.ListUsers,
-		middleware.AccessCheck(uc.Service.AuthorizationService, entity.UserListPermission, entity.UserDeletePermission),
-	)
+	api.GET("/:id/listUsers", uc.ListUsers)
 }
 
 func (uc HttpController) ListUsers(ctx echo.Context) error {

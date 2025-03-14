@@ -2,7 +2,6 @@ package user_app
 
 import (
 	"BrainBlitz.com/game/adapter/redis"
-	"BrainBlitz.com/game/pkg/auth"
 	"BrainBlitz.com/game/pkg/grpc"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
@@ -19,6 +18,5 @@ type Config struct {
 	Repository           repository.Config `koanf:"repository"`
 	Redis                redis.Config      `koanf:"redis"`
 	Logger               logger.Config     `koanf:"logger"`
-	AuthConfig           auth.Config       `koanf:"auth"`
 	TotalShutdownTimeout time.Duration     `koanf:"total_shutdown_timeout"`
 }
