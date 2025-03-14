@@ -100,7 +100,7 @@ func (svc Service) ValidateToken(ctx context.Context, request ValidateTokenReque
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
 		// todo add metrics
-		svc.logger.Error(op, "casting Problem with JWT Claims")
+		svc.logger.Error(op, "error", "casting Problem with JWT Claims")
 		return ValidateTokenResponse{Valid: false}, fmt.Errorf("casting Problem with JWT Claims")
 	} else {
 		data := make(map[string]struct{})
