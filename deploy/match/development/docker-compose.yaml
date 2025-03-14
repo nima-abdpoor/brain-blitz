@@ -27,6 +27,12 @@ services:
       - bb-network
     environment:
       - KAFKA_BROKER=kafka:9092
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.match.rule=Host(`match.localhost`)"
+      - "traefik.http.services.match.loadbalancer.server.port=5000"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service/validate"
+      - "traefik.http.routers.match.middlewares=auth"
 
 networks:
   bb-network:
