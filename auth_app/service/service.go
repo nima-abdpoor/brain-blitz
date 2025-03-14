@@ -12,6 +12,7 @@ import (
 const (
 	expireTimeKey = "exp"
 	jwtIdKey      = "jti"
+	jwtIssuedAt   = "iat"
 )
 
 type Config struct {
@@ -41,6 +42,7 @@ func (svc Service) CreateAccessToken(ctx context.Context, request CreateAccessTo
 	claims := toJWTClaims(request.Data)
 	claims[expireTimeKey] = svc.config.AccessTokenExpireTime
 	claims[jwtIdKey] = uuid.NewString()
+	claims[jwtIssuedAt] = time.Now().Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedString, err := token.SignedString([]byte(svc.config.SecretKey))
 	if err != nil {
@@ -48,6 +50,7 @@ func (svc Service) CreateAccessToken(ctx context.Context, request CreateAccessTo
 	}
 	return CreateAccessTokenResponse{
 		AccessToken: signedString,
+		ExpireTime:  svc.config.AccessTokenExpireTime.Milliseconds(),
 	}, nil
 }
 
@@ -60,6 +63,7 @@ func (svc Service) CreateRefreshToken(ctx context.Context, request CreateRefresh
 	claims := toJWTClaims(request.Data)
 	claims[expireTimeKey] = svc.config.RefreshTokenExpireTime
 	claims[jwtIdKey] = uuid.NewString()
+	claims[jwtIssuedAt] = time.Now().Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedString, err := token.SignedString([]byte(svc.config.SecretKey))
 	if err != nil {
@@ -67,14 +71,20 @@ func (svc Service) CreateRefreshToken(ctx context.Context, request CreateRefresh
 	}
 	return CreateRefreshTokenResponse{
 		RefreshToken: signedString,
+		ExpireTime:   svc.config.RefreshTokenExpireTime.Milliseconds(),
 	}, nil
 }
 
 func (svc Service) ValidateToken(ctx context.Context, request ValidateTokenRequest) (ValidateTokenResponse, error) {
 	op := "service.ValidateToken"
 
+	err := ValidateValidateTokenRequest(request)
+	if err != nil {
+		return ValidateTokenResponse{}, err
+	}
+
 	token, err := jwt.Parse(request.Token, func(token *jwt.Token) (interface{}, error) {
-		return svc.config.SecretKey, nil
+		return []byte(svc.config.SecretKey), nil
 	})
 
 	if err != nil {

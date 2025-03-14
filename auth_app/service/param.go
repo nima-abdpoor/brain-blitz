@@ -6,6 +6,7 @@ type CreateRefreshTokenRequest struct {
 
 type CreateRefreshTokenResponse struct {
 	RefreshToken string `json:"refresh_token"`
+	ExpireTime   int64  `json:"expire_time"`
 }
 
 type CreateAccessTokenRequest struct {
@@ -14,6 +15,7 @@ type CreateAccessTokenRequest struct {
 
 type CreateAccessTokenResponse struct {
 	AccessToken string `json:"access_token"`
+	ExpireTime  int64  `json:"expire_time"`
 }
 
 type ValidateTokenRequest struct {
