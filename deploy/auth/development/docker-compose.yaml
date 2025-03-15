@@ -3,7 +3,7 @@ version: '3.9'
 services:
   auth-service:
     build:
-      context: /home/nima/GolandProjects/brain-blitz
+      context: ./../../..
       dockerfile: deploy/auth/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang

@@ -16,7 +16,7 @@ services:
       - bb-network
   match-service:
     build:
-      context: /home/nima/GolandProjects/brain-blitz
+      context: ./../../..
       dockerfile: deploy/match/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
