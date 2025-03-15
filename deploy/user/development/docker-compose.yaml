@@ -32,7 +32,8 @@ services:
 
   user-service:
     build:
-      context: .
+      context: ./../../..
+      dockerfile: deploy/user/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
@@ -42,9 +43,15 @@ services:
       - user-redis
     networks:
       - bb-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user.rule=Host(`localhost`) && PathPrefix(`/user-service`)"
+      - "traefik.http.middlewares.user-stripprefix.stripprefix.prefixes=/user-service"
+      - "traefik.http.services.user.loadbalancer.server.port=5001"
 
 networks:
   bb-network:
+    external: true
 
 volumes:
   user-db:
