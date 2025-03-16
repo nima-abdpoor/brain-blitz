@@ -98,7 +98,7 @@ func (repo UserRepository) GetUser(ctx context.Context, username string) (servic
 	return result, nil
 }
 
-func (repo UserRepository) GetUserById(ctx context.Context, id int64) (service.User, error) {
+func (repo UserRepository) GetUserById(ctx context.Context, id string) (service.User, error) {
 	query := "SELECT id, username, password, display_name, role, created_at, updated_at FROM users WHERE id = $1 LIMIT 1"
 
 	stmt, err := repo.PostgreSQL.PrepareContext(ctx, query)

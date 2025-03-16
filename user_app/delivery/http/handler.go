@@ -6,16 +6,19 @@ import (
 	"BrainBlitz.com/game/pkg/validator"
 	"BrainBlitz.com/game/user_app/service"
 	"github.com/labstack/echo/v4"
+	"log/slog"
 	"net/http"
 )
 
 type Handler struct {
 	Service service.Service
+	Logger  *slog.Logger
 }
 
-func NewHandler(userService service.Service) Handler {
+func NewHandler(userService service.Service, logger *slog.Logger) Handler {
 	return Handler{
 		Service: userService,
+		Logger:  logger,
 	}
 }
 
@@ -65,11 +68,12 @@ func (h Handler) Login(ctx echo.Context) error {
 
 func (h Handler) Profile(ctx echo.Context) error {
 	var req service.ProfileRequest
-
-	if err := ctx.Bind(&req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, errmsg.ErrorResponse{Message: errmsg.AccessDenied})
+	id := ctx.Request().Header.Get("X-User-ID")
+	if len(id) < 1 {
+		h.Logger.Info("Invalid X-User-ID", "id", id)
+		return ctx.JSON(http.StatusBadRequest, errmsg.MessageMissingXUserId)
 	}
-
+	req.ID = id
 	res, err := h.Service.Profile(ctx.Request().Context(), req)
 	if err != nil {
 		if vErr, ok := err.(validator.Error); ok {
