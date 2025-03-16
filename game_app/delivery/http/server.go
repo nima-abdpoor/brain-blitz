@@ -35,5 +35,5 @@ func (s Server) Stop(ctx context.Context) error {
 func (s Server) RegisterRoutes() {
 	v1 := s.HTTPServer.Router.Group("/api/v1")
 	v1.GET("/health-check", s.healthCheck)
-	v1.GET("/:id/process-game", s.Handler.ProcessGame)
+	v1.GET("/process-game", s.Handler.ProcessGame)
 }

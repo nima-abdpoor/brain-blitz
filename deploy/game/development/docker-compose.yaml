@@ -15,7 +15,8 @@ services:
       - bb-network
   game-service:
     build:
-      context: .
+      context: ./../../..
+      dockerfile: deploy/game/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
@@ -26,8 +27,18 @@ services:
       - bb-network
     environment:
       - KAFKA_BROKER=kafka:9092
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.game.rule=Host(`localhost`) && PathPrefix(`/game-service`)"
+      - "traefik.http.middlewares.game-stripprefix.stripprefix.prefixes=/game-service"
+      - "traefik.http.routers.game.middlewares=game-stripprefix,auth"
+      - "traefik.http.services.game.loadbalancer.server.port=5003"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
+
 networks:
   bb-network:
+    external: true
 
 volumes:
   game-mongodb:

@@ -14,6 +14,7 @@ var (
 // Define constant messages generally
 const (
 	MessageMissingXUserData  = "Missing X-User-Data header"
+	MessageMissingXUserId    = "Invalid user id"
 	MessageInvalidBase64     = "Invalid Base64 data"
 	MessageInvalidJsonFormat = "Invalid JSON format"
 	ServerError              = "Internal server error"

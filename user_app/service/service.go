@@ -19,7 +19,7 @@ import (
 type Repository interface {
 	InsertUser(ctx context.Context, user User) (int, error)
 	GetUser(ctx context.Context, email string) (User, error)
-	GetUserById(ctx context.Context, id int64) (User, error)
+	GetUserById(ctx context.Context, id string) (User, error)
 }
 
 type Service struct {

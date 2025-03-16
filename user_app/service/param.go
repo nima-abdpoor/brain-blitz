@@ -21,7 +21,7 @@ type SignUpResponse struct {
 }
 
 type ProfileRequest struct {
-	ID int64 `param:"id" binding:"required"`
+	ID string `param:"id" binding:"required"`
 }
 
 type ProfileResponse struct {

@@ -38,4 +38,5 @@ func (s Server) RegisterRoutes() {
 	v1.POST("/access-token", s.Handler.CreateAccessToken)
 	v1.POST("/refresh-token", s.Handler.CreateRefreshToken)
 	v1.POST("/validate-token", s.Handler.ValidateToken)
+	v1.GET("/validate-token", s.Handler.ValidateToken)
 }

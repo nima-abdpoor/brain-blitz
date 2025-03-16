@@ -98,12 +98,12 @@ func (repo UserRepository) GetUser(ctx context.Context, username string) (servic
 	return result, nil
 }
 
-func (repo UserRepository) GetUserById(ctx context.Context, id int64) (service.User, error) {
+func (repo UserRepository) GetUserById(ctx context.Context, id string) (service.User, error) {
 	query := "SELECT id, username, password, display_name, role, created_at, updated_at FROM users WHERE id = $1 LIMIT 1"
 
 	stmt, err := repo.PostgreSQL.PrepareContext(ctx, query)
 	if err != nil {
-		return service.User{}, fmt.Errorf("failed to prepare find result by ID: %d statement: %w", id, err)
+		return service.User{}, fmt.Errorf("failed to prepare find result by ID: %s statement: %w", id, err)
 	}
 	defer stmt.Close()
 
@@ -125,9 +125,9 @@ func (repo UserRepository) GetUserById(ctx context.Context, id int64) (service.U
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return result, fmt.Errorf("result with id %d not found", id)
+			return result, fmt.Errorf("result with id %s not found", id)
 		}
-		return result, fmt.Errorf("error retrieving user with id: %d, error: %v", id, err)
+		return result, fmt.Errorf("error retrieving user with id: %s, error: %v", id, err)
 	}
 	result.Role = entityAuth.MapToRoleEntity(role)
 	result.CreatedAt = uint64(createdAt.Time.UTC().UnixMilli())

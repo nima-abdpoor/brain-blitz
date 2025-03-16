@@ -15,6 +15,10 @@ services:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_ADVERTISED_HOST_NAME=kafka
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "9092" ]
+      interval: 10s
+      retries: 5
     networks:
       - bb-network
 
@@ -29,8 +33,15 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--accesslog.format=json"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./traefik_logs:/var/log/traefik"
+    networks:
+      - bb-network
 
 networks:
   bb-network:

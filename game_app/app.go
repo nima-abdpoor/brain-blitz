@@ -39,7 +39,7 @@ func Setup(config Config, db *mongo.Database, logger *slog.Logger) Application {
 	}
 
 	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
-	userHandler := http.NewHandler(gameService)
+	userHandler := http.NewHandler(gameService, logger)
 
 	return Application{
 		Repository:  gameRepository,
