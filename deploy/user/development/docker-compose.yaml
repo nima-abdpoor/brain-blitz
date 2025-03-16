@@ -45,9 +45,26 @@ services:
       - bb-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.user.rule=Host(`localhost`) && PathPrefix(`/user-service`)"
+
+      # Public Route (No Authentication)
+      - "traefik.http.routers.user-public.rule=Host(`localhost`) && PathPrefix(`/user-service/public/api/v1/`)"
+      - "traefik.http.routers.user-public.middlewares=user-stripprefix"
+      - "traefik.http.routers.user-public.service=user"
+
+      # Default Route (Requires Authentication)
+      - "traefik.http.routers.user.rule=Host(`localhost`) && PathPrefix(`/user-service/api/v1/`)"
+      - "traefik.http.routers.user.middlewares=user-stripprefix,auth"
+      - "traefik.http.routers.user.service=user"
+
+      # Common Middleware: Strip /user-service Prefix
       - "traefik.http.middlewares.user-stripprefix.stripprefix.prefixes=/user-service"
+
+      # Service Configuration
       - "traefik.http.services.user.loadbalancer.server.port=5001"
+
+      # Authentication Middleware
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
 
 networks:
   bb-network:

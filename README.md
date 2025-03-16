@@ -7,6 +7,7 @@
 ```
 ### step 2: Run each service:
 ```bash
+  docker-compose -f deploy/auth/development/docker-compose.yaml up -d
   docker-compose -f deploy/user/development/docker-compose.yaml up -d
   docker-compose -f deploy/match/development/docker-compose.yaml up -d
   docker-compose -f deploy/game/development/docker-compose.yaml up -d

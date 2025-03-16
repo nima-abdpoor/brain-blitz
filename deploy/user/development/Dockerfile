@@ -18,5 +18,6 @@ WORKDIR /home/app
 
 COPY --from=builder /home/app/user-service .
 COPY deploy/user/development/config.yaml ./deploy/user/development/config.yaml
+COPY user_app/repository/migrations/* ./user_app/repository/migrations/
 
 CMD ["./user-service"]
