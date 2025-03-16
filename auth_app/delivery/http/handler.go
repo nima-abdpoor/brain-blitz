@@ -98,7 +98,7 @@ func (h Handler) ValidateToken(ctx echo.Context) error {
 		if result, err := json.Marshal(response.AdditionalData); err == nil {
 			ctx.Response().Header().Set("X-Auth-Data", string(result))
 		} else {
-			h.logger.Error("marshal response error", err.Error())
+			h.logger.Error("marshal response error", "error", err.Error())
 		}
 	}
 
