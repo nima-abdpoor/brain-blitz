@@ -43,3 +43,6 @@ jobs:
           push: true
           tags: |
             ghcr.io/nima-abdpoor/${{ matrix.service }}:latest
+          build-args: |
+            GO_IMAGE_NAME=golang
+            GO_IMAGE_VERSION=1.23
