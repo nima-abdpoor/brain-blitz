@@ -11,6 +11,10 @@ grpc_server:
   port: 6001
   type: "tcp"
 
+grpc_client:
+  host: auth-service
+  port: 6000
+
 repository:
   cache_prefix: user
   cache_enabled: true

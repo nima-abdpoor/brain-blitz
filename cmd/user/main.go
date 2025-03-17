@@ -2,6 +2,7 @@ package main
 
 import (
 	cfgloader "BrainBlitz.com/game/pkg/cfg_loader"
+	rpcPkg "BrainBlitz.com/game/pkg/grpc"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/postgresql"
 	"BrainBlitz.com/game/pkg/postgresqlmigrator"
@@ -58,6 +59,8 @@ func main() {
 
 	defer postgresql.Close(postgresConn.DB)
 
-	app := user_app.Setup(cfg, postgresConn, userLogger)
+	rpcClientConnection, err := rpcPkg.NewClient(cfg.GrpcClient)
+
+	app := user_app.Setup(cfg, postgresConn, rpcClientConnection, userLogger)
 	app.Start()
 }
