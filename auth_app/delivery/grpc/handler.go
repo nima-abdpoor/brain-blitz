@@ -37,7 +37,7 @@ func (h Handler) GetAccessToken(ctx context.Context, req *pb.CreateAccessTokenRe
 	})
 
 	if err != nil {
-		h.Logger.Error(op, err)
+		h.Logger.Error(op, "error", err.Error())
 		return nil, err
 	}
 
@@ -63,7 +63,7 @@ func (h Handler) GetRefreshToken(ctx context.Context, req *pb.CreateRefreshToken
 	})
 
 	if err != nil {
-		h.Logger.Error(op, err)
+		h.Logger.Error(op, "error", err.Error())
 		return nil, err
 	}
 
