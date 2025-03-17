@@ -1,6 +1,7 @@
 package service
 
 import (
+	"BrainBlitz.com/game/adapter/auth"
 	authEntity "BrainBlitz.com/game/entity/auth"
 	"BrainBlitz.com/game/internal/core/entity/error_code"
 	"BrainBlitz.com/game/logger"
@@ -24,13 +25,15 @@ type Repository interface {
 
 type Service struct {
 	repository   Repository
+	grpcClient   *auth_adapter.Client
 	CacheManager cachemanager.CacheManager
 }
 
-func NewService(repository Repository, cm cachemanager.CacheManager) Service {
+func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient *auth_adapter.Client) Service {
 	return Service{
 		repository:   repository,
 		CacheManager: cm,
+		grpcClient:   grpcClient,
 	}
 }
 
@@ -106,12 +109,19 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 	} else {
 		result := utils2.CheckPasswordHash(request.Password, user.HashedPassword)
 		if result {
-			data := make(map[string]string)
-			data["user"] = strconv.FormatInt(user.ID, 10)
-			data["role"] = user.Role.String()
-			//todo it should call rpc to authService
-			//accessToken, err := s.authService.CreateAccessToken(data)
-			accessToken := "aaa"
+			data := make([]auth_adapter.CreateTokenRequest, 0)
+			data = append(data, auth_adapter.CreateTokenRequest{
+				Key:   "user",
+				Value: strconv.FormatInt(user.ID, 10),
+			})
+			data = append(data, auth_adapter.CreateTokenRequest{
+				Key:   "role",
+				Value: user.Role.String(),
+			})
+
+			accessTokenResponse, err := s.grpcClient.GetAccessToken(ctx, auth_adapter.CreateAccessTokenRequest{
+				Data: data,
+			})
 			if err != nil {
 				// todo add metrics
 				logger.Logger.Named(op).Error("error creating Access Token", zap.Error(err))
@@ -120,9 +130,9 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 					WithError(err).
 					WithMeta(map[string]interface{}{"data": data})
 			}
-			//todo it should call rpc to authService
-			//refreshToken, err := s.authService.CreateRefreshToken(data)
-			refreshToken := "rrr"
+			refreshTokenResponse, err := s.grpcClient.GetRefreshToken(ctx, auth_adapter.CreateRefreshTokenRequest{
+				Data: data,
+			})
 			if err != nil {
 				logger.Logger.Named(op).Error("error In Creating Refresh Token", zap.String("data", fmt.Sprint(data)), zap.Error(err))
 				return LoginResponse{}, richerror.New(op).
@@ -132,8 +142,8 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 			}
 			return LoginResponse{
 				ID:           strconv.FormatInt(user.ID, 10),
-				AccessToken:  accessToken,
-				RefreshToken: refreshToken,
+				AccessToken:  accessTokenResponse.AccessToken,
+				RefreshToken: refreshTokenResponse.RefreshToken,
 			}, nil
 		} else {
 			return LoginResponse{}, richerror.New(op).

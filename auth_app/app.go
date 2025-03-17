@@ -1,8 +1,10 @@
 package auth_app
 
 import (
+	"BrainBlitz.com/game/auth_app/delivery/grpc"
 	"BrainBlitz.com/game/auth_app/delivery/http"
 	"BrainBlitz.com/game/auth_app/service"
+	rpc "BrainBlitz.com/game/pkg/grpc"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"context"
 	"fmt"
@@ -14,21 +16,25 @@ import (
 )
 
 type Application struct {
-	Service     service.Service
-	AuthHandler http.Handler
-	HTTPServer  http.Server
-	Config      Config
-	Logger      *slog.Logger
+	Service         service.Service
+	AuthHandler     http.Handler
+	AuthGRPCHandler grpc.Handler
+	HTTPServer      http.Server
+	GRPCServer      grpc.Server
+	Config          Config
+	Logger          *slog.Logger
 }
 
 func Setup(config Config, logger *slog.Logger) Application {
 	authService := service.NewService(config.Service, logger)
 	handler := http.NewHandler(authService, logger)
+	grpcHandler := grpc.NewHandler(authService, logger)
 
 	return Application{
 		Service:     authService,
 		AuthHandler: handler,
 		HTTPServer:  http.New(httpserver.New(config.HTTPServer), handler, logger),
+		GRPCServer:  grpc.NewServer(rpc.New(config.GRPCServer), grpcHandler, logger),
 		Config:      config,
 		Logger:      logger,
 	}
@@ -60,8 +66,6 @@ func (app Application) Start() {
 
 func startServers(app Application, wg *sync.WaitGroup) {
 	wg.Add(1)
-
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
@@ -70,6 +74,17 @@ func startServers(app Application, wg *sync.WaitGroup) {
 			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), "error", err)
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.Logger.Info(fmt.Sprintf("GRPC server started on %d", app.Config.GRPCServer.Port))
+		if err := app.GRPCServer.Serve(); err != nil {
+			//todo add metrics
+			app.Logger.Error("error in serving GRPC server user_app listen", "error", err.Error())
+		}
+		app.Logger.Info(fmt.Sprintf("GRPC server stopped %d", app.Config.GRPCServer.Port))
 	}()
 }
 
@@ -80,6 +95,9 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 		var shutdownWg sync.WaitGroup
 		shutdownWg.Add(1)
 		go app.shutdownHTTPServer(&shutdownWg)
+
+		shutdownWg.Add(1)
+		go app.shutdownGRPCServer(&shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
@@ -100,4 +118,9 @@ func (app Application) shutdownHTTPServer(wg *sync.WaitGroup) {
 	if err := app.HTTPServer.Stop(httpShutdownCtx); err != nil {
 		app.Logger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))
 	}
+}
+
+func (app Application) shutdownGRPCServer(wg *sync.WaitGroup) {
+	defer wg.Done()
+	app.GRPCServer.Stop()
 }

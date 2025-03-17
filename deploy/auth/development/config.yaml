@@ -6,6 +6,10 @@ http_server:
     allow_origins: "*"
   shutdown_context_timeout: "10s"
 
+grpc_server:
+  port: 6000
+  type: "tcp"
+
 service:
   secret_key: SECRET_KEY
   access_token_expire_time: 24h
