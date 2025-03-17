@@ -2,12 +2,11 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
-	"BrainBlitz.com/game/logger"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
+	"fmt"
 	"github.com/thoas/go-funk"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"sort"
@@ -45,7 +44,7 @@ func (svc Service) AddToWaitingList(ctx context.Context, request AddToWaitingLis
 
 	err := svc.repository.AddToWaitingList(ctx, MapToCategory(request.Category), request.UserId)
 	if err != nil {
-		logger.Logger.Named(op).Error("add to waiting list failed", zap.String("request.UserId", request.UserId), zap.Error(err))
+		svc.logger.WithGroup(op).Error("add to waiting list failed", "request.UserId", request.UserId, "error", err.Error())
 		return AddToWaitingListResponse{},
 			richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err).WithMessage(errmsg.SomeThingWentWrong)
 	}
@@ -115,14 +114,14 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 			Category: readyUser.Category,
 			UserId:   readyUser.UserId[:r],
 		})
-		logger.Logger.Named(op).Info("readyUsers for category", zap.Any("readyUsers", readyUser))
+		svc.logger.WithGroup(op).Info("readyUsers for category", "readyUsers", readyUser)
 	}
 
 	// todo remove these users from waiting list
 	// todo rpc call to create a match for this users
 	if len(finalUsers) > 0 {
 		for _, user := range finalUsers {
-			logger.Logger.Named(op).Info("finalUsers for category", zap.Any("user", user))
+			svc.logger.WithGroup(op).Info("finalUsers for category", "user", fmt.Sprintf("%s", user))
 		}
 		svc.publishFinalUsers(finalUsers)
 	}
@@ -136,7 +135,7 @@ func (svc Service) publishFinalUsers(users []MatchedUsers) {
 	buff, err := proto.Marshal(MapFromEntityToProtoMessage(users))
 	if err != nil {
 		//todo update metrics
-		logger.Logger.Named(op).Error("error in marshaling match message", zap.Error(err))
+		svc.logger.WithGroup(op).Error("error in marshaling match message", "error", err.Error())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

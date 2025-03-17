@@ -3,8 +3,6 @@ package service
 import (
 	"BrainBlitz.com/game/adapter/auth"
 	authEntity "BrainBlitz.com/game/entity/auth"
-	"BrainBlitz.com/game/internal/core/entity/error_code"
-	"BrainBlitz.com/game/logger"
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
 	utils2 "BrainBlitz.com/game/pkg/common"
 	"BrainBlitz.com/game/pkg/email"
@@ -12,7 +10,7 @@ import (
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
-	"go.uber.org/zap"
+	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -27,13 +25,15 @@ type Service struct {
 	repository   Repository
 	grpcClient   *auth_adapter.Client
 	CacheManager cachemanager.CacheManager
+	Logger       *slog.Logger
 }
 
-func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient *auth_adapter.Client) Service {
+func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient *auth_adapter.Client, logger *slog.Logger) Service {
 	return Service{
 		repository:   repository,
 		CacheManager: cm,
 		grpcClient:   grpcClient,
+		Logger:       logger,
 	}
 }
 
@@ -57,7 +57,7 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 	if err != nil {
 		return SignUpResponse{}, richerror.New(op).
 			WithKind(richerror.KindUnexpected).
-			WithMeta(map[string]interface{}{"ERROR_CODE": error_code.BcryptErrorHashingPassword})
+			WithMeta(map[string]interface{}{"ERROR_CODE": "BcryptErrorHashingPassword"})
 	}
 
 	userDto := User{
@@ -78,7 +78,7 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 				WithMessage(errmsg.DuplicateUsername)
 		}
 		//todo add to metrics
-		logger.Logger.Named(op).Error("Error in inserting User", zap.String("userDto", fmt.Sprint(userDto)), zap.Error(err))
+		s.Logger.WithGroup(op).Error("Error in inserting User", "userDto", fmt.Sprint(userDto), "error", err.Error())
 		return SignUpResponse{}, richerror.New(op).
 			WithError(err).
 			WithKind(richerror.KindUnexpected)
@@ -104,7 +104,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 	}
 
 	if user, err := s.repository.GetUser(ctx, request.Email); err != nil {
-		logger.Logger.Named(op).Error("error In Getting User", zap.String("email", request.Email), zap.Error(err))
+		s.Logger.WithGroup(op).Error("error In Getting User", "email", request.Email, "error", err.Error())
 		return LoginResponse{}, err
 	} else {
 		result := utils2.CheckPasswordHash(request.Password, user.HashedPassword)
@@ -124,7 +124,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 			})
 			if err != nil {
 				// todo add metrics
-				logger.Logger.Named(op).Error("error creating Access Token", zap.Error(err))
+				s.Logger.WithGroup(op).Error("error creating Access Token", "error", err.Error())
 				return LoginResponse{}, richerror.New(op).
 					WithKind(richerror.KindUnexpected).
 					WithError(err).
@@ -134,7 +134,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 				Data: data,
 			})
 			if err != nil {
-				logger.Logger.Named(op).Error("error In Creating Refresh Token", zap.String("data", fmt.Sprint(data)), zap.Error(err))
+				s.Logger.WithGroup(op).Error("error creating Refresh Token", "data", fmt.Sprint(data), "error", err.Error())
 				return LoginResponse{}, richerror.New(op).
 					WithKind(richerror.KindUnexpected).
 					WithError(err).

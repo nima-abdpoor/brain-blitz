@@ -3,12 +3,10 @@ package service
 import (
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/contract/match/golang"
-	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"net"
@@ -50,13 +48,13 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 
 	connection, _, _, err := svc.webSocket.Upgrade(ctx.Request(), ctx.Response())
 	if err != nil {
-		logger.Logger.Named(op).Error("error in initializing websocket", zap.Error(err))
+		svc.logger.WithGroup(op).Error("error in initializing websocket", "error", err.Error())
 		return ProcessGameResponse{}, richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err)
 	}
 
 	id, err := strconv.ParseUint(request.Id, 10, 64)
 	if err != nil {
-		logger.Logger.Named(op).Error("error in converting id to Uint", zap.Error(err), zap.String("id", request.Id))
+		svc.logger.WithGroup(op).Error("error in converting id to Uint", "id", request.Id, "error", err.Error())
 		return ProcessGameResponse{}, err
 	}
 
@@ -108,7 +106,7 @@ func (svc Service) writeMessage(ids []uint64, msg string) error {
 		} else {
 			err := svc.webSocket.WriteServerData(connection, websocket.OpText, msg)
 			if err != nil {
-				logger.Logger.Named(op).Error("Error in writing message to client", zap.Error(err))
+				svc.logger.WithGroup(op).Error("Error in writing message to client", "error", err.Error())
 			}
 		}
 	}

@@ -39,7 +39,7 @@ func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientCo
 
 	userRepository := repository.NewUserRepository(config.Repository, postgresConn.DB, logger)
 	adapter := auth_adapter.New(Conn)
-	userService := service.NewService(userRepository, *cache, adapter)
+	userService := service.NewService(userRepository, *cache, adapter, logger)
 	userHandler := http.NewHandler(userService, logger)
 	grpcHandler := g.NewHandler(userService, logger)
 
