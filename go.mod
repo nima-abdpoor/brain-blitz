@@ -4,12 +4,12 @@ go 1.23
 
 require (
 	github.com/IBM/sarama v1.45.1
-	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gobwas/ws v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/google/uuid v1.4.0
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/knadh/koanf/providers/confmap v0.1.0
 	github.com/knadh/koanf/providers/env v0.1.0
@@ -21,7 +21,6 @@ require (
 	github.com/prometheus/client_golang v1.20.0
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/rubenv/sql-migrate v1.7.1
-	github.com/stretchr/testify v1.10.0
 	github.com/thoas/go-funk v0.9.3
 	go.mongodb.org/mongo-driver v1.14.0
 	go.uber.org/zap v1.26.0
@@ -48,7 +47,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
@@ -66,7 +64,6 @@ require (
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
