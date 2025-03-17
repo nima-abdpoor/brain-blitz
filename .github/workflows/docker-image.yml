@@ -35,6 +35,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GCR }}
 
+      - name: Debug File Paths
+        run: ls -l deploy/game/development/
       - name: Build and push Docker image for ${{ matrix.service }}
         uses: docker/build-push-action@v4
         with:
@@ -42,7 +44,7 @@ jobs:
           file: deploy/${{ matrix.service }}/development/Dockerfile
           push: true
           tags: |
-            ghcr.io/nima-abdpoor/${{ matrix.service }}:latest
+            ghcr.io/nima-abdpoor/brain-blitz/${{ matrix.service }}:latest
           build-args: |
             GO_IMAGE_NAME=golang
             GO_IMAGE_VERSION=1.23
