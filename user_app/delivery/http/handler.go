@@ -1,9 +1,8 @@
 package http
 
 import (
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
-	"BrainBlitz.com/game/pkg/httpmsg"
-	"BrainBlitz.com/game/pkg/validator"
 	"BrainBlitz.com/game/user_app/service"
 	"github.com/labstack/echo/v4"
 	"log/slog"
@@ -31,10 +30,7 @@ func (h Handler) SignUp(ctx echo.Context) error {
 
 	res, err := h.Service.SignUp(ctx.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return ctx.JSON(vErr.StatusCode(), vErr)
-		}
-		msg, code := httpmsg.Error(err)
+		msg, code := errApp.ToHTTPJson(err)
 		return ctx.JSON(code, msg)
 	}
 
@@ -52,10 +48,7 @@ func (h Handler) Login(ctx echo.Context) error {
 
 	res, err := h.Service.Login(ctx.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return ctx.JSON(vErr.StatusCode(), vErr)
-		}
-		msg, code := httpmsg.Error(err)
+		msg, code := errApp.ToHTTPJson(err)
 		return ctx.JSON(code, msg)
 	}
 
@@ -76,10 +69,7 @@ func (h Handler) Profile(ctx echo.Context) error {
 	req.ID = id
 	res, err := h.Service.Profile(ctx.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return ctx.JSON(vErr.StatusCode(), vErr)
-		}
-		msg, code := httpmsg.Error(err)
+		msg, code := errApp.ToHTTPJson(err)
 		return ctx.JSON(code, msg)
 	}
 

@@ -16,6 +16,16 @@ type AppError struct {
 	Data       map[string]string
 }
 
+type HTTPErrMessage struct {
+	Message string `json:"message"`
+	Error   string `json:"error"`
+}
+
+type GRPCErrMessage struct {
+	Message string `json:"message"`
+	Error   string `json:"error"`
+}
+
 func New(op, code, message string, httpStatus int, grpcStatus codes.Code, data map[string]string) *AppError {
 	return &AppError{
 		OP:         op,
@@ -33,7 +43,7 @@ func (e *AppError) Error() string {
 
 func Wrap(op string, err error, appErr *AppError, data map[string]string) *AppError {
 	if err == nil {
-		return nil
+		err = errors.New(appErr.Message)
 	}
 	return &AppError{
 		OP:         op,
@@ -53,6 +63,26 @@ func Normalize(err error) *AppError {
 		return appErr
 	}
 	return Wrap("NORMALIZED", err, ErrInternal, nil)
+}
+
+func ToHTTPJson(err error) (message interface{}, code int) {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		msg := HTTPErrMessage{
+			Message: appErr.Message,
+			Error:   appErr.Message,
+		}
+		return msg, appErr.HTTPStatus
+	}
+	return err.Error(), http.StatusInternalServerError
+}
+
+func ToGRPCJson(err error) (message string, code codes.Code) {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
+		return appErr.Message, appErr.GRPCStatus
+	}
+	return err.Error(), codes.Internal
 }
 
 var (

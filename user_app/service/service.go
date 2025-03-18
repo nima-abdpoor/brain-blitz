@@ -7,8 +7,8 @@ import (
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
 	utils2 "BrainBlitz.com/game/pkg/common"
 	"BrainBlitz.com/game/pkg/email"
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
-	errApp "BrainBlitz.com/game/pkg/errors"
 	"context"
 	"fmt"
 	"go.uber.org/zap"
@@ -75,7 +75,7 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 
 	_, err = s.repository.InsertUser(ctx, userDto)
 	if err != nil {
-		if strings.Contains(err.Error(), "Duplicate") {
+		if strings.Contains(err.Error(), "duplicate") {
 			return SignUpResponse{}, errApp.New(op, "DUPLICATE_USERNAME", errmsg.DuplicateUsername, http.StatusBadRequest, codes.InvalidArgument, map[string]string{
 				"message": "Error in inserting User",
 				"data":    fmt.Sprint(userDto),

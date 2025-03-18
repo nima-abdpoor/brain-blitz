@@ -53,7 +53,7 @@ func (repo UserRepository) InsertUser(ctx context.Context, user service.User) (i
 	err = stmt.QueryRowContext(ctx, user.Username, user.HashedPassword, user.DisplayName, user.Role.String(), currentTime, currentTime).Scan(&userId)
 	if err != nil {
 		if strings.Contains(err.Error(), ErrDuplicateKey) {
-			return 0, fmt.Errorf("customer with user name %s already exists: %w", user.Username, err)
+			return 0, fmt.Errorf("duplicate username: %v", err)
 		}
 		return 0, fmt.Errorf("failed to insert user %v (username: %s)", user.Username, err)
 	}
