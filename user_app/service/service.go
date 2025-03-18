@@ -3,16 +3,17 @@ package service
 import (
 	"BrainBlitz.com/game/adapter/auth"
 	authEntity "BrainBlitz.com/game/entity/auth"
-	"BrainBlitz.com/game/internal/core/entity/error_code"
 	"BrainBlitz.com/game/logger"
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
 	utils2 "BrainBlitz.com/game/pkg/common"
 	"BrainBlitz.com/game/pkg/email"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
-	"BrainBlitz.com/game/pkg/richerror"
+	errApp "BrainBlitz.com/game/pkg/errors"
 	"context"
 	"fmt"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"net/http"
 	"strconv"
 	"strings"
 )
@@ -40,24 +41,27 @@ func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient 
 func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpResponse, error) {
 	const op = "service.SignUp"
 	if !email.IsValid(request.Email) {
-		return SignUpResponse{}, richerror.New(op).
-			WithMeta(map[string]interface{}{"email": request.Email}).
-			WithMessage(errmsg.InvalidUserNameErrMsg)
+		return SignUpResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidInput, map[string]string{
+			"message": "InvalidUserNameErrMsg",
+			"data":    fmt.Sprint(request),
+		})
 	}
 
 	if len(request.Password) == 0 {
-		return SignUpResponse{}, richerror.New(op).
-			WithMessage(errmsg.InvalidPasswordErrMsg).
-			WithMeta(map[string]interface{}{"password": request.Password})
+		return SignUpResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidLOGIN, map[string]string{
+			"message": "InvalidPasswordErrMsg",
+			"data":    fmt.Sprint(request),
+		})
 	}
 
 	currentTime := utils2.GetUTCCurrentMillis()
 
 	hashPassword, err := utils2.HashPassword(request.Password)
 	if err != nil {
-		return SignUpResponse{}, richerror.New(op).
-			WithKind(richerror.KindUnexpected).
-			WithMeta(map[string]interface{}{"ERROR_CODE": error_code.BcryptErrorHashingPassword})
+		return SignUpResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+			"message": "BcryptErrorHashingPassword",
+			"data":    fmt.Sprint(request),
+		})
 	}
 
 	userDto := User{
@@ -72,16 +76,16 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 	_, err = s.repository.InsertUser(ctx, userDto)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate") {
-			return SignUpResponse{}, richerror.New(op).
-				WithError(err).
-				WithKind(richerror.KindInvalid).
-				WithMessage(errmsg.DuplicateUsername)
+			return SignUpResponse{}, errApp.New(op, "DUPLICATE_USERNAME", errmsg.DuplicateUsername, http.StatusBadRequest, codes.InvalidArgument, map[string]string{
+				"message": "Error in inserting User",
+				"data":    fmt.Sprint(userDto),
+			})
 		}
 		//todo add to metrics
-		logger.Logger.Named(op).Error("Error in inserting User", zap.String("userDto", fmt.Sprint(userDto)), zap.Error(err))
-		return SignUpResponse{}, richerror.New(op).
-			WithError(err).
-			WithKind(richerror.KindUnexpected)
+		return SignUpResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+			"message": "Error in inserting User",
+			"data":    fmt.Sprint(userDto),
+		})
 	}
 
 	return SignUpResponse{
@@ -92,15 +96,17 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse, error) {
 	const op = "service.Login"
 	if !email.IsValid(request.Email) {
-		return LoginResponse{}, richerror.New(op).
-			WithMeta(map[string]interface{}{"email": request.Email}).
-			WithMessage(errmsg.InvalidUserNameErrMsg)
+		return LoginResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidLOGIN, map[string]string{
+			"message": "invalid Email",
+			"data":    fmt.Sprint(request),
+		})
 	}
 
 	if len(request.Password) == 0 {
-		return LoginResponse{}, richerror.New(op).
-			WithMessage(errmsg.InvalidPasswordErrMsg).
-			WithMeta(map[string]interface{}{"password": request.Password})
+		return LoginResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidLOGIN, map[string]string{
+			"message": "invalid Password",
+			"data":    fmt.Sprint(request),
+		})
 	}
 
 	if user, err := s.repository.GetUser(ctx, request.Email); err != nil {
@@ -124,21 +130,19 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 			})
 			if err != nil {
 				// todo add metrics
-				logger.Logger.Named(op).Error("error creating Access Token", zap.Error(err))
-				return LoginResponse{}, richerror.New(op).
-					WithKind(richerror.KindUnexpected).
-					WithError(err).
-					WithMeta(map[string]interface{}{"data": data})
+				return LoginResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+					"message": "error creating Access Token",
+					"data":    fmt.Sprint(data),
+				})
 			}
 			refreshTokenResponse, err := s.grpcClient.GetRefreshToken(ctx, auth_adapter.CreateRefreshTokenRequest{
 				Data: data,
 			})
 			if err != nil {
-				logger.Logger.Named(op).Error("error In Creating Refresh Token", zap.String("data", fmt.Sprint(data)), zap.Error(err))
-				return LoginResponse{}, richerror.New(op).
-					WithKind(richerror.KindUnexpected).
-					WithError(err).
-					WithMeta(map[string]interface{}{"data": data})
+				return LoginResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+					"message": "error In Creating Refresh Token",
+					"data":    fmt.Sprint(data),
+				})
 			}
 			return LoginResponse{
 				ID:           strconv.FormatInt(user.ID, 10),
@@ -146,10 +150,9 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 				RefreshToken: refreshTokenResponse.RefreshToken,
 			}, nil
 		} else {
-			return LoginResponse{}, richerror.New(op).
-				WithKind(richerror.KindForbidden).
-				WithMessage(errmsg.InvalidPasswordErrMsg).
-				WithMeta(map[string]interface{}{"password": request})
+			return LoginResponse{}, errApp.Wrap(op, err, errApp.ErrInvalidLOGIN, map[string]string{
+				"request": fmt.Sprint(request),
+			})
 		}
 	}
 }
@@ -159,7 +162,7 @@ func (s Service) Profile(ctx context.Context, request ProfileRequest) (ProfileRe
 	if user, err := s.repository.GetUserById(ctx, request.ID); err != nil {
 		// todo check if logger needed
 		// todo add metrics
-		return ProfileResponse{}, richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
+		return ProfileResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, nil)
 	} else {
 		return ProfileResponse{
 			ID:          strconv.FormatInt(user.ID, 10),

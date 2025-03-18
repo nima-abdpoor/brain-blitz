@@ -18,7 +18,7 @@ type RichError struct {
 	meta         map[string]interface{}
 }
 
-func New(op Op) RichError {
+func New2(op Op) RichError {
 	return RichError{operation: op}
 }
 
