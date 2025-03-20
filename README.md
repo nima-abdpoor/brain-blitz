@@ -19,6 +19,9 @@ docker-compose -f deploy/game/development/docker-compose.yaml up -d
 docker-compose up -d
 ```
 
+## MongoDB Replication Setup
+For instructions on setting up MongoDB replication, read: [MongoDB Replication Guide](docs/mongodb-replication.md).
+
 ## 🤝 How to Contribute and Commit
 
 ### Protobuf

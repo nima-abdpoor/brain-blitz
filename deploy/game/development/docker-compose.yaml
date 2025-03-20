@@ -13,6 +13,18 @@ services:
       MONGO_INITDB_DATABASE: bb-game
     networks:
       - bb-network
+  mongo-exporter:
+    image: bitnami/mongodb-exporter:0.43.0
+    container_name: mongo-exporter
+    restart: always
+    command:
+      - "--mongodb.uri=mongodb://BB-game-mongo:27017"
+      - "--discovering-mode"
+      - "--collect-all"
+    ports:
+      - "9216:9216"
+    depends_on:
+      - game-mongodb
   game-service:
     build:
       context: ./../../..
