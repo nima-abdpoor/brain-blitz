@@ -2,8 +2,8 @@ package http
 
 import (
 	httpserver "BrainBlitz.com/game/pkg/http_server"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
-	"log/slog"
 )
 
 type Server struct {

@@ -2,14 +2,12 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
-	errmsg "BrainBlitz.com/game/pkg/err_msg"
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
-	"BrainBlitz.com/game/pkg/richerror"
 	"context"
+	"fmt"
 	"github.com/thoas/go-funk"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
-	"log/slog"
 	"sort"
 	"time"
 )
@@ -43,11 +41,20 @@ func NewService(repository Repository, config Config, broker broker.Broker, logg
 func (svc Service) AddToWaitingList(ctx context.Context, request AddToWaitingListRequest) (AddToWaitingListResponse, error) {
 	const op = "matchMakingHandler.AddToWaitingList"
 
-	err := svc.repository.AddToWaitingList(ctx, MapToCategory(request.Category), request.UserId)
+	err := ValidateAddToWaitingListRequest(request)
 	if err != nil {
-		logger.Logger.Named(op).Error("add to waiting list failed", zap.String("request.UserId", request.UserId), zap.Error(err))
-		return AddToWaitingListResponse{},
-			richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err).WithMessage(errmsg.SomeThingWentWrong)
+		return AddToWaitingListResponse{}, errApp.Wrap(op, err, errApp.ErrInvalidInput, map[string]string{
+			"message": " failed to add into waiting list",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
+	}
+
+	err = svc.repository.AddToWaitingList(ctx, MapToCategory(request.Category), request.UserId)
+	if err != nil {
+		return AddToWaitingListResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+			"message": " failed to add into waiting list",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 	resp := AddToWaitingListResponse{
 		Timeout: svc.config.WaitingTimeout,
@@ -79,7 +86,10 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 			//}
 		}
 		if err != nil {
-			rErr = richerror.New(op).WithError(err)
+			rErr = errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+				"message": " failed to GetWaitingListByCategory",
+				"data":    fmt.Sprint(category),
+			}, svc.logger)
 		}
 	}
 	sort.Slice(waitingMembers, func(i, j int) bool {
@@ -115,15 +125,13 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 			Category: readyUser.Category,
 			UserId:   readyUser.UserId[:r],
 		})
-		logger.Logger.Named(op).Info("readyUsers for category", zap.Any("readyUsers", readyUser))
+		svc.logger.Info(op, "message", "readyUsers for category", "readyUsers", fmt.Sprintf("%v", readyUser))
 	}
 
 	// todo remove these users from waiting list
 	// todo rpc call to create a match for this users
 	if len(finalUsers) > 0 {
-		for _, user := range finalUsers {
-			logger.Logger.Named(op).Info("finalUsers for category", zap.Any("user", user))
-		}
+		svc.logger.Info(op, "message", "readyUsers for category", "finalUsers for category", fmt.Sprintf("%v", finalUsers))
 		svc.publishFinalUsers(finalUsers)
 	}
 	return MatchWaitedUsersResponse{}, rErr
@@ -136,7 +144,7 @@ func (svc Service) publishFinalUsers(users []MatchedUsers) {
 	buff, err := proto.Marshal(MapFromEntityToProtoMessage(users))
 	if err != nil {
 		//todo update metrics
-		logger.Logger.Named(op).Error("error in marshaling match message", zap.Error(err))
+		svc.logger.Error(op, "message", "error in marshaling match message", err.Error())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

@@ -3,9 +3,9 @@ package repository
 import (
 	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/match_app/service"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 )
