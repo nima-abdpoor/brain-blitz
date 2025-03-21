@@ -2,10 +2,11 @@ package repository
 
 import (
 	"BrainBlitz.com/game/game_app/service"
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
-	"BrainBlitz.com/game/pkg/richerror"
 	"context"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -35,7 +36,10 @@ func (m GameRepository) CreateMatch(ctx context.Context, game service.Game) (str
 	}
 	coll := m.MongoDB.DB.Collection("game")
 	if result, err := coll.InsertOne(ctx, doc); err != nil {
-		return "", richerror.New(op).WithError(err).WithKind(richerror.KindUnexpected)
+		return "", errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+			"message": "Can not create game",
+			"data":    fmt.Sprint(game),
+		}, m.Logger)
 	} else {
 		//todo check the possibility of conversion.
 		return result.InsertedID.(primitive.ObjectID).Hex(), nil

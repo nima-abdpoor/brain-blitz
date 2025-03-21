@@ -2,8 +2,8 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
-	"log/slog"
 	"sync"
 )
 
