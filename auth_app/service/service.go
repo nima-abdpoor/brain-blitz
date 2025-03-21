@@ -43,9 +43,13 @@ func NewService(config Config, logger logger.SlogAdapter) Service {
 }
 
 func (svc Service) CreateAccessToken(ctx context.Context, request CreateAccessTokenRequest) (CreateAccessTokenResponse, error) {
+	op := "service.CreateAccessToken"
 	err := ValidateCreateAccessTokenRequest(request)
 	if err != nil {
-		return CreateAccessTokenResponse{}, err
+		return CreateAccessTokenResponse{}, errApp.Wrap(op, err, errApp.ErrInvalidInput, map[string]string{
+			"message": "Invalid body",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 
 	claims := toJWTClaims(request.Data)
@@ -55,7 +59,10 @@ func (svc Service) CreateAccessToken(ctx context.Context, request CreateAccessTo
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedString, err := token.SignedString([]byte(svc.config.SecretKey))
 	if err != nil {
-		return CreateAccessTokenResponse{}, err
+		return CreateAccessTokenResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+			"message": "error signing token",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 	return CreateAccessTokenResponse{
 		AccessToken: signedString,
@@ -64,9 +71,13 @@ func (svc Service) CreateAccessToken(ctx context.Context, request CreateAccessTo
 }
 
 func (svc Service) CreateRefreshToken(ctx context.Context, request CreateRefreshTokenRequest) (CreateRefreshTokenResponse, error) {
+	op := "service.CreateRefreshToken"
 	err := ValidateCreateRefreshTokenRequest(request)
 	if err != nil {
-		return CreateRefreshTokenResponse{}, err
+		return CreateRefreshTokenResponse{}, errApp.Wrap(op, err, errApp.ErrInvalidInput, map[string]string{
+			"message": "Invalid body",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 
 	claims := toJWTClaims(request.Data)
@@ -76,7 +87,10 @@ func (svc Service) CreateRefreshToken(ctx context.Context, request CreateRefresh
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedString, err := token.SignedString([]byte(svc.config.SecretKey))
 	if err != nil {
-		return CreateRefreshTokenResponse{}, err
+		return CreateRefreshTokenResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+			"message": "error signing token",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 	return CreateRefreshTokenResponse{
 		RefreshToken: signedString,
@@ -89,7 +103,10 @@ func (svc Service) ValidateToken(ctx context.Context, request ValidateTokenReque
 
 	err := ValidateValidateTokenRequest(request)
 	if err != nil {
-		return ValidateTokenResponse{}, err
+		return ValidateTokenResponse{}, errApp.Wrap(op, err, errApp.ErrInvalidInput, map[string]string{
+			"message": "Invalid body",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 
 	token, err := jwt.Parse(request.Token, func(token *jwt.Token) (interface{}, error) {

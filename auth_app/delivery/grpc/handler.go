@@ -3,8 +3,10 @@ package grpc
 import (
 	"BrainBlitz.com/game/auth_app/service"
 	pb "BrainBlitz.com/game/contract/auth/golang"
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
+	"google.golang.org/grpc/status"
 )
 
 type Handler struct {
@@ -37,8 +39,8 @@ func (h Handler) GetAccessToken(ctx context.Context, req *pb.CreateAccessTokenRe
 	})
 
 	if err != nil {
-		h.Logger.Error(op, "error", err.Error())
-		return nil, err
+		msg, code := errApp.ToGRPCJson(err)
+		return nil, status.Errorf(code, "%s", msg)
 	}
 
 	return &pb.CreateAccessTokenResponse{
@@ -63,8 +65,8 @@ func (h Handler) GetRefreshToken(ctx context.Context, req *pb.CreateRefreshToken
 	})
 
 	if err != nil {
-		h.Logger.Error(op, "error", err.Error())
-		return nil, err
+		msg, code := errApp.ToGRPCJson(err)
+		return nil, status.Errorf(code, "%s", msg)
 	}
 
 	return &pb.CreateRefreshTokenResponse{
