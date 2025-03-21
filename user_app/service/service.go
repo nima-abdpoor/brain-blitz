@@ -111,7 +111,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 		if result {
 			data := make([]auth_adapter.CreateTokenRequest, 0)
 			data = append(data, auth_adapter.CreateTokenRequest{
-				Key:   "user",
+				Key:   "id",
 				Value: strconv.FormatInt(user.ID, 10),
 			})
 			data = append(data, auth_adapter.CreateTokenRequest{
