@@ -17,11 +17,11 @@ type Config struct {
 
 type MatchMakingRepository struct {
 	Config Config
-	Logger *slog.Logger
+	Logger logger.SlogAdapter
 	db     *redis.Adapter
 }
 
-func NewRepository(config Config, logger *slog.Logger, redis *redis.Adapter) service.Repository {
+func NewRepository(config Config, logger logger.SlogAdapter, redis *redis.Adapter) service.Repository {
 	return MatchMakingRepository{
 		Config: config,
 		Logger: logger,

@@ -3,7 +3,7 @@ package service
 import (
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/contract/match/golang"
-	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
@@ -32,10 +32,10 @@ type Service struct {
 	repository  Repository
 	webSocket   websocket.WebSocket
 	connections IdToConnection
-	logger      *slog.Logger
+	logger      logger.SlogAdapter
 }
 
-func NewService(config Config, repo Repository, ws websocket.WebSocket, logger *slog.Logger) Service {
+func NewService(config Config, repo Repository, ws websocket.WebSocket, logger logger.SlogAdapter) Service {
 	return Service{
 		config:      config,
 		repository:  repo,

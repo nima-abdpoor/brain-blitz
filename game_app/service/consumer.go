@@ -10,10 +10,10 @@ import (
 type Consumer struct {
 	broker  broker.Broker
 	service Service
-	logger  *slog.Logger
+	logger  logger.SlogAdapter
 }
 
-func NewConsumer(broker broker.Broker, service Service, logger *slog.Logger) Consumer {
+func NewConsumer(broker broker.Broker, service Service, logger logger.SlogAdapter) Consumer {
 	return Consumer{
 		broker:  broker,
 		service: service,

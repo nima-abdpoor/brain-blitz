@@ -3,7 +3,7 @@ package presence
 import (
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/infra/repository/redis"
-	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"

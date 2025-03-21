@@ -2,8 +2,8 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
-	"BrainBlitz.com/game/logger"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"github.com/thoas/go-funk"
@@ -28,10 +28,10 @@ type Service struct {
 	config     Config
 	repository Repository
 	broker     broker.Broker
-	logger     *slog.Logger
+	logger     logger.SlogAdapter
 }
 
-func NewService(repository Repository, config Config, broker broker.Broker, logger *slog.Logger) Service {
+func NewService(repository Repository, config Config, broker broker.Broker, logger logger.SlogAdapter) Service {
 	return Service{
 		config:     config,
 		repository: repository,

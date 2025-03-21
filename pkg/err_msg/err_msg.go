@@ -26,7 +26,7 @@ const (
 	InvalidUserNameErrMsg           = "invalid username"
 	InvalidUserNameOrPasswordErrMsg = "invalid username or password"
 	InvalidBody                     = "Invalid request body"
-	DuplicateUsername               = "username is duplicate"
+	DuplicateUsername               = "username already exists"
 	InvalidAuthentication           = "authentication is required"
 	AccessDenied                    = "access denied"
 	PermissionRequired              = "permission required"

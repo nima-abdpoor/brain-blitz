@@ -3,7 +3,7 @@ package middleware
 import (
 	"BrainBlitz.com/game/internal/core/model/request"
 	"BrainBlitz.com/game/internal/core/port/service"
-	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/pkg/logger"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 )

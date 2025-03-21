@@ -3,17 +3,17 @@ package grpc
 import (
 	"BrainBlitz.com/game/auth_app/service"
 	pb "BrainBlitz.com/game/contract/auth/golang"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
-	"log/slog"
 )
 
 type Handler struct {
 	pb.UnimplementedTokenServiceServer
 	AuthService service.Service
-	Logger      *slog.Logger
+	Logger      logger.SlogAdapter
 }
 
-func NewHandler(srv service.Service, logger *slog.Logger) Handler {
+func NewHandler(srv service.Service, logger logger.SlogAdapter) Handler {
 	return Handler{
 		UnimplementedTokenServiceServer: pb.UnimplementedTokenServiceServer{},
 		AuthService:                     srv,

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/pkg/logger"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/env"

@@ -1,7 +1,7 @@
 package http
 
 import (
-	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"

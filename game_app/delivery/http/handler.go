@@ -12,10 +12,10 @@ import (
 
 type Handler struct {
 	service service.Service
-	logger  *slog.Logger
+	logger  logger.SlogAdapter
 }
 
-func NewHandler(service service.Service, logger *slog.Logger) Handler {
+func NewHandler(service service.Service, logger logger.SlogAdapter) Handler {
 	return Handler{
 		service: service,
 		logger:  logger,

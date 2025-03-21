@@ -24,10 +24,10 @@ type Application struct {
 	Scheduler   service.Scheduler
 	UserHandler http.Handler
 	HTTPServer  http.Server
-	Logger      *slog.Logger
+	Logger      logger.SlogAdapter
 }
 
-func Setup(config Config, logger *slog.Logger) Application {
+func Setup(config Config, logger logger.SlogAdapter) Application {
 	redisAdapter := redis.New(config.Redis)
 	repo := repository.NewRepository(config.Repository, logger, redisAdapter)
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)

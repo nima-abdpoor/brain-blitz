@@ -1,11 +1,12 @@
 package service
 
 import (
+	errApp "BrainBlitz.com/game/pkg/err_app"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"log/slog"
 	"time"
 )
 
@@ -31,10 +32,10 @@ type Config struct {
 
 type Service struct {
 	config Config
-	logger *slog.Logger
+	logger logger.SlogAdapter
 }
 
-func NewService(config Config, logger *slog.Logger) Service {
+func NewService(config Config, logger logger.SlogAdapter) Service {
 	return Service{
 		config: config,
 		logger: logger,
@@ -96,12 +97,17 @@ func (svc Service) ValidateToken(ctx context.Context, request ValidateTokenReque
 	})
 
 	if err != nil {
-		return ValidateTokenResponse{Valid: false}, err
+		return ValidateTokenResponse{Valid: false}, errApp.Wrap(op, err, errApp.ErrUnauthorized, map[string]string{
+			"message": "error in parsing jwt token",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
 		// todo add metrics
-		svc.logger.Error(op, "error", "casting Problem with JWT Claims")
-		return ValidateTokenResponse{Valid: false}, fmt.Errorf("casting Problem with JWT Claims")
+		return ValidateTokenResponse{Valid: false}, errApp.Wrap(op, err, errApp.ErrUnauthorized, map[string]string{
+			"message": "casting Problem with JWT Claims",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	} else {
 		data := make(map[string]struct{})
 		for _, str := range additionalData {

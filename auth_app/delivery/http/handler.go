@@ -2,21 +2,22 @@ package http
 
 import (
 	"BrainBlitz.com/game/auth_app/service"
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/httpmsg"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/validator"
 	"encoding/json"
 	"github.com/labstack/echo/v4"
-	"log/slog"
 	"net/http"
 )
 
 type Handler struct {
 	service service.Service
-	logger  *slog.Logger
+	logger  logger.SlogAdapter
 }
 
-func NewHandler(service service.Service, logger *slog.Logger) Handler {
+func NewHandler(service service.Service, logger logger.SlogAdapter) Handler {
 	return Handler{
 		service: service,
 		logger:  logger,
@@ -79,11 +80,8 @@ func (h Handler) ValidateToken(ctx echo.Context) error {
 
 	response, err := h.service.ValidateToken(ctx.Request().Context(), request)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return ctx.JSON(vErr.StatusCode(), vErr)
-		}
-		msg, _ := httpmsg.Error(err)
-		return ctx.JSON(http.StatusUnauthorized, msg)
+		msg, code := errApp.ToHTTPJson(err)
+		return ctx.JSON(code, msg)
 	}
 
 	if response.Valid {

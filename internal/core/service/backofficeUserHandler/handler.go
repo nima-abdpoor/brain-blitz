@@ -5,7 +5,7 @@ import (
 	"BrainBlitz.com/game/internal/core/model/response"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
-	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"go.uber.org/zap"
 	"strconv"

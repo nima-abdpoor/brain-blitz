@@ -2,22 +2,22 @@ package repository
 
 import (
 	"BrainBlitz.com/game/game_app/service"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"log/slog"
 )
 
 type Config struct{}
 
 type GameRepository struct {
 	Config  Config
-	Logger  *slog.Logger
+	Logger  logger.SlogAdapter
 	MongoDB *mongo.Database
 }
 
-func NewGameRepository(config Config, logger *slog.Logger, db *mongo.Database) service.Repository {
+func NewGameRepository(config Config, logger logger.SlogAdapter, db *mongo.Database) service.Repository {
 	return GameRepository{
 		Config:  config,
 		Logger:  logger,

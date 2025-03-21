@@ -3,12 +3,12 @@ package repository
 import (
 	"BrainBlitz.com/game/adapter/redis"
 	entityAuth "BrainBlitz.com/game/entity/auth"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/user_app/service"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 )
@@ -21,12 +21,12 @@ type Config struct{}
 
 type UserRepository struct {
 	Config     Config
-	Logger     *slog.Logger
+	Logger     logger.SlogAdapter
 	PostgreSQL *sql.DB
 	Cache      *redis.Adapter
 }
 
-func NewUserRepository(config Config, db *sql.DB, logger *slog.Logger) UserRepository {
+func NewUserRepository(config Config, db *sql.DB, logger logger.SlogAdapter) UserRepository {
 	return UserRepository{
 		Config:     config,
 		Logger:     logger,

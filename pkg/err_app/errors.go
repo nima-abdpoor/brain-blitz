@@ -7,6 +7,10 @@ import (
 	"net/http"
 )
 
+type Logger interface {
+	Error(msg string, fields ...interface{})
+}
+
 type AppError struct {
 	OP         string
 	Code       string `json:"code"`
@@ -26,8 +30,8 @@ type GRPCErrMessage struct {
 	Error   string `json:"error"`
 }
 
-func New(op, code, message string, httpStatus int, grpcStatus codes.Code, data map[string]string) *AppError {
-	return &AppError{
+func New(op, code, message string, httpStatus int, grpcStatus codes.Code, data map[string]string, logger Logger) *AppError {
+	appErr := &AppError{
 		OP:         op,
 		Code:       code,
 		Message:    message,
@@ -35,26 +39,51 @@ func New(op, code, message string, httpStatus int, grpcStatus codes.Code, data m
 		GRPCStatus: grpcStatus,
 		Data:       data,
 	}
+
+	if logger != nil {
+		logger.Error("New AppError created",
+			"operation", op,
+			"code", code,
+			"message", message,
+			"httpStatus", httpStatus,
+			"grpcStatus", grpcStatus.String(),
+			"data", data)
+	}
+
+	return appErr
 }
 
 func (e *AppError) Error() string {
 	return e.Message
 }
 
-func Wrap(op string, err error, appErr *AppError, data map[string]string) *AppError {
+func Wrap(op string, err error, appErr *AppError, data map[string]string, logger Logger) *AppError {
 	if err == nil {
 		err = errors.New(appErr.Message)
 	}
-	return &AppError{
+
+	message := appErr.Message
+	if errors.Is(appErr, ErrInternal) {
+		message = "Something went wrong"
+	}
+	wrappedErr := &AppError{
 		OP:         op,
 		Code:       appErr.Code,
-		Message:    err.Error(),
+		Message:    message,
 		HTTPStatus: appErr.HTTPStatus,
 		GRPCStatus: appErr.GRPCStatus,
 	}
+	if logger != nil {
+		logger.Error("AppError wrapped",
+			"operation", op,
+			"code", appErr.Code,
+			"message", err.Error(),
+			"data", data)
+	}
+	return wrappedErr
 }
 
-func Normalize(err error) *AppError {
+func Normalize(err error, logger Logger) *AppError {
 	if err == nil {
 		return nil
 	}
@@ -62,7 +91,7 @@ func Normalize(err error) *AppError {
 	if errors.As(err, &appErr) {
 		return appErr
 	}
-	return Wrap("NORMALIZED", err, ErrInternal, nil)
+	return Wrap("NORMALIZED", err, ErrInternal, nil, logger)
 }
 
 func ToHTTPJson(err error) (message interface{}, code int) {
@@ -86,9 +115,9 @@ func ToGRPCJson(err error) (message string, code codes.Code) {
 }
 
 var (
-	ErrNotFound     = New("default", "NOT_FOUND", "Resource not found", http.StatusNotFound, codes.NotFound, nil)
-	ErrInternal     = New("default", "INTERNAL_ERROR", "Internal server error", http.StatusInternalServerError, codes.Internal, nil)
-	ErrInvalidInput = New("default", "INVALID_INPUT", "Invalid input", http.StatusBadRequest, codes.InvalidArgument, nil)
-	ErrUnauthorized = New("default", "UNAUTHORIZED", "Unauthorized access", http.StatusUnauthorized, codes.Unauthenticated, nil)
-	ErrInvalidLOGIN = New("default", "INVALID_LOGIN", errmsg.InvalidUserNameOrPasswordErrMsg, http.StatusForbidden, codes.PermissionDenied, nil)
+	ErrNotFound     = New("default", "NOT_FOUND", "Resource not found", http.StatusNotFound, codes.NotFound, nil, nil)
+	ErrInternal     = New("default", "INTERNAL_ERROR", "Internal server error", http.StatusInternalServerError, codes.Internal, nil, nil)
+	ErrInvalidInput = New("default", "INVALID_INPUT", "Invalid input", http.StatusBadRequest, codes.InvalidArgument, nil, nil)
+	ErrUnauthorized = New("default", "UNAUTHORIZED", "Invalid Token", http.StatusUnauthorized, codes.Unauthenticated, nil, nil)
+	ErrInvalidLOGIN = New("default", "INVALID_LOGIN", errmsg.InvalidUserNameOrPasswordErrMsg, http.StatusForbidden, codes.PermissionDenied, nil, nil)
 )

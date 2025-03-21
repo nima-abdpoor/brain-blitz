@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"BrainBlitz.com/game/logger"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"

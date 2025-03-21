@@ -1,8 +1,8 @@
 package service
 
 import (
-	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/metrics"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"github.com/go-co-op/gocron"
 	"go.uber.org/zap"
