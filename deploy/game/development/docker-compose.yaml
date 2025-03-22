@@ -1,30 +1,30 @@
 version: '3.9'
 
 services:
-  game-mongo1:
+  BB-game-mongo1:
     image: mongo:8.0
-    container_name: game-mongo1
+    container_name: BB-game-mongo1
     ports:
       - "27018:27017"
     command: [ "mongod", "--replSet", "rs0" ]
     volumes:
-      - game-mongodb-1:/data/db
+      - BB-game-mongo1:/data/db
     networks:
       - bb-network
-  game-mongo2:
+  BB-game-mongo2:
     image: mongo:8.0
-    container_name: game-mongo2
+    container_name: BB-game-mongo2
     command: [ "mongod", "--replSet", "rs0" ]
     volumes:
-      - game-mongodb-2:/data/db
+      - BB-game-mongo2:/data/db
     networks:
       - bb-network
-  game-mongo3:
+  BB-game-mongo3:
     image: mongo:8.0
-    container_name: game-mongo3
+    container_name: BB-game-mongo3
     command: [ "mongod", "--replSet", "rs0" ]
     volumes:
-      - game-mongodb-3:/data/db
+      - BB-game-mongo3:/data/db
     networks:
       - bb-network
   mongo-exporter:
@@ -32,17 +32,37 @@ services:
     container_name: mongo-exporter
     restart: always
     command:
-      - "--mongodb.uri=mongodb://game-mongo3:27017"
+      - "--mongodb.uri=mongodb://BB-game-mongo1:27017"
       - "--discovering-mode"
       - "--collect-all"
     ports:
       - "9216:9216"
     depends_on:
-      - game-mongo1
-      - game-mongo2
-      - game-mongo3
+      - BB-game-mongo1
+      - BB-game-mongo2
+      - BB-game-mongo3
     networks:
       - bb-network
+  mongo-init:
+    image: mongo:8.0
+    container_name: mongo-init
+    depends_on:
+      - BB-game-mongo1
+      - BB-game-mongo2
+      - BB-game-mongo3
+    networks:
+      - bb-network
+    command: >
+      mongosh --host BB-game-mongo1 --eval '
+      sleep(5000);
+      rs.initiate({
+        _id: "rs0",
+        members: [
+          { _id: 0, host: "BB-game-mongo1:27017" },
+          { _id: 1, host: "BB-game-mongo2:27017" },
+          { _id: 2, host: "BB-game-mongo3:27017" }
+        ]
+      })'
   game-service:
     build:
       context: ./../../..
@@ -52,14 +72,14 @@ services:
         GO_IMAGE_VERSION: 1.23
     container_name: game-service
     depends_on:
-      - game-mongo1
-      - game-mongo2
-      - game-mongo3
+      - BB-game-mongo1
+      - BB-game-mongo2
+      - BB-game-mongo3
     networks:
       - bb-network
     environment:
       - KAFKA_BROKER=kafka:9092
-      - MONGO_URI=mongodb://game-mongo1:27017,game-mongo2:27017,game-mongo3:27017/bb-game?replicaSet=rs0
+      - MONGO_URI=mongodb://BB-game-mongo1:27017,BB-game-mongo2:27017,BB-game-mongo3:27017/bb-game?replicaSet=rs0
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.game.rule=Host(`localhost`) && PathPrefix(`/game-service`)"
@@ -74,6 +94,6 @@ networks:
     external: true
 
 volumes:
-  game-mongodb-1:
-  game-mongodb-2:
-  game-mongodb-3:
+  BB-game-mongo1:
+  BB-game-mongo2:
+  BB-game-mongo3:
