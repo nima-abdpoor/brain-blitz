@@ -7,9 +7,9 @@ import (
 	"BrainBlitz.com/game/match_app/repository"
 	"BrainBlitz.com/game/match_app/service"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -24,15 +24,15 @@ type Application struct {
 	Scheduler   service.Scheduler
 	UserHandler http.Handler
 	HTTPServer  http.Server
-	Logger      *slog.Logger
+	Logger      logger.SlogAdapter
 }
 
-func Setup(config Config, logger *slog.Logger) Application {
+func Setup(config Config, logger logger.SlogAdapter) Application {
 	redisAdapter := redis.New(config.Redis)
 	repo := repository.NewRepository(config.Repository, logger, redisAdapter)
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
 	svc := service.NewService(repo, config.Service, kafkaBroker, logger)
-	scheduler := service.NewScheduler(svc, config.Scheduler)
+	scheduler := service.NewScheduler(svc, config.Scheduler, logger)
 	handler := http.NewHandler(svc)
 	if err != nil {
 		logger.Error("Error creating kafka broker", "error", err)

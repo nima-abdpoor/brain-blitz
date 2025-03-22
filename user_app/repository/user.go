@@ -3,12 +3,12 @@ package repository
 import (
 	"BrainBlitz.com/game/adapter/redis"
 	entityAuth "BrainBlitz.com/game/entity/auth"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/user_app/service"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 )
@@ -21,12 +21,12 @@ type Config struct{}
 
 type UserRepository struct {
 	Config     Config
-	Logger     *slog.Logger
+	Logger     logger.SlogAdapter
 	PostgreSQL *sql.DB
 	Cache      *redis.Adapter
 }
 
-func NewUserRepository(config Config, db *sql.DB, logger *slog.Logger) UserRepository {
+func NewUserRepository(config Config, db *sql.DB, logger logger.SlogAdapter) UserRepository {
 	return UserRepository{
 		Config:     config,
 		Logger:     logger,
@@ -53,7 +53,7 @@ func (repo UserRepository) InsertUser(ctx context.Context, user service.User) (i
 	err = stmt.QueryRowContext(ctx, user.Username, user.HashedPassword, user.DisplayName, user.Role.String(), currentTime, currentTime).Scan(&userId)
 	if err != nil {
 		if strings.Contains(err.Error(), ErrDuplicateKey) {
-			return 0, fmt.Errorf("customer with user name %s already exists: %w", user.Username, err)
+			return 0, fmt.Errorf("duplicate username: %v", err)
 		}
 		return 0, fmt.Errorf("failed to insert user %v (username: %s)", user.Username, err)
 	}

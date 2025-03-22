@@ -1,11 +1,10 @@
 package service
 
 import (
-	"BrainBlitz.com/game/logger"
 	"BrainBlitz.com/game/metrics"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"github.com/go-co-op/gocron"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -18,28 +17,29 @@ type Scheduler struct {
 	scheduler *gocron.Scheduler
 	service   Service
 	config    SchedulerConfig
+	logger    logger.SlogAdapter
 }
 
-func NewScheduler(matchSvc Service, conf SchedulerConfig) Scheduler {
+func NewScheduler(matchSvc Service, conf SchedulerConfig, logger logger.SlogAdapter) Scheduler {
 	return Scheduler{
 		scheduler: gocron.NewScheduler(time.UTC),
 		service:   matchSvc,
 		config:    conf,
+		logger:    logger,
 	}
 }
 
 func (s Scheduler) Start(done <-chan bool) {
 	const op = "scheduler.Start"
-	logger.Logger.Named(op).Info("starting scheduler...")
+	s.logger.Info(op, "message", "starting scheduler")
 
 	if _, err := s.scheduler.Every(s.config.Interval).Second().Do(s.MatchWaitedUsers); err != nil {
-		logger.Logger.Named(op).Error("error in calling MatchWaitedUsers", zap.Error(err))
+		s.logger.Error(op, "message", "error in calling MatchWaitedUsers", "error", err.Error())
 	}
 	s.scheduler.StartAsync()
 
 	<-done
-	//wait to finish job
-	logger.Logger.Named(op).Info("stopping scheduler...")
+	s.logger.Info(op, "message", "stopping scheduler")
 	s.scheduler.Stop()
 }
 
@@ -49,7 +49,7 @@ func (s Scheduler) MatchWaitedUsers() {
 	defer cancel()
 	if _, err := s.service.MatchWaitUsers(ctx, MatchWaitedUsersRequest{}); err != nil {
 		metrics.FailedMatchedUserCounter.Inc()
-		logger.Logger.Named(op).Error("error in MatchWaitedUsers", zap.Error(err))
+		s.logger.Error(op, "message", "error in MatchWaitedUsers", "error", err.Error())
 	} else {
 		metrics.SucceedMatchedUserCounter.Inc()
 	}

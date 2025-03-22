@@ -7,10 +7,10 @@ import (
 	"BrainBlitz.com/game/game_app/repository"
 	"BrainBlitz.com/game/game_app/service"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -24,10 +24,10 @@ type Application struct {
 	Consumer    service.Consumer
 	HTTPServer  http.Server
 	Config      Config
-	Logger      *slog.Logger
+	Logger      logger.SlogAdapter
 }
 
-func Setup(config Config, db *mongo.Database, logger *slog.Logger) Application {
+func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Application {
 	gameRepository := repository.NewGameRepository(config.Repository, logger, db)
 	ws := websocket.NewWS(config.WebSocket)
 	gameService := service.NewService(config.Service, gameRepository, ws, logger)

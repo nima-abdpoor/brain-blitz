@@ -29,7 +29,7 @@ func main() {
 	}
 
 	logger.Init(cfg.Logger)
-	matchLogger := logger.L()
+	matchLogger := logger.New()
 
 	matchLogger.Info("match service started...")
 

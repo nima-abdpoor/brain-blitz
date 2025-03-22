@@ -6,6 +6,7 @@ import (
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
 	rpcPkg "BrainBlitz.com/game/pkg/grpc"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/postgresql"
 	g "BrainBlitz.com/game/user_app/delivery/grpc"
 	"BrainBlitz.com/game/user_app/delivery/http"
@@ -14,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
-	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -28,18 +28,18 @@ type Application struct {
 	HTTPServer   http.Server
 	GRPCServer   g.Server
 	Config       Config
-	Logger       *slog.Logger
+	Logger       logger.SlogAdapter
 	Redis        *redis.Adapter
 	CacheManager *cachemanager.CacheManager
 }
 
-func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientConn, logger *slog.Logger) Application {
+func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientConn, logger logger.SlogAdapter) Application {
 	redisAdapter := redis.New(config.Redis)
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
 	userRepository := repository.NewUserRepository(config.Repository, postgresConn.DB, logger)
 	adapter := auth_adapter.New(Conn)
-	userService := service.NewService(userRepository, *cache, adapter)
+	userService := service.NewService(userRepository, *cache, adapter, logger)
 	userHandler := http.NewHandler(userService, logger)
 	grpcHandler := g.NewHandler(userService, logger)
 

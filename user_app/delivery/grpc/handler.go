@@ -1,17 +1,17 @@
 package grpc
 
 import (
+	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/user_app/service"
 	"context"
-	"log/slog"
 )
 
 type Handler struct {
 	UserService service.Service
-	Logger      *slog.Logger
+	Logger      logger.SlogAdapter
 }
 
-func NewHandler(srv service.Service, logger *slog.Logger) Handler {
+func NewHandler(srv service.Service, logger logger.SlogAdapter) Handler {
 	return Handler{
 		UserService: srv,
 		Logger:      logger,

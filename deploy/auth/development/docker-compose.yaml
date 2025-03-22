@@ -9,6 +9,8 @@ services:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
     container_name: auth-service
+    ports:
+      - "6000:6000"
     networks:
       - bb-network
     environment:
