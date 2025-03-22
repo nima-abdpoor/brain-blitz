@@ -33,7 +33,7 @@ func main() {
 	}
 
 	logger.Init(cfg.Logger)
-	userLogger := logger.L()
+	userLogger := logger.New()
 
 	userLogger.Info("user_app service started...")
 
@@ -60,6 +60,9 @@ func main() {
 	defer postgresql.Close(postgresConn.DB)
 
 	rpcClientConnection, err := rpcPkg.NewClient(cfg.GrpcClient)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	app := user_app.Setup(cfg, postgresConn, rpcClientConnection, userLogger)
 	app.Start()

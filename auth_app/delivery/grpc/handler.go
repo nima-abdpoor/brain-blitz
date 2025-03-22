@@ -3,17 +3,19 @@ package grpc
 import (
 	"BrainBlitz.com/game/auth_app/service"
 	pb "BrainBlitz.com/game/contract/auth/golang"
+	errApp "BrainBlitz.com/game/pkg/err_app"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
-	"log/slog"
+	"google.golang.org/grpc/status"
 )
 
 type Handler struct {
 	pb.UnimplementedTokenServiceServer
 	AuthService service.Service
-	Logger      *slog.Logger
+	Logger      logger.SlogAdapter
 }
 
-func NewHandler(srv service.Service, logger *slog.Logger) Handler {
+func NewHandler(srv service.Service, logger logger.SlogAdapter) Handler {
 	return Handler{
 		UnimplementedTokenServiceServer: pb.UnimplementedTokenServiceServer{},
 		AuthService:                     srv,
@@ -37,8 +39,8 @@ func (h Handler) GetAccessToken(ctx context.Context, req *pb.CreateAccessTokenRe
 	})
 
 	if err != nil {
-		h.Logger.Error(op, "error", err.Error())
-		return nil, err
+		msg, code := errApp.ToGRPCJson(err)
+		return nil, status.Errorf(code, "%s", msg)
 	}
 
 	return &pb.CreateAccessTokenResponse{
@@ -63,8 +65,8 @@ func (h Handler) GetRefreshToken(ctx context.Context, req *pb.CreateRefreshToken
 	})
 
 	if err != nil {
-		h.Logger.Error(op, "error", err.Error())
-		return nil, err
+		msg, code := errApp.ToGRPCJson(err)
+		return nil, status.Errorf(code, "%s", msg)
 	}
 
 	return &pb.CreateRefreshTokenResponse{

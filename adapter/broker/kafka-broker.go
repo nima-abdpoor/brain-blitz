@@ -1,19 +1,19 @@
 package broker
 
 import (
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
 	"github.com/IBM/sarama"
-	"log/slog"
 )
 
 type KafkaBroker struct {
-	Logger   *slog.Logger
+	Logger   logger.SlogAdapter
 	producer sarama.SyncProducer
 	consumer sarama.Consumer
 }
 
-func NewKafkaBroker(brokers []string, logger *slog.Logger) (*KafkaBroker, error) {
+func NewKafkaBroker(brokers []string, logger logger.SlogAdapter) (*KafkaBroker, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Successes = true
 

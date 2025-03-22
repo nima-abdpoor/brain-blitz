@@ -2,8 +2,8 @@ package http
 
 import (
 	"BrainBlitz.com/game/match_app/service"
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
-	"BrainBlitz.com/game/pkg/httpmsg"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
@@ -31,9 +31,8 @@ func (handler Handler) addToWaitingList(ctx echo.Context) error {
 	}
 	res, err := handler.Service.AddToWaitingList(ctx.Request().Context(), req)
 	if err != nil {
-		msg, code := httpmsg.Error(err)
-		ctx.JSON(code, msg)
-		return nil
+		msg, code := errApp.ToHTTPJson(err)
+		return ctx.JSON(code, msg)
 	} else {
 		ctx.JSON(code, res)
 		return nil

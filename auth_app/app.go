@@ -6,9 +6,9 @@ import (
 	"BrainBlitz.com/game/auth_app/service"
 	rpc "BrainBlitz.com/game/pkg/grpc"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -22,10 +22,10 @@ type Application struct {
 	HTTPServer      http.Server
 	GRPCServer      grpc.Server
 	Config          Config
-	Logger          *slog.Logger
+	Logger          logger.SlogAdapter
 }
 
-func Setup(config Config, logger *slog.Logger) Application {
+func Setup(config Config, logger logger.SlogAdapter) Application {
 	authService := service.NewService(config.Service, logger)
 	handler := http.NewHandler(authService, logger)
 	grpcHandler := grpc.NewHandler(authService, logger)

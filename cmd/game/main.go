@@ -32,7 +32,7 @@ func main() {
 	}
 
 	logger.Init(cfg.Logger)
-	gameLogger := logger.L()
+	gameLogger := logger.New()
 
 	gameLogger.Info("game service started...")
 

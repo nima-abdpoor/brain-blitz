@@ -5,9 +5,6 @@ import (
 	"BrainBlitz.com/game/internal/core/model/response"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	"BrainBlitz.com/game/internal/core/port/service"
-	"BrainBlitz.com/game/logger"
-	"BrainBlitz.com/game/pkg/richerror"
-	"go.uber.org/zap"
 	"strconv"
 )
 
@@ -27,8 +24,9 @@ func (service Service) ListUsers(request *request.ListUserRequest) (response.Lis
 	users := []response.User{}
 	// todo get offset and limit from input
 	if result, err := service.repo.ListUsers(); err != nil {
-		logger.Logger.Named(op).Error("error in listingUsers", zap.Error(err))
-		return response.ListUserResponse{}, richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err)
+		//logger.Logger.Named(op).Error("error in listingUsers", zap.Error(err))
+		//return response.ListUserResponse{}, richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err)
+		return response.ListUserResponse{}, err
 	} else {
 		for _, user := range result {
 			users = append(users, response.User{

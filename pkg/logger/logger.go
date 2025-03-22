@@ -14,6 +14,10 @@ import (
 var globalLogger *slog.Logger
 var once sync.Once
 
+type SlogAdapter struct {
+	*slog.Logger
+}
+
 type Config struct {
 	FilePath         string `koanf:"file_path"`
 	UseLocalTime     bool   `koanf:"use_local_time"`
@@ -21,7 +25,6 @@ type Config struct {
 	FileMaxAgeInDays int    `koanf:"file_max_age_in_days"`
 }
 
-// Init initializes the global logger instance.
 func Init(cfg Config) {
 	once.Do(func() {
 		workingDir, err := os.Getwd()
@@ -40,25 +43,12 @@ func Init(cfg Config) {
 	})
 }
 
-// L returns the global logger instance.
-func L() *slog.Logger {
-	return globalLogger
+func New() SlogAdapter {
+	return SlogAdapter{
+		Logger: globalLogger,
+	}
 }
 
-// New creates a new logger instance for each service with specific settings.
-func New(cfg Config) *slog.Logger {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Error getting current working directory: %v", err)
-	}
-
-	fileWriter := &lumberjack.Logger{
-		Filename:  filepath.Join(workingDir, cfg.FilePath),
-		LocalTime: cfg.UseLocalTime,
-		MaxSize:   cfg.FileMaxSizeInMB,
-		MaxAge:    cfg.FileMaxAgeInDays,
-	}
-	return slog.New(
-		slog.NewJSONHandler(io.MultiWriter(fileWriter), &slog.HandlerOptions{}),
-	)
+func (l SlogAdapter) Error(msg string, keysAndValues ...interface{}) {
+	l.Logger.Error(msg, keysAndValues...)
 }

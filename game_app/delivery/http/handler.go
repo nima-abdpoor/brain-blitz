@@ -2,20 +2,19 @@ package http
 
 import (
 	"BrainBlitz.com/game/game_app/service"
+	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
-	"BrainBlitz.com/game/pkg/httpmsg"
-	"BrainBlitz.com/game/pkg/validator"
+	"BrainBlitz.com/game/pkg/logger"
 	"github.com/labstack/echo/v4"
-	"log/slog"
 	"net/http"
 )
 
 type Handler struct {
 	service service.Service
-	logger  *slog.Logger
+	logger  logger.SlogAdapter
 }
 
-func NewHandler(service service.Service, logger *slog.Logger) Handler {
+func NewHandler(service service.Service, logger logger.SlogAdapter) Handler {
 	return Handler{
 		service: service,
 		logger:  logger,
@@ -34,10 +33,7 @@ func (h Handler) ProcessGame(ctx echo.Context) error {
 	})
 
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return ctx.JSON(vErr.StatusCode(), vErr)
-		}
-		msg, code := httpmsg.Error(err)
+		msg, code := errApp.ToHTTPJson(err)
 		return ctx.JSON(code, msg)
 	}
 
