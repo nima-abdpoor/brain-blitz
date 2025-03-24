@@ -32,7 +32,12 @@ jobs:
           password: ${{ secrets.GCR }}
 
       - name: Get Git tag
-        run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "GIT_TAG=latest" >> $GITHUB_ENV
+          fi
 
       - name: Build and push Docker image for ${{ matrix.service }}
         uses: docker/build-push-action@v4
@@ -41,7 +46,7 @@ jobs:
           file: deploy/${{ matrix.service }}/development/Dockerfile
           push: true
           tags: |
-            ghcr.io/nima-abdpoor/brain-blitz:${{ env.GIT_TAG }}
+            ghcr.io/nima-abdpoor/brain-blitz/${{ matrix.service }}:${{ env.GIT_TAG }}
             ghcr.io/nima-abdpoor/brain-blitz/${{ matrix.service }}:latest
           build-args: |
             GO_IMAGE_NAME=golang
