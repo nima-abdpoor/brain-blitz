@@ -17,6 +17,6 @@ FROM debian:bookworm-slim
 WORKDIR /home/app
 
 COPY --from=builder /home/app/game-service .
-COPY deploy/game/development/config.yaml ./deploy/game/development/config.yaml
+COPY deploy/game/development/config.yaml ./config.yaml
 
 CMD ["./game-service"]
