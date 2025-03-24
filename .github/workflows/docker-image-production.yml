@@ -9,9 +9,6 @@ on:
     paths:
       - docker-image-production.yml
       - deploy/**/development/Dockerfile
-  pull_request:
-    branches:
-      - develop
 
 jobs:
   build-and-publish:
@@ -47,7 +44,7 @@ jobs:
           file: deploy/${{ matrix.service }}/development/Dockerfile
           push: true
           tags: |
-            ghcr.io/nima-abdpoor/brain-blitz/${{ matrix.service }}:${{ env.GIT_TAG }}
+            ghcr.io/nima-abdpoor/brain-blitz:${{ env.GIT_TAG }}
             ghcr.io/nima-abdpoor/brain-blitz/${{ matrix.service }}:latest
           build-args: |
             GO_IMAGE_NAME=golang

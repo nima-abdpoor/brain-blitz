@@ -7,6 +7,9 @@ on:
     paths:
       - docker-image-develop.yml
       - deploy/**/development/Dockerfile
+  pull_request:
+    branches:
+      - develop
 
 jobs:
   build-and-publish:
