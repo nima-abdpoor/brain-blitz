@@ -40,7 +40,7 @@ jobs:
       - name: Build and push Docker image for ${{ matrix.service }}
         uses: docker/build-push-action@v4
         with:
-          context: deploy/${{ matrix.service }}/development
+          context: .
           file: deploy/${{ matrix.service }}/development/Dockerfile
           push: true
           tags: |
