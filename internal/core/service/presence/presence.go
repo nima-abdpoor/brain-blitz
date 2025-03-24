@@ -5,7 +5,6 @@ import (
 	"BrainBlitz.com/game/internal/core/model/response"
 	"BrainBlitz.com/game/internal/core/port/repository"
 	s "BrainBlitz.com/game/internal/core/port/service"
-	"BrainBlitz.com/game/pkg/richerror"
 	"context"
 	"fmt"
 	"time"
@@ -40,7 +39,7 @@ func (s service) Upsert(context context.Context, request request.UpsertPresenceR
 			fmt.Sprintf("%s:%s", s.config.Prefix, request.UserID),
 			time.Now().UnixMilli(),
 			s.config.ExpirationTime); err != nil {
-		return response.UpsertPresenceResponse{}, richerror.New(op).WithError(err)
+		//return response.UpsertPresenceResponse{}, richerror.New(op).WithError(err)
 	}
 	return response.UpsertPresenceResponse{}, nil
 }
@@ -49,7 +48,8 @@ func (s GetPresenceService) GetPresence(ctx context.Context, request request.Get
 	const op = "presenceservice.GetPresenceByID"
 
 	if rsp, err := s.getPresenceRepo.GetPresence(ctx, request.UserID); err != nil {
-		return response.GetPresenceResponse{}, richerror.New(op).WithError(err)
+		return response.GetPresenceResponse{}, err
+		//return response.GetPresenceResponse{}, richerror.New(op).WithError(err)
 	} else {
 		return response.GetPresenceResponse{
 			UserIdToTimestamp: rsp,

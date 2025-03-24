@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"strings"
 )
 
 type Database struct {
@@ -12,7 +13,21 @@ type Database struct {
 }
 
 func NewDB(config Config, ctx context.Context) (*Database, error) {
-	clientOptions := options.Client().ApplyURI(fmt.Sprintf("%s://%s:%v", config.User, config.Host, config.Port))
+	if len(config.Hosts) == 0 || len(config.Ports) == 0 || len(config.Hosts) != len(config.Ports) {
+		return nil, fmt.Errorf("invalid MongoDB configuration: mismatched hosts and ports")
+	}
+
+	var hosts []string
+	for i, host := range config.Hosts {
+		hosts = append(hosts, fmt.Sprintf("%s:%d", host, config.Ports[i]))
+	}
+
+	uri := fmt.Sprintf("mongodb://%s/%s", strings.Join(hosts, ","), config.Name)
+	if len(hosts) > 1 {
+		uri += fmt.Sprintf("?replicaSet=%s", config.ReplicationName)
+	}
+
+	clientOptions := options.Client().ApplyURI(uri)
 	client, err := mongo.Connect(ctx, clientOptions)
 
 	if err != nil {

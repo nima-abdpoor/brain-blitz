@@ -15,8 +15,8 @@ service:
   least_presence: "-20m"
 
 redis:
-  host: 127.0.0.1
-  Port: 6381
+  host: BB-match-redis
+  Port: 6379
 
 scheduler:
   interval: 15

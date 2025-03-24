@@ -29,7 +29,7 @@ func main() {
 	}
 
 	logger.Init(cfg.Logger)
-	authLogger := logger.L()
+	authLogger := logger.New()
 
 	authLogger.Info("auth_app service started...")
 

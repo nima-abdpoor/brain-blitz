@@ -7,12 +7,13 @@ http_server:
   shutdown_context_timeout: "10s"
 
 mongo:
-  host: localhost
-  port: 27018
+  host: [game-mongo1, game-mongo2, game-mongo3]
+  port: [27017, 27017, 27017]
   user: mongodb
   name: BB-game
   connect_timeout: 30s
   disconnect_timeout: 5s
+  replication_name: "rs0"
 
 broker:
   host: "kafka"

@@ -3,7 +3,8 @@ package service
 import (
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/contract/match/golang"
-	"BrainBlitz.com/game/pkg/richerror"
+	errApp "BrainBlitz.com/game/pkg/err_app"
+	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -30,10 +31,10 @@ type Service struct {
 	repository  Repository
 	webSocket   websocket.WebSocket
 	connections IdToConnection
-	logger      *slog.Logger
+	logger      logger.SlogAdapter
 }
 
-func NewService(config Config, repo Repository, ws websocket.WebSocket, logger *slog.Logger) Service {
+func NewService(config Config, repo Repository, ws websocket.WebSocket, logger logger.SlogAdapter) Service {
 	return Service{
 		config:      config,
 		repository:  repo,
@@ -48,14 +49,18 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 
 	connection, _, _, err := svc.webSocket.Upgrade(ctx.Request(), ctx.Response())
 	if err != nil {
-		svc.logger.WithGroup(op).Error("error in initializing websocket", "error", err.Error())
-		return ProcessGameResponse{}, richerror.New(op).WithKind(richerror.KindUnexpected).WithError(err)
+		return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
+			"message": "error in initializing websocket",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 
 	id, err := strconv.ParseUint(request.Id, 10, 64)
 	if err != nil {
-		svc.logger.WithGroup(op).Error("error in converting id to Uint", "id", request.Id, "error", err.Error())
-		return ProcessGameResponse{}, err
+		return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
+			"message": "error in converting id to Uint",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
 	}
 
 	svc.connections[id] = *connection
@@ -102,11 +107,11 @@ func (svc Service) writeMessage(ids []uint64, msg string) error {
 
 	for _, id := range ids {
 		if connection, exists := svc.connections[id]; !exists {
-			return richerror.New(op).WithMessage(fmt.Sprintf("id: %d not found", id))
+			return fmt.Errorf("id: %d not found", id)
 		} else {
 			err := svc.webSocket.WriteServerData(connection, websocket.OpText, msg)
 			if err != nil {
-				svc.logger.WithGroup(op).Error("Error in writing message to client", "error", err.Error())
+				svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
 			}
 		}
 	}

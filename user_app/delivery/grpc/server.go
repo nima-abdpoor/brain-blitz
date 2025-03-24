@@ -2,18 +2,18 @@ package grpc
 
 import (
 	"BrainBlitz.com/game/pkg/grpc"
+	"BrainBlitz.com/game/pkg/logger"
 	"fmt"
-	"log/slog"
 	"net"
 )
 
 type Server struct {
 	server  grpc.RPCServer
 	handler Handler
-	logger  *slog.Logger
+	logger  logger.SlogAdapter
 }
 
-func New(server grpc.RPCServer, handler Handler, logger *slog.Logger) Server {
+func New(server grpc.RPCServer, handler Handler, logger logger.SlogAdapter) Server {
 	return Server{
 		server:  server,
 		handler: handler,
