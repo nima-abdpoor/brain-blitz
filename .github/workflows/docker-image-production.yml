@@ -3,7 +3,7 @@ name: Build and Publish Docker Images
 on:
   push:
     branches:
-      - develop-test
+      - main
     tags:
       - "v*"
 

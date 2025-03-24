@@ -3,7 +3,7 @@ name: Auto Tag on Merge
 on:
   push:
     branches:
-      - develop-test
+      - develop
 
 jobs:
   auto-tag:
