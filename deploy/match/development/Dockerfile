@@ -17,6 +17,6 @@ FROM debian:bookworm-slim
 WORKDIR /home/app
 
 COPY --from=builder /home/app/match-service .
-COPY deploy/match/development/config.yaml ./deploy/match/development/config.yaml
+#COPY deploy/match/development/config.yaml ./deploy/match/development/config.yaml
 
 CMD ["./match-service"]
