@@ -1,0 +1,22 @@
+total_shutdown_timeout: 15s
+
+http_server:
+  port: 5000
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+grpc_server:
+  port: 6000
+  type: "tcp"
+
+service:
+  secret_key: SECRET_KEY
+  access_token_expire_time: 24h
+  refresh_token_expire_time: 120h
+
+logger:
+  file_path: "logs/auth/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7

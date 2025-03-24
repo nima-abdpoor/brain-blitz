@@ -1,0 +1,34 @@
+total_shutdown_timeout: 15s
+
+http_server:
+  port: 5002
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+repository:
+  waitingListPrefix: "waiting_users"
+  min_time_list_selection: "-20m"
+
+service:
+  waiting_timeout: "20m"
+  least_presence: "-20m"
+
+redis:
+  host: BB-match-redis
+  Port: 6379
+
+scheduler:
+  interval: 15
+  match_user_time_out: "1m"
+
+broker:
+  host: "kafka"
+  port: "9092"
+
+
+logger:
+  file_path: "logs/match/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7

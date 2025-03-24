@@ -1,5 +1,6 @@
-package entity
+package service
 
+// todo move this to somewhere general
 import entity "BrainBlitz.com/game/entity/auth"
 
 type User struct {

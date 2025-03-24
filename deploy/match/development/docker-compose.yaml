@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+  match-redis:
+    image: bitnami/redis:6.2
+    container_name: BB-match-redis
+    restart: always
+    ports:
+      - '6381:6379'
+    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - user-redis:/data
+    networks:
+      - bb-network
+  match-service:
+    build:
+      context: ./../../..
+      dockerfile: deploy/match/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: match-service
+    depends_on:
+      - match-redis
+    networks:
+      - bb-network
+    environment:
+      - KAFKA_BROKER=kafka:9092
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.match.rule=Host(`localhost`) && PathPrefix(`/match-service`)"
+      - "traefik.http.middlewares.match-stripprefix.stripprefix.prefixes=/match-service"
+      - "traefik.http.routers.match.middlewares=match-stripprefix,auth"
+      - "traefik.http.services.match.loadbalancer.server.port=5002"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
+
+networks:
+  bb-network:
+    external: true
+
+volumes:
+  user-redis:

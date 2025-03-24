@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package auth;
+option go_package = "contract/auth/golang";
+
+message CreateTokenRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message CreateAccessTokenRequest {
+  repeated CreateTokenRequest data = 1;
+}
+
+message CreateRefreshTokenRequest {
+  repeated CreateTokenRequest data = 1;
+}
+
+message CreateAccessTokenResponse {
+  string accessToken = 1;
+  int64 expireTime = 2;
+}
+
+message CreateRefreshTokenResponse {
+  string refreshToken = 1;
+  int64 expireTime = 2;
+}
+
+service TokenService {
+  rpc GetAccessToken(CreateAccessTokenRequest) returns (CreateAccessTokenResponse);
+  rpc GetRefreshToken(CreateRefreshTokenRequest) returns (CreateRefreshTokenResponse);
+}
