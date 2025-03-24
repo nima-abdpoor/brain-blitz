@@ -1,0 +1,42 @@
+name: Auto Tag on Merge
+
+on:
+  push:
+    branches:
+      - develop-test
+
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get-latest-tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+          echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
+
+      - name: Calculate new version
+        id: new-version
+        run: |
+          latest_tag="${{ env.LATEST_TAG }}"
+          major=$(echo $latest_tag | cut -d. -f1 | sed 's/v//')
+          minor=$(echo $latest_tag | cut -d. -f2)
+          patch=$(echo $latest_tag | cut -d. -f3)
+          new_version="v$major.$minor.$((patch+1))"
+          echo "New version: $new_version"
+          echo "NEW_TAG=$new_version" >> $GITHUB_ENV
+
+      - name: Create and push new tag
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git tag ${{ env.NEW_TAG }}
+          git push origin ${{ env.NEW_TAG }}
+
