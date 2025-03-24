@@ -6,9 +6,6 @@ on:
       - develop-test
     tags:
       - "v*"
-    paths:
-      - docker-image-production.yml
-      - deploy/**/development/Dockerfile
 
 jobs:
   build-and-publish:
