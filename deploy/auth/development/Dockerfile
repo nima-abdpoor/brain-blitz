@@ -17,6 +17,6 @@ FROM debian:bookworm-slim
 WORKDIR /home/app
 
 COPY --from=builder /home/app/auth-service .
-#COPY deploy/auth/development/config.yaml ./deploy/auth/development/config.yaml
+COPY deploy/auth/development/config.yaml ./deploy/auth/development/config.yaml
 
 CMD ["./auth-service"]
