@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: redis-configmap
 data:
-  allow-empty-password: "no"
+  allow-empty-password: "yes"
