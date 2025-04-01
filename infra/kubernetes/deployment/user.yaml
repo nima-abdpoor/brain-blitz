@@ -32,6 +32,22 @@ spec:
               containerPort: 6001
             - protocol: TCP
               containerPort: 5001
+          env:
+            - name: USER_postgres_db__host
+              valueFrom:
+                configMapKeyRef:
+                  name: user-configmap
+                  key: postgres-host
+            - name: USER_redis__host
+              valueFrom:
+                configMapKeyRef:
+                  name: user-configmap
+                  key: redis-host
+            - name: USER_redis__port
+              valueFrom:
+                configMapKeyRef:
+                  name: user-configmap
+                  key: redis-port
           resources:
             requests:
               memory: "64Mi"
