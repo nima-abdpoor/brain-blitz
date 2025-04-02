@@ -1,0 +1,59 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: user-service-public-route
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`localhost`) && PathPrefix(`/user-service/public/api/v1/`)
+      kind: Rule
+      middlewares:
+        - name: user-stripprefix
+      services:
+        - name: user-service
+          port: 5001
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: user-service-protected-route
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`localhost`) && PathPrefix(`/user-service/api/v1/`)
+      kind: Rule
+      middlewares:
+        - name: user-stripprefix
+        - name: auth-middleware
+      services:
+        - name: user-service
+          port: 5001
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: user-stripprefix
+  namespace: default
+spec:
+  stripPrefix:
+    prefixes:
+      - "/user-service"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: auth-middleware
+  namespace: default
+spec:
+  forwardAuth:
+    address: "http://auth-service:5000/api/v1/validate-token"
+    trustForwardHeader: true
+    authResponseHeaders:
+      - Authorization
+      - X-User-Role
+      - X-User-ID
+      - X-Auth-Data
