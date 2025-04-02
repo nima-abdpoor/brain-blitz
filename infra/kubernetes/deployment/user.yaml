@@ -48,6 +48,11 @@ spec:
                 configMapKeyRef:
                   name: user-configmap
                   key: redis-port
+            - name: USER_postgres_db__db_name
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-configmap
+                  key: db-name
           resources:
             requests:
               memory: "64Mi"
