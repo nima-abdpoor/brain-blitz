@@ -4,5 +4,5 @@ metadata:
   name: game-configmap
 data:
   db-name: "BB-game"
-  db-hosts: '["mongodb-service"]'
-  db-ports: '[27017]'
+  db-hosts: 'mongodb-service'
+  db-ports: '27017'

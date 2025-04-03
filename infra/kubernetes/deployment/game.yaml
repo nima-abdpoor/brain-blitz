@@ -70,6 +70,6 @@ spec:
   selector:
     app: game
   ports:
-    - name: http-servier
+    - name: http-service
       port: 5003
       targetPort: 5003

@@ -52,6 +52,24 @@ spec:
           port: 5002
 ---
 apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: game-service-route
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`localhost`) && PathPrefix(`/game-service/api/v1/`)
+      kind: Rule
+      middlewares:
+        - name: game-stripprefix
+        - name: auth-middleware
+      services:
+        - name: game-service
+          port: 5003
+---
+apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: user-stripprefix
@@ -70,6 +88,16 @@ spec:
   stripPrefix:
     prefixes:
       - "/match-service"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: game-stripprefix
+  namespace: default
+spec:
+  stripPrefix:
+    prefixes:
+      - "/game-service"
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
