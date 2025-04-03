@@ -34,6 +34,24 @@ spec:
           port: 5001
 ---
 apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: match-service-route
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`localhost`) && PathPrefix(`/match-service/api/v1/`)
+      kind: Rule
+      middlewares:
+        - name: match-stripprefix
+        - name: auth-middleware
+      services:
+        - name: match-service
+          port: 5002
+---
+apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: user-stripprefix
@@ -42,6 +60,16 @@ spec:
   stripPrefix:
     prefixes:
       - "/user-service"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: match-stripprefix
+  namespace: default
+spec:
+  stripPrefix:
+    prefixes:
+      - "/match-service"
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware

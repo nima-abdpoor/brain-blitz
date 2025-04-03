@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: match
+  labels:
+    app: match
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  revisionHistoryLimit: 4
+  replicas: 1
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: match
+  template:
+    metadata:
+      labels:
+        app: match
+        version: v1
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/nima-abdpoor/brain-blitz/match:latest
+          imagePullPolicy: Always
+          ports:
+            - protocol: TCP
+              containerPort: 5002
+          env:
+            - name: MATCH_broker__host
+              valueFrom:
+                configMapKeyRef:
+                  name: match-configmap
+                  key: broker-host
+            - name: MATCH_broker__port
+              valueFrom:
+                configMapKeyRef:
+                  name: match-configmap
+                  key: broker-port
+            - name: MATCH_redis__host
+              valueFrom:
+                configMapKeyRef:
+                  name: match-configmap
+                  key: redis-host
+            - name: MATCH_redis__Port
+              valueFrom:
+                configMapKeyRef:
+                  name: match-configmap
+                  key: redis-port
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "1024Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: match-service
+spec:
+  selector:
+    app: match
+  ports:
+    - name: http-servier
+      port: 5002
+      targetPort: 5002
