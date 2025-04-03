@@ -11,7 +11,7 @@ spec:
       maxSurge: 2
       maxUnavailable: 1
   revisionHistoryLimit: 4
-  replicas: 1
+  replicas: 4
   minReadySeconds: 10
   selector:
     matchLabels:
