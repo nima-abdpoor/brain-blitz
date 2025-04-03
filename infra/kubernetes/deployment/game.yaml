@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: match
+  name: game
   labels:
-    app: match
+    spp: game
 spec:
   strategy:
     type: RollingUpdate
@@ -15,41 +15,45 @@ spec:
   minReadySeconds: 10
   selector:
     matchLabels:
-      app: match
+      app: game
   template:
     metadata:
       labels:
-        app: match
+        app: game
         version: v1
     spec:
       containers:
-        - name: app
-          image: ghcr.io/nima-abdpoor/brain-blitz/match:latest
+        - name: game
+          image: ghcr.io/nima-abdpoor/brain-blitz/game:latest
           imagePullPolicy: Always
           ports:
-            - protocol: TCP
-              containerPort: 5002
+            - containerPort: 5003
           env:
-            - name: MATCH_broker__host
+            - name: GAME_mongo__host
+              valueFrom:
+                configMapKeyRef:
+                  name: game-configmap
+                  key: db-hosts
+            - name: GAME_mongo__port
+              valueFrom:
+                configMapKeyRef:
+                  name: game-configmap
+                  key: db-ports
+            - name: GAME_mongo__name
+              valueFrom:
+                configMapKeyRef:
+                  name: game-configmap
+                  key: db-name
+            - name: GAME_broker__host
               valueFrom:
                 configMapKeyRef:
                   name: kafka-configmap
                   key: broker-host
-            - name: MATCH_broker__port
+            - name: GAME_broker__port
               valueFrom:
                 configMapKeyRef:
                   name: kafka-configmap
                   key: broker-port
-            - name: MATCH_redis__host
-              valueFrom:
-                configMapKeyRef:
-                  name: match-configmap
-                  key: redis-host
-            - name: MATCH_redis__Port
-              valueFrom:
-                configMapKeyRef:
-                  name: match-configmap
-                  key: redis-port
           resources:
             requests:
               memory: "64Mi"
@@ -61,11 +65,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: match-service
+  name: game-service
 spec:
   selector:
-    app: match
+    app: game
   ports:
     - name: http-servier
-      port: 5002
-      targetPort: 5002
+      port: 5003
+      targetPort: 5003

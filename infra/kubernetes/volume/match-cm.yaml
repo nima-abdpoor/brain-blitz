@@ -3,7 +3,5 @@ kind: ConfigMap
 metadata:
   name: match-configmap
 data:
-  broker-host: "kafka"
-  broker-port: "9092"
   redis-host: "redis-service"
   redis-port: "6379"

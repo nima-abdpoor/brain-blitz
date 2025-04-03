@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: game-configmap
+data:
+  db-name: "BB-game"
+  db-hosts: '["mongodb-service"]'
+  db-ports: '[27017]'
