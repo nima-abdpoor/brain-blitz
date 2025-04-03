@@ -19,7 +19,7 @@ func NewDB(config Config, ctx context.Context) (*Database, error) {
 
 	var hosts []string
 	for i, host := range config.Hosts {
-		hosts = append(hosts, fmt.Sprintf("%s:%d", host, config.Ports[i]))
+		hosts = append(hosts, fmt.Sprintf("%s:%s", host, config.Ports[i]))
 	}
 
 	uri := fmt.Sprintf("mongodb://%s/%s", strings.Join(hosts, ","), config.Name)
