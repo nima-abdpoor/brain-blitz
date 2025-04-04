@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  labels:
+    app: auth
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  revisionHistoryLimit: 4
+  replicas: 4
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+        version: v1
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/nima-abdpoor/brain-blitz/auth:latest
+          ports:
+            - protocol: TCP
+              containerPort: 5000
+            - protocol: TCP
+              containerPort: 6000
+          env:
+            - name: AUTH_service__secret_key
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secret
+                  key: secretKey
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "1024Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth
+  ports:
+    - name: http-server
+      port: 5000
+      targetPort: 5000
+    - name: grpc-server
+      port: 6000
+      targetPort: 6000

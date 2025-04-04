@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user
+  labels:
+    app: user
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  revisionHistoryLimit: 4
+  replicas: 4
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: user
+  template:
+    metadata:
+      labels:
+        app: user
+        role: user
+        version: v1
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/nima-abdpoor/brain-blitz/user:latest
+          imagePullPolicy: Always
+          ports:
+            - protocol: TCP
+              containerPort: 6001
+            - protocol: TCP
+              containerPort: 5001
+          env:
+            - name: USER_postgres_db__host
+              valueFrom:
+                configMapKeyRef:
+                  name: user-configmap
+                  key: postgres-host
+            - name: USER_redis__host
+              valueFrom:
+                configMapKeyRef:
+                  name: user-configmap
+                  key: redis-host
+            - name: USER_redis__port
+              valueFrom:
+                configMapKeyRef:
+                  name: user-configmap
+                  key: redis-port
+            - name: USER_postgres_db__db_name
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-configmap
+                  key: db-name
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "1024Mi"
+              cpu: "250m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  selector:
+    app: user
+  ports:
+    - name: http-service
+      protocol: TCP
+      port: 5001
+      targetPort: 5001
+    - name: grpc-service
+      protocol: TCP
+      port: 6001
+      targetPort: 6001

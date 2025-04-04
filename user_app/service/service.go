@@ -111,7 +111,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 	}
 
 	if user, err := s.repository.GetUser(ctx, request.Email); err != nil {
-		return LoginResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
+		return LoginResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"data": fmt.Sprint(request),
 		}, s.Logger)
 	} else {

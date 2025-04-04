@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game
+  labels:
+    spp: game
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  revisionHistoryLimit: 4
+  replicas: 4
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: game
+  template:
+    metadata:
+      labels:
+        app: game
+        version: v1
+    spec:
+      containers:
+        - name: game
+          image: ghcr.io/nima-abdpoor/brain-blitz/game:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5003
+          env:
+            - name: GAME_mongo__host
+              valueFrom:
+                configMapKeyRef:
+                  name: game-configmap
+                  key: db-hosts
+            - name: GAME_mongo__port
+              valueFrom:
+                configMapKeyRef:
+                  name: game-configmap
+                  key: db-ports
+            - name: GAME_mongo__name
+              valueFrom:
+                configMapKeyRef:
+                  name: game-configmap
+                  key: db-name
+            - name: GAME_broker__host
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-configmap
+                  key: broker-host
+            - name: GAME_broker__port
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-configmap
+                  key: broker-port
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "1024Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: game-service
+spec:
+  selector:
+    app: game
+  ports:
+    - name: http-service
+      port: 5003
+      targetPort: 5003
