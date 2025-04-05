@@ -1,7 +1,6 @@
 package service
 
 import (
-	"BrainBlitz.com/game/metrics"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"github.com/go-co-op/gocron"
@@ -48,9 +47,9 @@ func (s Scheduler) MatchWaitedUsers() {
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.MatchUserTimeOut)
 	defer cancel()
 	if _, err := s.service.MatchWaitUsers(ctx, MatchWaitedUsersRequest{}); err != nil {
-		metrics.FailedMatchedUserCounter.Inc()
+		// todo add metrics
 		s.logger.Error(op, "message", "error in MatchWaitedUsers", "error", err.Error())
 	} else {
-		metrics.SucceedMatchedUserCounter.Inc()
+		// todo add metrics
 	}
 }
