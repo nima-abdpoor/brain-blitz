@@ -1,4 +1,4 @@
-package entity
+package service
 
 type Role uint8
 

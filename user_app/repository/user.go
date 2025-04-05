@@ -2,7 +2,6 @@ package repository
 
 import (
 	"BrainBlitz.com/game/adapter/redis"
-	entityAuth "BrainBlitz.com/game/entity/auth"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/user_app/service"
 	"context"
@@ -92,7 +91,7 @@ func (repo UserRepository) GetUser(ctx context.Context, username string) (servic
 		}
 		return result, fmt.Errorf("error retrieving user with username: %s, error: %v", username, err)
 	}
-	result.Role = entityAuth.MapToRoleEntity(role)
+	result.Role = service.MapToRoleEntity(role)
 	result.CreatedAt = uint64(createdAt.Time.UTC().UnixMilli())
 	result.UpdatedAt = uint64(updatedAt.Time.UTC().UnixMilli())
 	return result, nil
@@ -129,7 +128,7 @@ func (repo UserRepository) GetUserById(ctx context.Context, id string) (service.
 		}
 		return result, fmt.Errorf("error retrieving user with id: %s, error: %v", id, err)
 	}
-	result.Role = entityAuth.MapToRoleEntity(role)
+	result.Role = service.MapToRoleEntity(role)
 	result.CreatedAt = uint64(createdAt.Time.UTC().UnixMilli())
 	result.UpdatedAt = uint64(updatedAt.Time.UTC().UnixMilli())
 	return result, nil

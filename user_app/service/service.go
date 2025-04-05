@@ -2,7 +2,6 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/auth"
-	authEntity "BrainBlitz.com/game/entity/auth"
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
 	utils2 "BrainBlitz.com/game/pkg/common"
 	"BrainBlitz.com/game/pkg/email"
@@ -69,7 +68,7 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 		Username:       request.Email,
 		HashedPassword: hashPassword,
 		DisplayName:    getDisplayName(request.Email),
-		Role:           authEntity.UserRole,
+		Role:           UserRole,
 		CreatedAt:      currentTime,
 		UpdatedAt:      currentTime,
 	}
