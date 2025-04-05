@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"BrainBlitz.com/game/auth_app/service"
+	"BrainBlitz.com/game/services/auth_app/service"
 	"context"
 )
 

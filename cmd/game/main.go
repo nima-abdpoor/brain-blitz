@@ -1,10 +1,10 @@
 package main
 
 import (
-	"BrainBlitz.com/game/game_app"
 	cfgloader "BrainBlitz.com/game/pkg/cfg_loader"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
+	"BrainBlitz.com/game/services/game_app"
 	"fmt"
 	"golang.org/x/net/context"
 	"log"

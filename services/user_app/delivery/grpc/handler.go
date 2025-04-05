@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"BrainBlitz.com/game/pkg/logger"
-	"BrainBlitz.com/game/user_app/service"
+	"BrainBlitz.com/game/services/user_app/service"
 	"context"
 )
 

@@ -6,7 +6,7 @@ import (
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/postgresql"
 	"BrainBlitz.com/game/pkg/postgresqlmigrator"
-	"BrainBlitz.com/game/user_app"
+	"BrainBlitz.com/game/services/user_app"
 	"fmt"
 	"log"
 	"os"

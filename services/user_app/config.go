@@ -6,7 +6,7 @@ import (
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/postgresql"
-	"BrainBlitz.com/game/user_app/repository"
+	"BrainBlitz.com/game/services/user_app/repository"
 	"time"
 )
 

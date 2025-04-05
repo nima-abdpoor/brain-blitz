@@ -1,12 +1,12 @@
 package auth_app
 
 import (
-	"BrainBlitz.com/game/auth_app/delivery/grpc"
-	"BrainBlitz.com/game/auth_app/delivery/http"
-	"BrainBlitz.com/game/auth_app/service"
 	rpc "BrainBlitz.com/game/pkg/grpc"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/services/auth_app/delivery/grpc"
+	"BrainBlitz.com/game/services/auth_app/delivery/http"
+	"BrainBlitz.com/game/services/auth_app/service"
 	"context"
 	"fmt"
 	"os"
