@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"BrainBlitz.com/game/game_app/service"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
+	"BrainBlitz.com/game/services/game_app/service"
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"

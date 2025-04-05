@@ -4,7 +4,7 @@ import (
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/logger"
-	"BrainBlitz.com/game/user_app/service"
+	"BrainBlitz.com/game/services/user_app/service"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )

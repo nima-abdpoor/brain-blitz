@@ -1,10 +1,10 @@
 package grpc
 
 import (
-	"BrainBlitz.com/game/auth_app/service"
 	pb "BrainBlitz.com/game/contract/auth/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/services/auth_app/service"
 	"context"
 	"google.golang.org/grpc/status"
 )

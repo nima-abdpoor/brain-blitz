@@ -1,10 +1,10 @@
 package http
 
 import (
-	"BrainBlitz.com/game/auth_app/service"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/services/auth_app/service"
 	"encoding/json"
 	"github.com/labstack/echo/v4"
 	"net/http"

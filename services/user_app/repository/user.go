@@ -3,7 +3,7 @@ package repository
 import (
 	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/pkg/logger"
-	"BrainBlitz.com/game/user_app/service"
+	"BrainBlitz.com/game/services/user_app/service"
 	"context"
 	"database/sql"
 	"errors"

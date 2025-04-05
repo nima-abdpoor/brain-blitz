@@ -2,8 +2,8 @@ package repository
 
 import (
 	"BrainBlitz.com/game/adapter/redis"
-	"BrainBlitz.com/game/match_app/service"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/services/match_app/service"
 	"context"
 	"fmt"
 	"strconv"

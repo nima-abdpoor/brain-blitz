@@ -3,11 +3,11 @@ package match_app
 import (
 	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/redis"
-	"BrainBlitz.com/game/match_app/repository"
-	"BrainBlitz.com/game/match_app/service"
 	"BrainBlitz.com/game/pkg/grpc"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/services/match_app/repository"
+	"BrainBlitz.com/game/services/match_app/service"
 	"time"
 )
 

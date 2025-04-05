@@ -1,9 +1,9 @@
 package http
 
 import (
-	"BrainBlitz.com/game/match_app/service"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
+	"BrainBlitz.com/game/services/match_app/service"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
