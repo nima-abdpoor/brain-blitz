@@ -1,4 +1,4 @@
-# BrainBlitz
+# 🧠 BrainBlitz
 
 ## 🚀 How to Run the Application
 
@@ -23,7 +23,7 @@ docker-compose up -d
 For instructions on setting up MongoDB or PostgreSQL replication read: [MongoDB Replication Guide](docs/mongodb-replication.md), [PostgreSQL Replication Guide](docs/postgresql-replication.md)  
 [PostgreSQL vs. MongoDB Replication](docs/PostgreSQL-vs-MongoDB-replication.md)
 
-## Kubernetes Init
+## ☸️ Kubernetes Init
 For setting up kubernetes read: [Kubernetes Setup](docs/kubernetes-init.md)
 
 ## 🤝 How to Contribute and Commit
