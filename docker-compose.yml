@@ -1,7 +1,99 @@
 version: '2.4'
 
 services:
-  kafka:
+  bb-postgres:
+    image: postgres:17.2-alpine
+    container_name: bb-postgres
+    environment:
+      - 'POSTGRES_DB=user_db'
+      - 'POSTGRES_USER=user_admin'
+      - 'POSTGRES_PASSWORD=password123'
+    restart: always
+    ports:
+      - '5433:5432'
+    volumes:
+      - bb-postgres:/var/lib/postgresql/data
+    networks:
+      - bb-network
+
+  bb-redis:
+    image: bitnami/redis:6.2
+    container_name: bb-redis
+    restart: always
+    ports:
+      - '6380:6379'
+    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - bb-redis:/data
+    networks:
+      - bb-network
+
+  bb-mongo1:
+    image: mongo:8.0
+    container_name: bb-mongo1
+    ports:
+      - "27018:27017"
+    command: [ "mongod", "--replSet", "rs0" ]
+    volumes:
+      - bb-mongo1:/data/db
+    networks:
+      - bb-network
+  bb-mongo2:
+    image: mongo:8.0
+    container_name: bb-mongo2
+    command: [ "mongod", "--replSet", "rs0" ]
+    volumes:
+      - bb-mongo2:/data/db
+    networks:
+      - bb-network
+  bb-mongo3:
+    image: mongo:8.0
+    container_name: bb-mongo3
+    command: [ "mongod", "--replSet", "rs0" ]
+    volumes:
+      - bb-mongo3:/data/db
+    networks:
+      - bb-network
+  bb-mongo-exporter:
+    image: bitnami/mongodb-exporter:0.43.0
+    container_name: bb-mongo-exporter
+    restart: always
+    command:
+      - "--mongodb.uri=mongodb://bb-mongo1:27017"
+      - "--discovering-mode"
+      - "--collect-all"
+    ports:
+      - "9216:9216"
+    depends_on:
+      - bb-mongo1
+      - bb-mongo2
+      - bb-mongo3
+    networks:
+      - bb-network
+  bb-mongo-init:
+    image: mongo:8.0
+    container_name: bb-mongo-init
+    depends_on:
+      - bb-mongo1
+      - bb-mongo2
+      - bb-mongo3
+    networks:
+      - bb-network
+    command: >
+      mongosh --host bb-mongo1 --eval '
+      sleep(5000);
+      rs.initiate({
+        _id: "rs0",
+        members: [
+          { _id: 0, host: "bb-mongo1:27017" },
+          { _id: 1, host: "bb-mongo2:27017" },
+          { _id: 2, host: "bb-mongo3:27017" }
+        ]
+      })'
+
+  bb-kafka:
     image: 'bitnami/kafka:3.7.1'
     container_name: kafka
     ports:
@@ -22,9 +114,9 @@ services:
     networks:
       - bb-network
 
-  traefik:
+  bb-traefik:
     image: "traefik:v2.10"
-    container_name: traefik
+    container_name: bb-traefik
     restart: always
     ports:
       - "80:80"
@@ -42,9 +134,10 @@ services:
       - "./traefik_logs:/var/log/traefik"
     networks:
       - bb-network
-  prometheus:
+
+  bb-prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus
+    container_name: bb-prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
@@ -53,22 +146,145 @@ services:
     networks:
       - bb-network
 
-  grafana:
+  bb-grafana:
     image: grafana/grafana:latest
-    container_name: grafana
+    container_name: bb-grafana
     restart: always
     ports:
       - "3000:3000"
     volumes:
       - grafana-storage:/var/lib/grafana
     depends_on:
-      - prometheus
+      - bb-prometheus
     networks:
       - bb-network
+
+  bb-auth-service:
+    build:
+      context: .
+      dockerfile: deploy/auth/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: bb-auth-service
+    ports:
+      - "6000:6000"
+    depends_on:
+      - bb-traefik
+    networks:
+      - bb-network
+    environment:
+      - SECRET_KEY=SECRET_KEY
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`localhost`) && PathPrefix(`/auth-service`)"
+      - "traefik.http.middlewares.auth-stripprefix.stripprefix.prefixes=/auth-service"
+      - "traefik.http.routers.auth.middlewares=auth-stripprefix"
+      - "traefik.http.services.auth.loadbalancer.server.port=5000"
+
+  bb-user-service:
+    build:
+      context: .
+      dockerfile: deploy/user/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: bb-user-service
+    depends_on:
+      - bb-postgres
+      - bb-redis
+      - bb-traefik
+      - bb-kafka
+      - bb-auth-service
+    networks:
+      - bb-network
+    labels:
+      - "traefik.enable=true"
+
+      # Public Route (No Authentication)
+      - "traefik.http.routers.user-public.rule=Host(`localhost`) && PathPrefix(`/user-service/public/api/v1/`)"
+      - "traefik.http.routers.user-public.middlewares=user-stripprefix"
+      - "traefik.http.routers.user-public.service=user"
+
+      # Default Route (Requires Authentication)
+      - "traefik.http.routers.user.rule=Host(`localhost`) && PathPrefix(`/user-service/api/v1/`)"
+      - "traefik.http.routers.user.middlewares=user-stripprefix,auth"
+      - "traefik.http.routers.user.service=user"
+
+      # Common Middleware: Strip /user-service Prefix
+      - "traefik.http.middlewares.user-stripprefix.stripprefix.prefixes=/user-service"
+
+      # Service Configuration
+      - "traefik.http.services.user.loadbalancer.server.port=5001"
+
+      # Authentication Middleware
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
+
+  bb-game-service:
+    build:
+      context: .
+      dockerfile: deploy/game/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: bb-game-service
+    depends_on:
+      - bb-mongo1
+      - bb-mongo2
+      - bb-mongo3
+      - bb-kafka
+      - bb-traefik
+      - bb-auth-service
+    networks:
+      - bb-network
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - MONGO_URI=mongodb://bb-mongo1:27017,bb-mongo2:27017,bb-mongo3:27017/bb-game?replicaSet=rs0
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.game.rule=Host(`localhost`) && PathPrefix(`/game-service`)"
+      - "traefik.http.middlewares.game-stripprefix.stripprefix.prefixes=/game-service"
+      - "traefik.http.routers.game.middlewares=game-stripprefix,auth"
+      - "traefik.http.services.game.loadbalancer.server.port=5003"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
+
+  bb-match-service:
+    build:
+      context: .
+      dockerfile: deploy/match/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23
+    container_name: bb-match-service
+    depends_on:
+      - bb-redis
+      - bb-kafka
+      - bb-traefik
+      - bb-auth-service
+    networks:
+      - bb-network
+    environment:
+      - KAFKA_BROKER=kafka:9092
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.match.rule=Host(`localhost`) && PathPrefix(`/match-service`)"
+      - "traefik.http.middlewares.match-stripprefix.stripprefix.prefixes=/match-service"
+      - "traefik.http.routers.match.middlewares=match-stripprefix,auth"
+      - "traefik.http.services.match.loadbalancer.server.port=5002"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://auth-service:5000/api/v1/validate-token"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeaders=Authorization, X-User-Role, X-User-ID, X-Auth-Data"
+
 
 networks:
   bb-network:
     external: true
 
 volumes:
+  bb-postgres:
+  bb-redis:
+  bb-mongo1:
+  bb-mongo2:
+  bb-mongo3:
   grafana-storage:
