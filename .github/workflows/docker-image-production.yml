@@ -43,7 +43,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: deploy/${{ matrix.service }}/development/Dockerfile
+          file: infra/deploy/${{ matrix.service }}/development/Dockerfile
           push: true
           tags: |
             ghcr.io/nima-abdpoor/brain-blitz/${{ matrix.service }}:${{ env.GIT_TAG }}

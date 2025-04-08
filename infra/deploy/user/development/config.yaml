@@ -33,7 +33,7 @@ postgres_db:
   max_idle_conns: 15
   max_open_conns: 100
   conn_max_lifetime: 5
-  path_of_migration: './user_app/repository/migrations'
+  path_of_migration: './services/user_app/repository/migrations'
 
 redis:
   host: user-redis

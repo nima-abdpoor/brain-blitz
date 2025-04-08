@@ -162,7 +162,7 @@ services:
   bb-auth-service:
     build:
       context: .
-      dockerfile: deploy/auth/development/Dockerfile
+      dockerfile: infra/deploy/auth/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
@@ -185,11 +185,14 @@ services:
   bb-user-service:
     build:
       context: .
-      dockerfile: deploy/user/development/Dockerfile
+      dockerfile: infra/deploy/user/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
     container_name: bb-user-service
+    environment:
+      - USER_postgres_db__host=bb-postgres
+      - USER_grpc_client__host=bb-auth-service
     depends_on:
       - bb-postgres
       - bb-redis
@@ -224,7 +227,7 @@ services:
   bb-game-service:
     build:
       context: .
-      dockerfile: deploy/game/development/Dockerfile
+      dockerfile: infra/deploy/game/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
@@ -253,7 +256,7 @@ services:
   bb-match-service:
     build:
       context: .
-      dockerfile: deploy/match/development/Dockerfile
+      dockerfile: infra/deploy/match/development/Dockerfile
       args:
         GO_IMAGE_NAME: golang
         GO_IMAGE_VERSION: 1.23
