@@ -1,9 +1,9 @@
 version: '2.4'
 
 services:
-  bb-kafka:
+  kafka:
     image: 'bitnami/kafka:3.7.1'
-    container_name: bb-kafka
+    container_name: kafka
     ports:
       - '9092:9092'
     environment:
@@ -43,7 +43,7 @@ services:
     container_name: bb-redis
     restart: always
     ports:
-      - '6380:6379'
+      - '6379:6379'
     command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
@@ -170,6 +170,7 @@ services:
     container_name: bb-auth-service
     ports:
       - "6000:6000"
+      - "5000:5000"
     depends_on:
       - bb-traefik
     networks:
@@ -198,7 +199,7 @@ services:
       - bb-postgres
       - bb-redis
       - bb-traefik
-      - bb-kafka
+      - kafka
       - bb-auth-service
     labels:
       - "traefik.enable=true"
@@ -237,12 +238,13 @@ services:
       - bb-mongo1
       - bb-mongo2
       - bb-mongo3
-      - bb-kafka
+      - kafka
       - bb-traefik
       - bb-auth-service
     environment:
       - KAFKA_BROKER=kafka:9092
-      - GAME_broker__host=bb-kafka
+      - GAME_broker__host=kafka
+      - GAME_mongo__host=bb-mongo1,bb-mongo2,bb-mongo3
       - MONGO_URI=mongodb://bb-mongo1:27017,bb-mongo2:27017,bb-mongo3:27017/bb-game?replicaSet=rs0
     labels:
       - "traefik.enable=true"
@@ -265,12 +267,13 @@ services:
     container_name: bb-match-service
     depends_on:
       - bb-redis
-      - bb-kafka
+      - kafka
       - bb-traefik
       - bb-auth-service
     environment:
+      - MATCH_redis__host=bb-redis
       - KAFKA_BROKER=kafka:9092
-      - MATCH_broker__host=bb-kafka
+      - MATCH_broker__host=kafka
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.match.rule=Host(`localhost`) && PathPrefix(`/match-service`)"

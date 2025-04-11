@@ -89,7 +89,7 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 			createdMatches = append(createdMatches, matchedUser)
 		}
 
-		fmt.Println(op, "game created!", result)
+		svc.logger.Info(op, "game created", result)
 	}
 
 	for _, createdMatch := range createdMatches {

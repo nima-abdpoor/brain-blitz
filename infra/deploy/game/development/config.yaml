@@ -7,8 +7,13 @@ http_server:
   shutdown_context_timeout: "10s"
 
 mongo:
-  host: [game-mongo1, game-mongo2, game-mongo3]
-  port: [27017, 27017, 27017]
+  mongo_instances:
+    - host: bb-mongo1
+      port: 27017
+    - host: bb-mongo2
+      port: 27017
+    - host: bb-mongo3
+      port: 27017
   user: mongodb
   name: BB-game
   connect_timeout: 30s
@@ -18,6 +23,9 @@ mongo:
 broker:
   host: "kafka"
   port: "9092"
+
+repository:
+
 
 logger:
   file_path: "logs/game/service.log"

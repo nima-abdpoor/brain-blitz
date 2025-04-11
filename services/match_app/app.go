@@ -33,7 +33,7 @@ func Setup(config Config, logger logger.SlogAdapter) Application {
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
 	svc := service.NewService(repo, config.Service, kafkaBroker, logger)
 	scheduler := service.NewScheduler(svc, config.Scheduler, logger)
-	handler := http.NewHandler(svc)
+	handler := http.NewHandler(svc, logger)
 	if err != nil {
 		logger.Error("Error creating kafka broker", "error", err)
 		panic(err)
