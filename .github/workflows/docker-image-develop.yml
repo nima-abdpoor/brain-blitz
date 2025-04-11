@@ -6,7 +6,7 @@ on:
       - develop
     paths:
       - docker-image-develop.yml
-      - deploy/**/development/Dockerfile
+      - infra/deploy/**/development/Dockerfile
   pull_request:
     branches:
       - develop
@@ -39,7 +39,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: deploy/${{ matrix.service }}/development/Dockerfile
+          file: infra/deploy/${{ matrix.service }}/development/Dockerfile
           push: false
           build-args: |
             GO_IMAGE_NAME=golang

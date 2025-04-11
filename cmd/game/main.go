@@ -1,10 +1,10 @@
 package main
 
 import (
-	"BrainBlitz.com/game/game_app"
 	cfgloader "BrainBlitz.com/game/pkg/cfg_loader"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
+	"BrainBlitz.com/game/services/game_app"
 	"fmt"
 	"golang.org/x/net/context"
 	"log"
@@ -40,7 +40,7 @@ func main() {
 	defer cancel()
 	mongoDB, err := mongo.NewDB(cfg.MongoDB, connectCtx)
 	if err != nil {
-		gameLogger.Error(fmt.Sprintf("error in connecting to MongoDB on %s:%s", cfg.MongoDB.Hosts, cfg.MongoDB.Ports), "error", err)
+		gameLogger.Error(fmt.Sprintf("error in connecting to MongoDB on %v", cfg.MongoDB.Instances), "error", err)
 	}
 
 	defer func() {
@@ -48,7 +48,7 @@ func main() {
 		defer cancel()
 		err = mongo.Close(mongoDB.DB, disconnectCtx)
 		if err != nil {
-			gameLogger.Error(fmt.Sprintf("error in disconnecting from MongoDB on %s:%s", cfg.MongoDB.Hosts, cfg.MongoDB.Ports), "error", err)
+			gameLogger.Error(fmt.Sprintf("error in disconnecting from MongoDB on %v", cfg.MongoDB.Instances), "error", err)
 		}
 	}()
 

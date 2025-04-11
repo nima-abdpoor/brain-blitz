@@ -3,8 +3,15 @@ package broker
 import (
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/IBM/sarama"
+	"time"
+)
+
+const (
+	retryAttempts = 5
+	retryDelay    = 2 * time.Second
 )
 
 type KafkaBroker struct {
@@ -17,16 +24,38 @@ func NewKafkaBroker(brokers []string, logger logger.SlogAdapter) (*KafkaBroker, 
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Successes = true
 
-	producer, err := sarama.NewSyncProducer(brokers, saramaConfig)
+	var (
+		producer sarama.SyncProducer
+		consumer sarama.Consumer
+		err      error
+	)
+
+	for i := 0; i < retryAttempts; i++ {
+		producer, err = sarama.NewSyncProducer(brokers, saramaConfig)
+		if err == nil {
+			break
+		}
+		logger.Warn("Failed to connect to Kafka producer", "attempt", i+1, "error", err)
+		time.Sleep(retryDelay)
+	}
 	if err != nil {
-		return nil, err
+		return nil, errors.New("could not connect to Kafka producer after retries: " + err.Error())
 	}
 
-	consumer, err := sarama.NewConsumer(brokers, saramaConfig)
+	for i := 0; i < retryAttempts; i++ {
+		consumer, err = sarama.NewConsumer(brokers, saramaConfig)
+		if err == nil {
+			break
+		}
+		logger.Warn("Failed to connect to Kafka consumer", "attempt", i+1, "error", err)
+		time.Sleep(retryDelay)
+	}
 	if err != nil {
-		return nil, err
+		_ = producer.Close()
+		return nil, errors.New("could not connect to Kafka consumer after retries: " + err.Error())
 	}
 
+	logger.Info("Connected to Kafka broker successfully.")
 	return &KafkaBroker{producer: producer, consumer: consumer, Logger: logger}, nil
 }
 
