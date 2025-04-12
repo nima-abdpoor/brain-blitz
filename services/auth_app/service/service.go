@@ -32,10 +32,10 @@ type Config struct {
 
 type Service struct {
 	config Config
-	logger logger.SlogAdapter
+	logger logger.Logger
 }
 
-func NewService(config Config, logger logger.SlogAdapter) Service {
+func NewService(config Config, logger logger.Logger) Service {
 	return Service{
 		config: config,
 		logger: logger,
@@ -58,6 +58,7 @@ func (svc Service) CreateAccessToken(ctx context.Context, request CreateAccessTo
 	claims[jwtIssuedAt] = time.Now().Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedString, err := token.SignedString([]byte(svc.config.SecretKey))
+	fmt.Println(svc.config.SecretKey, signedString, err)
 	if err != nil {
 		return CreateAccessTokenResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"message": "error signing token",
