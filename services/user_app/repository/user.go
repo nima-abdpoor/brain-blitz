@@ -20,12 +20,12 @@ type Config struct{}
 
 type UserRepository struct {
 	Config     Config
-	Logger     logger.SlogAdapter
+	Logger     logger.Logger
 	PostgreSQL *sql.DB
 	Cache      *redis.Adapter
 }
 
-func NewUserRepository(config Config, db *sql.DB, logger logger.SlogAdapter) UserRepository {
+func NewUserRepository(config Config, db *sql.DB, logger logger.Logger) UserRepository {
 	return UserRepository{
 		Config:     config,
 		Logger:     logger,

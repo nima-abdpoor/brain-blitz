@@ -28,12 +28,12 @@ type Application struct {
 	HTTPServer   http.Server
 	GRPCServer   g.Server
 	Config       Config
-	Logger       logger.SlogAdapter
+	Logger       logger.Logger
 	Redis        *redis.Adapter
 	CacheManager *cachemanager.CacheManager
 }
 
-func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientConn, logger logger.SlogAdapter) Application {
+func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientConn, logger logger.Logger) Application {
 	redisAdapter := redis.New(config.Redis)
 	cache := cachemanager.NewCacheManager(redisAdapter)
 

@@ -26,10 +26,10 @@ type Service struct {
 	repository   Repository
 	grpcClient   *auth_adapter.Client
 	CacheManager cachemanager.CacheManager
-	Logger       logger.SlogAdapter
+	Logger       logger.Logger
 }
 
-func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient *auth_adapter.Client, logger logger.SlogAdapter) Service {
+func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient *auth_adapter.Client, logger logger.Logger) Service {
 	return Service{
 		repository:   repository,
 		CacheManager: cm,
