@@ -3,7 +3,7 @@ package service
 import (
 	"BrainBlitz.com/game/adapter/auth"
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
-	utils2 "BrainBlitz.com/game/pkg/common"
+	"BrainBlitz.com/game/pkg/common"
 	"BrainBlitz.com/game/pkg/email"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
@@ -54,9 +54,9 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 		}, s.Logger)
 	}
 
-	currentTime := utils2.GetUTCCurrentMillis()
+	currentTime := utils.GetUTCCurrentMillis()
 
-	hashPassword, err := utils2.HashPassword(request.Password)
+	hashPassword, err := utils.HashPassword(request.Password)
 	if err != nil {
 		return SignUpResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"message": "BcryptErrorHashingPassword",
@@ -114,8 +114,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 			"data": fmt.Sprint(request),
 		}, s.Logger)
 	} else {
-		fmt.Println("user", user)
-		result := utils2.CheckPasswordHash(request.Password, user.HashedPassword)
+		result := utils.CheckPasswordHash(request.Password, user.HashedPassword)
 		if result {
 			data := make([]auth_adapter.CreateTokenRequest, 0)
 			data = append(data, auth_adapter.CreateTokenRequest{

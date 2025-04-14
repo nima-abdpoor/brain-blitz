@@ -72,18 +72,11 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 	for _, category := range GetCategories() {
 		result, err := svc.repository.GetWaitingListByCategory(ctx, category)
 		for _, res := range result {
-			//todo we should implement presenceClient
-			//if presenceRes, err := svc.presenceClient.GetPresenceByUserID(ctx, strconv.Itoa(int(res.UserId))); err != nil {
-			//	fmt.Println(op, res, err)
-			//} else {
-			//	if time.Now().Add(svc.config.LeastPresence).UnixMilli() <= presenceRes {
 			waitingMembers = append(waitingMembers, WaitingMember{
 				UserId:    res.UserId,
 				TimeStamp: res.TimeStamp,
 				Category:  category,
 			})
-			//}
-			//}
 		}
 		if err != nil {
 			rErr = errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
