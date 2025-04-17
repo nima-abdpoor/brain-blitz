@@ -97,7 +97,7 @@ func TestService_SignUp(t *testing.T) {
 
 		resp, err := service.SignUp(context.Background(), req)
 		assert.Error(t, err)
-		assert.Equal(t, "Invalid input", err.Error())
+		assert.Equal(t, errmsg.InvalidInputErrMsg, err.Error())
 		assert.Equal(t, "", resp.DisplayName)
 	})
 
@@ -108,7 +108,7 @@ func TestService_SignUp(t *testing.T) {
 
 		resp, err := service.SignUp(context.Background(), req)
 		assert.Error(t, err)
-		assert.Equal(t, "invalid username or password", err.Error())
+		assert.Equal(t, errmsg.InvalidUserNameOrPasswordErrMsg, err.Error())
 		assert.Equal(t, "", resp.DisplayName)
 	})
 

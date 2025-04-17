@@ -26,10 +26,10 @@ type Service struct {
 	config     Config
 	repository Repository
 	broker     broker.Broker
-	logger     logger.SlogAdapter
+	logger     logger.Logger
 }
 
-func NewService(repository Repository, config Config, broker broker.Broker, logger logger.SlogAdapter) Service {
+func NewService(repository Repository, config Config, broker broker.Broker, logger logger.Logger) Service {
 	return Service{
 		config:     config,
 		repository: repository,

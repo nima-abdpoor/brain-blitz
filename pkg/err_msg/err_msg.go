@@ -24,6 +24,7 @@ const (
 	ErrorMsgNotFound                = "record not found"
 	SomeThingWentWrong              = "something went wrong"
 	InvalidUserNameErrMsg           = "invalid username"
+	InvalidInputErrMsg              = "invalid input"
 	InvalidUserNameOrPasswordErrMsg = "invalid username or password"
 	UserNotFoundErrMsg              = "user not found"
 	InvalidBody                     = "Invalid request body"
