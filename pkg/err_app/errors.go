@@ -114,7 +114,7 @@ func ToGRPCJson(err error) (message string, code codes.Code) {
 var (
 	ErrNotFound     = New("default", "NOT_FOUND", "Resource not found", http.StatusNotFound, codes.NotFound, nil, nil)
 	ErrInternal     = New("default", "INTERNAL_ERROR", errmsg.SomeThingWentWrong, http.StatusInternalServerError, codes.Internal, nil, nil)
-	ErrInvalidInput = New("default", "INVALID_INPUT", "Invalid input", http.StatusBadRequest, codes.InvalidArgument, nil, nil)
+	ErrInvalidInput = New("default", "INVALID_INPUT", errmsg.InvalidInputErrMsg, http.StatusBadRequest, codes.InvalidArgument, nil, nil)
 	ErrUnauthorized = New("default", "UNAUTHORIZED", "Invalid Token", http.StatusUnauthorized, codes.Unauthenticated, nil, nil)
 	ErrInvalidLOGIN = New("default", "INVALID_LOGIN", errmsg.InvalidUserNameOrPasswordErrMsg, http.StatusForbidden, codes.PermissionDenied, nil, nil)
 )
