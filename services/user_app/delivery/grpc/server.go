@@ -10,10 +10,10 @@ import (
 type Server struct {
 	server  grpc.RPCServer
 	handler Handler
-	logger  logger.SlogAdapter
+	logger  logger.Logger
 }
 
-func New(server grpc.RPCServer, handler Handler, logger logger.SlogAdapter) Server {
+func New(server grpc.RPCServer, handler Handler, logger logger.Logger) Server {
 	return Server{
 		server:  server,
 		handler: handler,

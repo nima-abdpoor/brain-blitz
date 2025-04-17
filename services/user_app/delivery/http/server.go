@@ -9,10 +9,10 @@ import (
 type Server struct {
 	HTTPServer httpserver.Server
 	Handler    Handler
-	logger     logger.SlogAdapter
+	logger     logger.Logger
 }
 
-func New(server httpserver.Server, handler Handler, logger logger.SlogAdapter) Server {
+func New(server httpserver.Server, handler Handler, logger logger.Logger) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,

@@ -24,12 +24,12 @@ type Repository interface {
 
 type Service struct {
 	repository   Repository
-	grpcClient   *auth_adapter.Client
+	grpcClient   auth_adapter.TokenClient
 	CacheManager cachemanager.CacheManager
-	Logger       logger.SlogAdapter
+	Logger       logger.Logger
 }
 
-func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient *auth_adapter.Client, logger logger.SlogAdapter) Service {
+func NewService(repository Repository, cm cachemanager.CacheManager, grpcClient auth_adapter.TokenClient, logger logger.Logger) Service {
 	return Service{
 		repository:   repository,
 		CacheManager: cm,
@@ -164,7 +164,10 @@ func (s Service) Profile(ctx context.Context, request ProfileRequest) (ProfileRe
 		// todo check if logger needed
 		// todo add metrics
 		if strings.Contains(err.Error(), "not found") {
-			return ProfileResponse{}, errApp.Wrap(op, err, errApp.ErrNotFound, nil, s.Logger)
+			return ProfileResponse{}, errApp.New(op, "USER_NOT_FOUND", errmsg.UserNotFoundErrMsg, http.StatusNotFound, codes.NotFound, map[string]string{
+				"message": err.Error(),
+				"user":    request.ID,
+			}, s.Logger)
 		}
 		return ProfileResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, nil, s.Logger)
 	} else {

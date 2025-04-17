@@ -25,6 +25,7 @@ const (
 	SomeThingWentWrong              = "something went wrong"
 	InvalidUserNameErrMsg           = "invalid username"
 	InvalidUserNameOrPasswordErrMsg = "invalid username or password"
+	UserNotFoundErrMsg              = "user not found"
 	InvalidBody                     = "Invalid request body"
 	DuplicateUsername               = "username already exists"
 	InvalidAuthentication           = "authentication is required"
