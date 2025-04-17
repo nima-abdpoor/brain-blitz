@@ -6,6 +6,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+type TokenClient interface {
+	GetAccessToken(ctx context.Context, req CreateAccessTokenRequest) (CreateAccessTokenResponse, error)
+	GetRefreshToken(ctx context.Context, req CreateRefreshTokenRequest) (CreateRefreshTokenResponse, error)
+}
+
 type Client struct {
 	Conn *grpc.ClientConn
 }
@@ -16,7 +21,7 @@ func New(conn *grpc.ClientConn) *Client {
 	}
 }
 
-func (c Client) GetAccessToken(ctx context.Context, request CreateAccessTokenRequest) (CreateAccessTokenResponse, error) {
+func (c *Client) GetAccessToken(ctx context.Context, request CreateAccessTokenRequest) (CreateAccessTokenResponse, error) {
 	client := golang.NewTokenServiceClient(c.Conn)
 
 	requestData := make([]*golang.CreateTokenRequest, 0)
@@ -41,7 +46,7 @@ func (c Client) GetAccessToken(ctx context.Context, request CreateAccessTokenReq
 	}, nil
 }
 
-func (c Client) GetRefreshToken(ctx context.Context, request CreateRefreshTokenRequest) (CreateRefreshTokenResponse, error) {
+func (c *Client) GetRefreshToken(ctx context.Context, request CreateRefreshTokenRequest) (CreateRefreshTokenResponse, error) {
 	client := golang.NewTokenServiceClient(c.Conn)
 
 	requestData := make([]*golang.CreateTokenRequest, 0)
