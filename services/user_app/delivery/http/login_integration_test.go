@@ -4,6 +4,8 @@ import (
 	auth_adapter "BrainBlitz.com/game/adapter/auth"
 	cachemanager "BrainBlitz.com/game/pkg/cache_manager"
 	utils "BrainBlitz.com/game/pkg/common"
+	errApp "BrainBlitz.com/game/pkg/err_app"
+	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/services/user_app/service"
 	"bytes"
 	"context"
@@ -72,54 +74,91 @@ func TestLoginIntegration(t *testing.T) {
 
 	e.POST("/login", h.Login)
 
-	hashedPassword, _ := utils.HashPassword("password123")
-	testUser := service.User{
-		ID:             1,
-		Username:       "testUser@example.com",
-		HashedPassword: hashedPassword,
-		DisplayName:    "testUser",
-		CreatedAt:      uint64(time.Now().UnixMilli()),
-		UpdatedAt:      uint64(time.Now().UnixMilli()),
-		Role:           service.UserRole,
-	}
+	t.Run("error-invalid-password", func(t *testing.T) {
+		hashedPassword, _ := utils.HashPassword("password123")
+		testUser := service.User{
+			ID:             1,
+			Username:       "testUser@example.com",
+			HashedPassword: hashedPassword,
+			DisplayName:    "testUser",
+			CreatedAt:      uint64(time.Now().UnixMilli()),
+			UpdatedAt:      uint64(time.Now().UnixMilli()),
+			Role:           service.UserRole,
+		}
 
-	mockRepo.On("GetUser", mock.Anything, "testUser@example.com").Return(testUser, nil)
+		mockRepo.On("GetUser", mock.Anything, "testUser@example.com").Return(testUser, nil)
 
-	mockClient.On("GetAccessToken", mock.Anything, mock.Anything).
-		Return(auth_adapter.CreateAccessTokenResponse{
-			AccessToken: "test-access-token",
-			ExpireTime:  3600,
-		}, nil)
+		loginReq := service.LoginRequest{
+			Email:    "testUser@example.com",
+			Password: "InCorrectPassword",
+		}
 
-	mockClient.On("GetRefreshToken", mock.Anything, mock.Anything).
-		Return(auth_adapter.CreateRefreshTokenResponse{
-			RefreshToken: "test-refresh-token",
-			ExpireTime:   7200,
-		}, nil)
+		body, _ := json.Marshal(loginReq)
+		req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-	// Prepare request
-	loginReq := service.LoginRequest{
-		Email:    "test@example.com",
-		Password: "password123",
-	}
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
 
-	body, _ := json.Marshal(loginReq)
-	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(body))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		if assert.NoError(t, h.Login(c)) {
+			assert.Equal(t, http.StatusForbidden, rec.Code)
 
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+			var res errApp.HTTPErrMessage
+			err := json.Unmarshal(rec.Body.Bytes(), &res)
+			assert.NoError(t, err)
+			assert.Equal(t, errmsg.InvalidUserNameOrPasswordErrMsg, res.Message)
+		}
+	})
 
-	// Call handler
-	if assert.NoError(t, h.Login(c)) {
-		assert.Equal(t, http.StatusOK, rec.Code)
+	t.Run("success", func(t *testing.T) {
+		hashedPassword, _ := utils.HashPassword("password123")
+		testUser := service.User{
+			ID:             1,
+			Username:       "testUser@example.com",
+			HashedPassword: hashedPassword,
+			DisplayName:    "testUser",
+			CreatedAt:      uint64(time.Now().UnixMilli()),
+			UpdatedAt:      uint64(time.Now().UnixMilli()),
+			Role:           service.UserRole,
+		}
 
-		var res service.LoginResponse
-		err := json.Unmarshal(rec.Body.Bytes(), &res)
-		assert.NoError(t, err)
+		mockRepo.ExpectedCalls = nil
+		mockRepo.On("GetUser", mock.Anything, "testUser@example.com").Return(testUser, nil)
 
-		assert.Equal(t, "1", res.ID)
-		assert.Equal(t, "test-access-token", res.AccessToken)
-		assert.Equal(t, "test-refresh-token", res.RefreshToken)
-	}
+		mockClient.On("GetAccessToken", mock.Anything, mock.Anything).
+			Return(auth_adapter.CreateAccessTokenResponse{
+				AccessToken: "test-access-token",
+				ExpireTime:  3600,
+			}, nil)
+
+		mockClient.On("GetRefreshToken", mock.Anything, mock.Anything).
+			Return(auth_adapter.CreateRefreshTokenResponse{
+				RefreshToken: "test-refresh-token",
+				ExpireTime:   7200,
+			}, nil)
+
+		loginReq := service.LoginRequest{
+			Email:    "testUser@example.com",
+			Password: "password123",
+		}
+
+		body, _ := json.Marshal(loginReq)
+		req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		if assert.NoError(t, h.Login(c)) {
+			assert.Equal(t, http.StatusOK, rec.Code)
+
+			var res service.LoginResponse
+			err := json.Unmarshal(rec.Body.Bytes(), &res)
+			assert.NoError(t, err)
+
+			assert.Equal(t, "1", res.ID)
+			assert.Equal(t, "test-access-token", res.AccessToken)
+			assert.Equal(t, "test-refresh-token", res.RefreshToken)
+		}
+	})
 }
