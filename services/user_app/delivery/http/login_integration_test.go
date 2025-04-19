@@ -162,3 +162,20 @@ func TestLoginIntegration(t *testing.T) {
 		}
 	})
 }
+
+func TestSignUpIntegration(t *testing.T) {
+	e := echo.New()
+
+	mockRepo := new(mockRepository)
+	mockClient := new(mockTokenClient)
+	mockCache := cachemanager.NewCacheManager(nil)
+
+	svc := service.NewService(mockRepo, *mockCache, mockClient, MockLogger{})
+
+	h := NewHandler(svc, MockLogger{})
+
+	e.POST("/signup", h.SignUp)
+
+	t.Run("error-invalid-password", func(t *testing.T) {
+	})
+}
