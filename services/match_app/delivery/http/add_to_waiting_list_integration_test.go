@@ -55,29 +55,32 @@ func TestAddToWaitingListIntegration(t *testing.T) {
 
 	handler := NewHandler(svc, MockLogger{})
 
-	e.POST("/waiting-list", handler.addToWaitingList)
+	t.Run("success", func(t *testing.T) {
+		e.POST("/waiting-list", handler.addToWaitingList)
 
-	body := service.AddToWaitingListRequest{
-		Category: service.Music,
-	}
-	bodyJSON, _ := json.Marshal(body)
+		body := service.AddToWaitingListRequest{
+			UserId:   "1",
+			Category: service.Music,
+		}
+		bodyJSON, _ := json.Marshal(body)
 
-	req := httptest.NewRequest(http.MethodPost, "/waiting-list", bytes.NewReader(bodyJSON))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	req.Header.Set("X-User-ID", "user-123")
+		req := httptest.NewRequest(http.MethodPost, "/waiting-list", bytes.NewReader(bodyJSON))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		req.Header.Set("X-User-ID", "1")
 
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
 
-	err := handler.addToWaitingList(c)
-	require.NoError(t, err)
+		err := handler.addToWaitingList(c)
+		require.NoError(t, err)
 
-	assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, http.StatusOK, rec.Code)
 
-	var resp service.AddToWaitingListResponse
-	err = json.Unmarshal(rec.Body.Bytes(), &resp)
-	require.NoError(t, err)
+		var resp service.AddToWaitingListResponse
+		err = json.Unmarshal(rec.Body.Bytes(), &resp)
+		require.NoError(t, err)
 
-	assert.Equal(t, int64(30_000), resp.Timeout.Milliseconds())
-	assert.Contains(t, repo.waitingList[service.CategoryTypeMusic], "user-123")
+		assert.Equal(t, int64(30_000), resp.Timeout.Milliseconds())
+		assert.Contains(t, repo.waitingList[service.CategoryTypeMusic], "1")
+	})
 }
