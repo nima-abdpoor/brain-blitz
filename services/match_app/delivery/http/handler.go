@@ -11,10 +11,10 @@ import (
 
 type Handler struct {
 	Service service.Service
-	Logger  logger.SlogAdapter
+	Logger  logger.Logger
 }
 
-func NewHandler(userService service.Service, logger logger.SlogAdapter) Handler {
+func NewHandler(userService service.Service, logger logger.Logger) Handler {
 	return Handler{
 		Service: userService,
 		Logger:  logger,
@@ -36,15 +36,13 @@ func (handler Handler) addToWaitingList(ctx echo.Context) error {
 
 	err := ctx.Bind(&req)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, errmsg.InvalidCategory)
-		return nil
+		return ctx.JSON(http.StatusBadRequest, errmsg.InvalidCategory)
 	}
 	res, err := handler.Service.AddToWaitingList(ctx.Request().Context(), req)
 	if err != nil {
 		msg, code := errApp.ToHTTPJson(err)
 		return ctx.JSON(code, msg)
 	} else {
-		ctx.JSON(code, res)
-		return nil
+		return ctx.JSON(code, res)
 	}
 }

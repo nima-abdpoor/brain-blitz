@@ -31,6 +31,8 @@ type Application struct {
 	Logger       logger.Logger
 	Redis        *redis.Adapter
 	CacheManager *cachemanager.CacheManager
+	shutdownHTTP func(wg *sync.WaitGroup)
+	shutdownGRPC func(wg *sync.WaitGroup)
 }
 
 func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientConn, logger logger.Logger) Application {
@@ -43,7 +45,7 @@ func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientCo
 	userHandler := http.NewHandler(userService, logger)
 	grpcHandler := g.NewHandler(userService, logger)
 
-	return Application{
+	app := Application{
 		Repository:   userRepository,
 		Service:      userService,
 		UserHandler:  userHandler,
@@ -53,6 +55,11 @@ func Setup(config Config, postgresConn *postgresql.Database, Conn *grpc.ClientCo
 		Logger:       logger,
 		CacheManager: cache,
 	}
+
+	app.shutdownHTTP = func(wg *sync.WaitGroup) { go app.shutdownHTTPServer(wg) }
+	app.shutdownGRPC = func(wg *sync.WaitGroup) { go app.shutdownGRPCServer(wg) }
+
+	return app
 }
 
 func (app Application) Start() {
@@ -109,10 +116,10 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	go func() {
 		var shutdownWg sync.WaitGroup
 		shutdownWg.Add(1)
-		go app.shutdownHTTPServer(&shutdownWg)
+		app.shutdownHTTP(&shutdownWg)
 
 		shutdownWg.Add(1)
-		go app.shutdownGRPCServer(&shutdownWg)
+		app.shutdownGRPC(&shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)

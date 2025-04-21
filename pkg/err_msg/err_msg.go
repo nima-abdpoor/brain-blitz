@@ -11,7 +11,6 @@ var (
 	ErrFailedUnmarshalJson  = errors.New("unmarshal data to JSON failed")
 )
 
-// Define constant messages generally
 const (
 	MessageMissingXUserData  = "Missing X-User-Data header"
 	MessageMissingXUserId    = "Invalid user id"

@@ -38,12 +38,10 @@ func New(cfg Config) Server {
 	}
 }
 
-// register custom handler
 func (s Server) RegisterHandler(route string, handler echo.HandlerFunc) {
 	s.Router.GET(route, handler)
 }
 
-// start server
 func (s Server) Start() error {
 	return s.Router.Start(fmt.Sprintf(":%d", s.Config.Port))
 }

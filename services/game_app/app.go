@@ -18,13 +18,14 @@ import (
 )
 
 type Application struct {
-	Repository  service.Repository
-	Service     service.Service
-	UserHandler http.Handler
-	Consumer    service.Consumer
-	HTTPServer  http.Server
-	Config      Config
-	Logger      logger.SlogAdapter
+	Repository   service.Repository
+	Service      service.Service
+	UserHandler  http.Handler
+	Consumer     service.Consumer
+	HTTPServer   http.Server
+	Config       Config
+	Logger       logger.SlogAdapter
+	shutdownHTTP func(wg *sync.WaitGroup)
 }
 
 func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Application {
@@ -41,7 +42,7 @@ func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Applica
 	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
 	userHandler := http.NewHandler(gameService, logger)
 
-	return Application{
+	app := Application{
 		Repository:  gameRepository,
 		Service:     gameService,
 		UserHandler: userHandler,
@@ -50,6 +51,10 @@ func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Applica
 		Config:      config,
 		Logger:      logger,
 	}
+
+	app.shutdownHTTP = func(wg *sync.WaitGroup) { go app.shutdownHTTPServer(wg) }
+
+	return app
 }
 
 func (app Application) Start() {
@@ -100,7 +105,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	go func() {
 		var shutdownWg sync.WaitGroup
 		shutdownWg.Add(1)
-		go app.shutdownHTTPServer(&shutdownWg)
+		app.shutdownHTTP(&shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
