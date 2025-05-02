@@ -19,6 +19,10 @@ postgres_db:
   conn_max_lifetime: 5
   path_of_migration: './services/question_app/repository/migrations'
 
+broker:
+  host: "kafka"
+  port: "9092"
+
 logger:
   file_path: "logs/question/service.log"
   use_local_time: true

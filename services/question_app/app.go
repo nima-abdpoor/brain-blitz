@@ -1,6 +1,7 @@
 package question_app
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/postgresql"
@@ -20,6 +21,7 @@ type Application struct {
 	Service      service.Service
 	Handler      http.Handler
 	HTTPServer   http.Server
+	Consumer     service.Consumer
 	Config       Config
 	Logger       logger.Logger
 	shutdownHTTP func(wg *sync.WaitGroup)
@@ -30,11 +32,20 @@ func Setup(config Config, postgresConn *postgresql.Database, logger logger.Logge
 	questionService := service.NewService(repo, logger)
 	questionHandler := http.NewHandler(questionService, logger)
 
+	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
+	if err != nil {
+		logger.Error("Error creating kafka broker", "error", err)
+		panic(err)
+	}
+
+	consumer := service.NewConsumer(kafkaBroker, questionService, logger)
+
 	app := Application{
 		Repository: repo,
 		Service:    questionService,
 		Handler:    questionHandler,
 		HTTPServer: http.New(httpserver.New(config.HTTPServer), questionHandler, logger),
+		Consumer:   consumer,
 		Config:     config,
 		Logger:     logger,
 	}
@@ -69,7 +80,7 @@ func (app Application) Start() {
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
@@ -77,7 +88,12 @@ func startServers(app Application, wg *sync.WaitGroup) {
 			// todo add metrics
 			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), "error", err)
 		}
-		//app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+	}()
+	go func() {
+		defer wg.Done()
+		app.Logger.Info("Consumer Started")
+		app.Consumer.Consume()
 	}()
 }
 

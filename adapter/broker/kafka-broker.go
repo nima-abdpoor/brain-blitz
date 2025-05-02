@@ -15,12 +15,12 @@ const (
 )
 
 type KafkaBroker struct {
-	Logger   logger.SlogAdapter
+	Logger   logger.Logger
 	producer sarama.SyncProducer
 	consumer sarama.Consumer
 }
 
-func NewKafkaBroker(brokers []string, logger logger.SlogAdapter) (*KafkaBroker, error) {
+func NewKafkaBroker(brokers []string, logger logger.Logger) (*KafkaBroker, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Successes = true
 
