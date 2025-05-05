@@ -1,40 +1,43 @@
 package service
 
-import "strconv"
-
-type Category uint8
+type Category string
+type Difficulty string
 
 const (
-	CategoryTypeSport Category = iota + 1
-	CategoryTypeMusic
-	CategoryTypeTech
+	CategoryTypeSport Category = "SPORT"
+	CategoryTypeMusic Category = "MUSIC"
+	CategoryTypeTech  Category = "TECH"
 )
 
 const (
-	Sport = "sport"
-	Music = "music"
-	Tech  = "technology"
+	DifficultEasy   Difficulty = "EASY"
+	DifficultMedium Difficulty = "MEDIUM"
+	DifficultHard   Difficulty = "HARD"
 )
-
-func (c Category) String() string {
-	return strconv.Itoa(int(c))
-}
 
 func MapToCategory(category string) Category {
 	switch category {
-	case Music:
+	case "MUSIC":
 		return CategoryTypeMusic
-	case Sport:
+	case "SPORT":
 		return CategoryTypeSport
-	case Tech:
+	case "TECH":
 		return CategoryTypeTech
-	//todo select randomly
 	default:
-		return 0
+		return CategoryTypeMusic
 	}
 }
 
 type MatchedUsers struct {
 	Category []Category
 	UserId   []uint64
+}
+
+type Question struct {
+	Id            string
+	Content       string
+	CorrectAnswer string
+	Choices       []string
+	Category      Category
+	Difficulty    Difficulty
 }

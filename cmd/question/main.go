@@ -4,6 +4,7 @@ import (
 	cfgloader "BrainBlitz.com/game/pkg/cfg_loader"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/postgresql"
+	"BrainBlitz.com/game/pkg/postgresqlmigrator"
 	"BrainBlitz.com/game/services/question_app"
 	"fmt"
 	"log"
@@ -49,8 +50,8 @@ func main() {
 		log.Fatalf("Error in Connecting to User Postgresql: %v", err)
 	}
 
-	//mgr := postgresqlmigrator.New(cfg.PostgresDB, cfg.PostgresDB.PathOfMigration)
-	//mgr.Up()
+	mgr := postgresqlmigrator.New(cfg.PostgresDB, cfg.PostgresDB.PathOfMigration)
+	mgr.Up()
 
 	defer postgresql.Close(postgresConn.DB)
 
