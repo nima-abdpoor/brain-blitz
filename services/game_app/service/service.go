@@ -26,6 +26,7 @@ type Config struct{}
 type Repository interface {
 	CreateMatch(ctx context.Context, game Game) (string, error)
 	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
+	GetQuestionsByMatchId(ctx context.Context, matchId string) ([]Question, error)
 }
 
 type Service struct {

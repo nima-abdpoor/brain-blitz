@@ -13,6 +13,10 @@ import (
 	"time"
 )
 
+const (
+	QuestionsPrefix = "game_questions_"
+)
+
 type Config struct {
 	QuestionsTimeOut time.Duration `koanf:"questions_timeout"`
 }
@@ -54,12 +58,25 @@ func (m GameRepository) CreateMatch(ctx context.Context, game service.Game) (str
 }
 
 func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []service.Question) error {
-	const prefix = "game_"
-
 	res, err := json.Marshal(questions)
 	if err != nil {
 		return err
 	}
 
-	return m.redisDB.Set(ctx, prefix+matchId, res, m.Config.QuestionsTimeOut)
+	return m.redisDB.Set(ctx, QuestionsPrefix+matchId, res, m.Config.QuestionsTimeOut)
+}
+
+func (m GameRepository) GetQuestionsByMatchId(ctx context.Context, matchId string) ([]service.Question, error) {
+	value, err := m.redisDB.Get(ctx, QuestionsPrefix+matchId)
+	if err != nil {
+		return nil, err
+	}
+
+	var questions []service.Question
+	err = json.Unmarshal([]byte(value), &questions)
+	if err != nil {
+		return nil, err
+	}
+
+	return questions, nil
 }
