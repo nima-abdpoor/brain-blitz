@@ -6,7 +6,9 @@ import (
 	questionProto "BrainBlitz.com/game/contract/question/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"google.golang.org/protobuf/proto"
@@ -50,7 +52,7 @@ func NewService(config Config, repo Repository, ws websocket.WebSocket, logger l
 func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (ProcessGameResponse, error) {
 	const op = "game.processGame"
 
-	connection, _, _, err := svc.webSocket.Upgrade(ctx.Request(), ctx.Response())
+	connection, rw, _, err := svc.webSocket.Upgrade(ctx.Request(), ctx.Response())
 	if err != nil {
 		return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
 			"message": "error in initializing websocket",
@@ -67,6 +69,27 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 	}
 
 	svc.connections[id] = *connection
+
+	go func(ctx context.Context, conn *net.Conn, rw *bufio.ReadWriter, userID uint64) {
+		defer func() {
+			(*conn).Close()
+			delete(svc.connections, userID)
+			svc.logger.Info("connection closed", "userID", userID)
+		}()
+
+		for {
+			msg, code, err := svc.webSocket.ReadClientData(rw)
+			if err != nil {
+				svc.logger.Error("read failed", "userID", userID, "error", err)
+				break
+			}
+			err = svc.readMessage(ctx, conn, code, msg)
+			if err != nil {
+				svc.logger.Error("read failed", "userID", userID, "error", err)
+			}
+		}
+	}(ctx.Request().Context(), connection, rw, id)
+
 	return ProcessGameResponse{}, nil
 }
 
@@ -123,6 +146,50 @@ func (svc Service) ConsumeQuestions(message []byte, ctx context.Context) error {
 		svc.logger.Error(op, "error in saving questions", slog.String("error", err.Error()))
 	}
 
+	return nil
+}
+
+func (svc Service) readMessage(ctx context.Context, conn *net.Conn, code websocket.OpCode, message string) error {
+	svc.logger.Info("received message", "code", code, "message", message)
+
+	var req ProcessGameMessageRequest
+	err := json.Unmarshal([]byte(message), &req)
+	if err != nil {
+		return err
+	}
+
+	switch req.Command {
+	case CommandAddToWaitingList:
+		{
+			fmt.Println("adding to waiting list")
+		}
+	case CommandReady:
+		{
+			fmt.Println("ready")
+			questions, err := svc.repository.GetQuestionsByMatchId(context.Background(), req.MatchId)
+			if err != nil {
+				return err
+			}
+
+			jsonQuestions, err := json.Marshal(questions)
+			if err != nil {
+				return err
+			}
+
+			err = svc.webSocket.WriteServerData(*conn, code, string(jsonQuestions))
+			if err != nil {
+				return err
+			}
+		}
+	case CommandGetCategories:
+		{
+			fmt.Println("get categories")
+		}
+	case CommandUnknownCommand:
+		{
+			fmt.Println("unknown")
+		}
+	}
 	return nil
 }
 
