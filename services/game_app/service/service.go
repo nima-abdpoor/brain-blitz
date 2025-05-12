@@ -3,6 +3,7 @@ package service
 import (
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/contract/match/golang"
+	questionProto "BrainBlitz.com/game/contract/question/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
@@ -98,6 +99,22 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 			svc.logger.Error(op, "error writing message", "userId", fmt.Sprintf("%v", createdMatch.UserId), "message", MatchCreated, slog.String("error", err.Error()))
 		}
 	}
+
+	return nil
+}
+
+func (svc Service) ConsumeQuestions(message []byte, ctx context.Context) error {
+	const op = "game.consumeQuestions"
+
+	protoQuestions := &questionProto.Questions{}
+	err := proto.Unmarshal(message, protoQuestions)
+	if err != nil {
+		svc.logger.Error(op, "error in unmarshalling question message", slog.String("error", err.Error()))
+		return err
+	}
+	questions, matchId := MapFromProtoMessageToQuestionsEntity(protoQuestions)
+
+	svc.logger.Info(op, "question list received", questions, "matchId", matchId)
 
 	return nil
 }

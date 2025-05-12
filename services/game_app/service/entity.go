@@ -1,7 +1,6 @@
 package service
 
 import (
-	"strconv"
 	"time"
 )
 
@@ -80,12 +79,12 @@ func MapToFromGameStatus(status GameStatus) string {
 }
 
 type Question struct {
-	ID              uint
-	Text            string
-	PossibleAnswers []PossibleAnswers
-	CorrectAnswerID uint
-	Difficulty      QuestionDifficulty
-	CategoryID      uint
+	Id            string
+	Content       string
+	CorrectAnswer string
+	Choices       []string
+	Category      Category
+	Difficulty    Difficulty
 }
 
 type PossibleAnswers struct {
@@ -99,30 +98,27 @@ type PossibleAnswerChoice uint8
 type QuestionDifficulty uint8
 
 const (
-	QuestionDifficultyEasy QuestionDifficulty = iota + 1
-	QuestionDifficultyMedium
-	QuestionDifficultyHard
-)
-
-const (
 	PossibleAnswerChoiceA PossibleAnswerChoice = iota + 1
 	PossibleAnswerChoiceB
 	PossibleAnswerChoiceC
 	PossibleAnswerChoiceD
 )
 
-type Category uint8
+type Category string
+type Difficulty string
 
 const (
-	CategoryTypeSport Category = iota + 1
-	CategoryTypeMusic
-	CategoryTypeTech
+	CategoryTypeSport   Category = "SPORT"
+	CategoryTypeMusic   Category = "MUSIC"
+	CategoryTypeTech    Category = "TECH"
+	CategoryTypeUnknown Category = "UNKNOWN"
 )
 
 const (
-	Sport = "sport"
-	Music = "music"
-	Tech  = "technology"
+	DifficultEasy    Difficulty = "EASY"
+	DifficultMedium  Difficulty = "MEDIUM"
+	DifficultHard    Difficulty = "HARD"
+	DifficultUnknown Difficulty = "UNKNOWN"
 )
 
 func GetCategories() []Category {
@@ -131,42 +127,36 @@ func GetCategories() []Category {
 
 func MapToCategory(category string) Category {
 	switch category {
-	case Music:
-		return CategoryTypeMusic
-	case Sport:
+	case "SPORT":
 		return CategoryTypeSport
-	case Tech:
+	case "MUSIC":
+		return CategoryTypeMusic
+	case "TECH":
 		return CategoryTypeTech
-	//todo select randomly
 	default:
-		return 0
+		return CategoryTypeUnknown
 	}
 }
 
-func MapFromCategory(category Category) string {
-	switch category {
-	case CategoryTypeMusic:
-		return Music
-	case CategoryTypeSport:
-		return Sport
-	case CategoryTypeTech:
-		return Tech
-	// todo select randomly
+func MapToDifficulty(difficulty string) Difficulty {
+	switch difficulty {
+	case "EASY":
+		return DifficultEasy
+	case "MEDIUM":
+		return DifficultMedium
+	case "HARD":
+		return DifficultHard
 	default:
-		return "Unknown"
+		return DifficultUnknown
 	}
 }
 
 func MapFromCategories(categories []Category) []string {
 	var result []string
 	for _, category := range categories {
-		result = append(result, MapFromCategory(category))
+		result = append(result, string(category))
 	}
 	return result
-}
-
-func (c Category) String() string {
-	return strconv.Itoa(int(c))
 }
 
 type MatchCreation struct {

@@ -1,8 +1,11 @@
 package service
 
-import "BrainBlitz.com/game/contract/match/golang"
+import (
+	matchProto "BrainBlitz.com/game/contract/match/golang"
+	questionProto "BrainBlitz.com/game/contract/question/golang"
+)
 
-func MapFromProtoMessageToEntity(users *golang.AllMatchedUsers) []MatchedUsers {
+func MapFromProtoMessageToEntity(users *matchProto.AllMatchedUsers) []MatchedUsers {
 	finalUsers := make([]MatchedUsers, 0)
 	for _, user := range users.GetUsers() {
 		categories := make([]Category, 0)
@@ -16,4 +19,21 @@ func MapFromProtoMessageToEntity(users *golang.AllMatchedUsers) []MatchedUsers {
 		})
 	}
 	return finalUsers
+}
+
+func MapFromProtoMessageToQuestionsEntity(questions *questionProto.Questions) ([]Question, string) {
+	finalQuestions := make([]Question, 0)
+
+	for _, question := range questions.GetQuestions() {
+		finalQuestions = append(finalQuestions, Question{
+			Id:            question.GetQuestionId(),
+			Content:       question.GetContent(),
+			CorrectAnswer: question.GetCorrectAnswer(),
+			Choices:       question.GetChoices(),
+			Category:      MapToCategory(question.GetCategory()),
+			Difficulty:    MapToDifficulty(question.GetDifficulty()),
+		})
+	}
+
+	return finalQuestions, questions.GetMatchId()
 }
