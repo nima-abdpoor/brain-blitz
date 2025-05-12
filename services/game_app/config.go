@@ -2,6 +2,7 @@ package game_app
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/adapter/websocket"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
@@ -18,6 +19,7 @@ type Config struct {
 	WebSocket            websocket.Config  `koanf:"websocket"`
 	Repository           repository.Config `koanf:"repository"`
 	MongoDB              mongo.Config      `koanf:"mongo"`
+	Redis                redis.Config      `koanf:"redis"`
 	Logger               logger.Config     `koanf:"logger"`
 	TotalShutdownTimeout time.Duration     `koanf:"total_shutdown_timeout"`
 }

@@ -79,12 +79,12 @@ func MapToFromGameStatus(status GameStatus) string {
 }
 
 type Question struct {
-	Id            string
-	Content       string
-	CorrectAnswer string
-	Choices       []string
-	Category      Category
-	Difficulty    Difficulty
+	Id            string     `json:"id"`
+	Content       string     `json:"content"`
+	CorrectAnswer string     `json:"correctAnswer"`
+	Choices       []string   `json:"choices"`
+	Category      Category   `json:"category"`
+	Difficulty    Difficulty `json:"difficulty"`
 }
 
 type PossibleAnswers struct {

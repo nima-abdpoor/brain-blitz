@@ -2,6 +2,7 @@ package game_app
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/adapter/websocket"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
@@ -29,7 +30,8 @@ type Application struct {
 }
 
 func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Application {
-	gameRepository := repository.NewGameRepository(config.Repository, logger, db)
+	redisAdapter := redis.New(config.Redis)
+	gameRepository := repository.NewGameRepository(config.Repository, logger, db, redisAdapter)
 	ws := websocket.NewWS(config.WebSocket)
 	gameService := service.NewService(config.Service, gameRepository, ws, logger)
 

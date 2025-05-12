@@ -25,6 +25,7 @@ type Config struct{}
 
 type Repository interface {
 	CreateMatch(ctx context.Context, game Game) (string, error)
+	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
 }
 
 type Service struct {
@@ -115,6 +116,11 @@ func (svc Service) ConsumeQuestions(message []byte, ctx context.Context) error {
 	questions, matchId := MapFromProtoMessageToQuestionsEntity(protoQuestions)
 
 	svc.logger.Info(op, "question list received", questions, "matchId", matchId)
+
+	err = svc.repository.SaveQuestionsByMatchId(ctx, matchId, questions)
+	if err != nil {
+		svc.logger.Error(op, "error in saving questions", slog.String("error", err.Error()))
+	}
 
 	return nil
 }
