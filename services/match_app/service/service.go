@@ -6,8 +6,10 @@ import (
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
+	"github.com/oklog/ulid/v2"
 	"github.com/thoas/go-funk"
 	"google.golang.org/protobuf/proto"
+	"math/rand"
 	"sort"
 	"time"
 )
@@ -114,7 +116,10 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 		if r%2 != 0 {
 			r--
 		}
+		entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+		id := ulid.MustNew(ulid.Timestamp(time.Now()), entropy)
 		finalUsers = append(finalUsers, MatchedUsers{
+			Id:       id.String(),
 			Category: readyUser.Category,
 			UserId:   readyUser.UserId[:r],
 		})

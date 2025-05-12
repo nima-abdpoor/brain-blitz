@@ -29,6 +29,7 @@ func MapToCategory(category string) Category {
 }
 
 type MatchedUsers struct {
+	MatchId  string
 	Category []Category
 	UserId   []uint64
 }

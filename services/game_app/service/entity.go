@@ -176,6 +176,7 @@ type MatchCreation struct {
 }
 
 type MatchedUsers struct {
+	MatchId  string
 	Category []Category
 	UserId   []uint64
 }

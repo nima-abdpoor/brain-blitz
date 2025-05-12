@@ -1,11 +1,13 @@
 package service
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/contract/match/golang"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
+	"time"
 )
 
 type Repository interface {
@@ -15,12 +17,14 @@ type Repository interface {
 
 type Service struct {
 	repository Repository
+	broker     broker.Broker
 	Logger     logger.Logger
 }
 
-func NewService(repository Repository, logger logger.Logger) Service {
+func NewService(repository Repository, broker broker.Broker, logger logger.Logger) Service {
 	return Service{
 		repository: repository,
+		broker:     broker,
 		Logger:     logger,
 	}
 }
@@ -30,6 +34,7 @@ func (svc Service) AddQuestion(ctx context.Context, request AddQuestionRequest) 
 }
 
 func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) error {
+	questionsTopic := "question_v1_questions"
 	const op = "service.consumeMatchCreated"
 	const limit = 10
 
@@ -40,6 +45,9 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 		return err
 	}
 	matchedUsers := MapFromProtoMessageToEntity(protoMatchedUsers)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
 	for _, matchedUser := range matchedUsers {
 		svc.Logger.Info(op, "userId", matchedUser.UserId, "category", matchedUser.Category, "limit", limit)
 		questions, err := svc.repository.GetRandomQuestions(ctx, matchedUser.Category, DifficultEasy, limit)
@@ -47,9 +55,17 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 			svc.Logger.Error(op, "error in getting matched questions", err)
 		}
 
-		// todo publish questions
-		svc.Logger.Info(op, "matched user", matchedUser)
-		svc.Logger.Info(op, "Questions", questions, "matchId", "id")
+		buff, err := proto.Marshal(MapQuestionsToProtoMessage(matchedUser.MatchId, questions))
+		if err != nil {
+			//todo update metrics
+			svc.Logger.Error(op, "message", "error in marshaling questions message", err.Error())
+		}
+
+		err = svc.broker.Publish(ctx, questionsTopic, buff)
+		if err != nil {
+			svc.Logger.Error(op, "message", "error in publishing questions message", err.Error())
+		}
+		svc.Logger.Info(op, "message", "publishing questions...", "questions", questions, "matchId", matchedUser.MatchId)
 	}
 
 	return nil

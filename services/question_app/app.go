@@ -29,14 +29,15 @@ type Application struct {
 
 func Setup(config Config, postgresConn *postgresql.Database, logger logger.Logger) Application {
 	repo := repository.New(config.Repository, postgresConn.DB, logger)
-	questionService := service.NewService(repo, logger)
-	questionHandler := http.NewHandler(questionService, logger)
 
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
 	if err != nil {
 		logger.Error("Error creating kafka broker", "error", err)
 		panic(err)
 	}
+
+	questionService := service.NewService(repo, kafkaBroker, logger)
+	questionHandler := http.NewHandler(questionService, logger)
 
 	consumer := service.NewConsumer(kafkaBroker, questionService, logger)
 

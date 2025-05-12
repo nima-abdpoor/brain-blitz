@@ -66,6 +66,7 @@ func (wm WaitingMember) String() string {
 }
 
 type MatchedUsers struct {
+	Id       string
 	Category []Category
 	UserId   []uint64
 }

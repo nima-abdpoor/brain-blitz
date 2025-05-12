@@ -1,8 +1,11 @@
 package service
 
-import "BrainBlitz.com/game/contract/match/golang"
+import (
+	matchProto "BrainBlitz.com/game/contract/match/golang"
+	questionProto "BrainBlitz.com/game/contract/question/golang"
+)
 
-func MapFromProtoMessageToEntity(users *golang.AllMatchedUsers) []MatchedUsers {
+func MapFromProtoMessageToEntity(users *matchProto.AllMatchedUsers) []MatchedUsers {
 	finalUsers := make([]MatchedUsers, 0)
 	for _, user := range users.GetUsers() {
 		categories := make([]Category, 0)
@@ -10,9 +13,30 @@ func MapFromProtoMessageToEntity(users *golang.AllMatchedUsers) []MatchedUsers {
 			categories = append(categories, MapToCategory(category))
 		}
 		finalUsers = append(finalUsers, MatchedUsers{
-			UserId:   user.UserId,
+			MatchId:  user.GetMatchId(),
+			UserId:   user.GetUserId(),
 			Category: categories,
 		})
 	}
 	return finalUsers
+}
+
+func MapQuestionsToProtoMessage(matchId string, questions []Question) *questionProto.Questions {
+	finalQuestions := make([]*questionProto.Question, 0)
+
+	for _, question := range questions {
+		finalQuestions = append(finalQuestions, &questionProto.Question{
+			QuestionId:    question.Id,
+			Content:       question.Content,
+			CorrectAnswer: question.CorrectAnswer,
+			Choices:       question.Choices,
+			Category:      string(question.Category),
+			Difficulty:    string(question.Difficulty),
+		})
+	}
+
+	return &questionProto.Questions{
+		MatchId:   matchId,
+		Questions: finalQuestions,
+	}
 }
