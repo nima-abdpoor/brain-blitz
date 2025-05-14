@@ -1,7 +1,9 @@
 package service
 
 import (
+	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/websocket"
+	"BrainBlitz.com/game/contract/event"
 	"BrainBlitz.com/game/contract/match/golang"
 	questionProto "BrainBlitz.com/game/contract/question/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
@@ -25,7 +27,8 @@ const (
 type IdToConnection map[uint64]net.Conn
 
 type Config struct {
-	StoreGameStatusTimeOut time.Duration `koanf:"store_game_status_time_out"`
+	StoreGameStatusTimeOut          time.Duration `koanf:"store_game_status_time_out"`
+	PublishUserToWaitingListTimeOut time.Duration `koanf:"publish_user_to_waiting_list_time_out"`
 }
 
 type Repository interface {
@@ -41,15 +44,17 @@ type Service struct {
 	repository  Repository
 	webSocket   websocket.WebSocket
 	connections IdToConnection
+	broker      broker.Broker
 	logger      logger.SlogAdapter
 }
 
-func NewService(config Config, repo Repository, ws websocket.WebSocket, logger logger.SlogAdapter) Service {
+func NewService(config Config, repo Repository, ws websocket.WebSocket, broker broker.Broker, logger logger.SlogAdapter) Service {
 	return Service{
 		config:      config,
 		repository:  repo,
 		webSocket:   ws,
 		logger:      logger,
+		broker:      broker,
 		connections: IdToConnection{},
 	}
 }
@@ -241,6 +246,14 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 					Success: false,
 					Message: "invalid category",
 				}
+				addToWaitingListResponse, err := json.Marshal(response)
+				if err != nil {
+					return err
+				}
+				err = svc.webSocket.WriteServerData(*conn, code, string(addToWaitingListResponse))
+				if err != nil {
+					return err
+				}
 			}
 			err = svc.saveUsersGameStatus(id, GameStatusInitialized)
 			if err != nil {
@@ -249,8 +262,39 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 					Success: false,
 					Message: "internal server error",
 				}
+				addToWaitingListResponse, err := json.Marshal(response)
+				if err != nil {
+					return err
+				}
+				err = svc.webSocket.WriteServerData(*conn, code, string(addToWaitingListResponse))
+				if err != nil {
+					return err
+				}
 			}
-			// todo publish userId with category in broker
+			brokerCtx, cancel := context.WithTimeout(context.Background(), svc.config.PublishUserToWaitingListTimeOut)
+			defer cancel()
+			buff, err := proto.Marshal(MapWaitingListRequestToProtoMessage(id, req.Category))
+			if err != nil {
+				//todo update metrics
+				svc.logger.Error(op, "message", "error in marshaling waiting list request message", err.Error())
+			}
+
+			err = svc.broker.Publish(brokerCtx, event.GAME_V1_JOIN_MATCH_QUEUE_REQUESTED, buff)
+			if err != nil {
+				svc.logger.Error(op, "error in publishing join request message into broker", slog.String("error", err.Error()))
+				response = ProcessGameMessageResponse{
+					Success: false,
+					Message: "internal server error",
+				}
+				addToWaitingListResponse, err := json.Marshal(response)
+				if err != nil {
+					return err
+				}
+				err = svc.webSocket.WriteServerData(*conn, code, string(addToWaitingListResponse))
+				if err != nil {
+					return err
+				}
+			}
 			response = ProcessGameMessageResponse{
 				Success: true,
 				Message: "added to waiting list successfully",

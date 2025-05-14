@@ -2,6 +2,7 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/contract/match/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
@@ -9,8 +10,10 @@ import (
 	"github.com/oklog/ulid/v2"
 	"github.com/thoas/go-funk"
 	"google.golang.org/protobuf/proto"
+	"log/slog"
 	"math/rand"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -93,7 +96,7 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 	for _, member := range waitingMembers {
 		index := funk.IndexOf(readyUsers, func(users MatchedUsers) bool {
 			for _, category := range users.Category {
-				if category.String() == member.Category.String() {
+				if string(category) == string(member.Category) {
 					return true
 				}
 			}
@@ -153,4 +156,30 @@ func (svc Service) publishFinalUsers(users []MatchedUsers) {
 	}
 
 	svc.logger.Info(op, "message", "publishing message...")
+}
+
+func (svc Service) ConsumeJoinMatchQueueRequest(message []byte, ctx context.Context) error {
+	const op = "match.ConsumeJoinMatchQueueRequest"
+
+	addToWaitingListRequestProto := &golang.AddToWaitingList{}
+	err := proto.Unmarshal(message, addToWaitingListRequestProto)
+	if err != nil {
+		svc.logger.Error(op, "error in unmarshalling add to waiting list request message", slog.String("error", err.Error()))
+		return err
+	}
+
+	userId, category := MapFromAddToWaitingListProtoToEntity(addToWaitingListRequestProto)
+	if category == CategoryTypeUnknown {
+		svc.logger.Error(op, "unknown category received by consumer")
+		return err
+	}
+	err = svc.repository.AddToWaitingList(ctx, category, strconv.FormatUint(userId, 10))
+	if err != nil {
+		svc.logger.Error(op, "error in storing add to waiting list request message", slog.String("error", err.Error()))
+		return err
+	}
+
+	svc.logger.Info(op, "message", "consumed message successfully", "userId", userId, "category", string(category))
+
+	return nil
 }

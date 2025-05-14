@@ -30,6 +30,7 @@ repository:
 
 service:
   store_game_status_time_out: 1m
+  publish_user_to_waiting_list_time_out: 1m
 
 redis:
   host: localhost

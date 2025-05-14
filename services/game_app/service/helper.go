@@ -37,3 +37,10 @@ func MapFromProtoMessageToQuestionsEntity(questions *questionProto.Questions) ([
 
 	return finalQuestions, questions.GetMatchId()
 }
+
+func MapWaitingListRequestToProtoMessage(userId uint64, category string) *matchProto.AddToWaitingList {
+	return &matchProto.AddToWaitingList{
+		UserId:   userId,
+		Category: category,
+	}
+}

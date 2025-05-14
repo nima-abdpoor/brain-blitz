@@ -2,21 +2,15 @@ package service
 
 import (
 	"fmt"
-	"strconv"
 )
 
-type Category uint8
+type Category string
 
 const (
-	CategoryTypeSport Category = iota + 1
-	CategoryTypeMusic
-	CategoryTypeTech
-)
-
-const (
-	Sport = "sport"
-	Music = "music"
-	Tech  = "technology"
+	CategoryTypeSport   Category = "SPORT"
+	CategoryTypeMusic   Category = "MUSIC"
+	CategoryTypeTech    Category = "TECH"
+	CategoryTypeUnknown Category = "UNKNOWN"
 )
 
 func GetCategories() []Category {
@@ -25,34 +19,15 @@ func GetCategories() []Category {
 
 func MapToCategory(category string) Category {
 	switch category {
-	case Music:
-		return CategoryTypeMusic
-	case Sport:
+	case "SPORT":
 		return CategoryTypeSport
-	case Tech:
+	case "MUSIC":
+		return CategoryTypeMusic
+	case "TECH":
 		return CategoryTypeTech
-	//todo select randomly
 	default:
-		return 0
+		return CategoryTypeUnknown
 	}
-}
-
-func MapFromCategory(category Category) string {
-	switch category {
-	case CategoryTypeMusic:
-		return Music
-	case CategoryTypeSport:
-		return Sport
-	case CategoryTypeTech:
-		return Tech
-	// todo select randomly
-	default:
-		return "Unknown"
-	}
-}
-
-func (c Category) String() string {
-	return strconv.Itoa(int(c))
 }
 
 type WaitingMember struct {
@@ -74,7 +49,7 @@ type MatchedUsers struct {
 func (m MatchedUsers) String() string {
 	categories := ""
 	for _, category := range m.Category {
-		categories += fmt.Sprintf("%s,", MapFromCategory(category))
+		categories += fmt.Sprintf("%s,", string(category))
 	}
 	return fmt.Sprintf("matchedUsers: Category: %s==>%s", categories[:len(categories)-1], fmt.Sprint(m.UserId))
 }

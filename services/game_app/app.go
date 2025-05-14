@@ -33,13 +33,13 @@ func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Applica
 	redisAdapter := redis.New(config.Redis)
 	gameRepository := repository.NewGameRepository(config.Repository, logger, db, redisAdapter)
 	ws := websocket.NewWS(config.WebSocket)
-	gameService := service.NewService(config.Service, gameRepository, ws, logger)
 
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
 	if err != nil {
 		logger.Error("Error creating kafka broker", "error", err)
 		panic(err)
 	}
+	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker, logger)
 
 	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
 	userHandler := http.NewHandler(gameService, logger)

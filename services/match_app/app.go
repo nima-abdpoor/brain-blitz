@@ -22,6 +22,7 @@ type Application struct {
 	Repository  service.Repository
 	Service     service.Service
 	Scheduler   service.Scheduler
+	Consumer    service.Consumer
 	UserHandler http.Handler
 	HTTPServer  http.Server
 	Logger      logger.SlogAdapter
@@ -38,6 +39,7 @@ func Setup(config Config, logger logger.SlogAdapter) Application {
 		logger.Error("Error creating kafka broker", "error", err)
 		panic(err)
 	}
+	consumer := service.NewConsumer(kafkaBroker, svc, logger)
 
 	return Application{
 		Config:      config,
@@ -46,6 +48,7 @@ func Setup(config Config, logger logger.SlogAdapter) Application {
 		UserHandler: handler,
 		Scheduler:   scheduler,
 		HTTPServer:  http.New(httpserver.New(config.HTTPServer), handler, logger),
+		Consumer:    consumer,
 		Logger:      logger,
 	}
 }
@@ -76,7 +79,7 @@ func (app Application) Start() {
 }
 
 func startServers(app Application, done <-chan bool, wg *sync.WaitGroup) {
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
@@ -91,6 +94,11 @@ func startServers(app Application, done <-chan bool, wg *sync.WaitGroup) {
 
 		app.Logger.Info("Scheduler Started")
 		app.Scheduler.Start(done)
+	}()
+	go func() {
+		defer wg.Done()
+		app.Logger.Info("Consumer Started")
+		app.Consumer.Consume()
 	}()
 }
 
