@@ -10,15 +10,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strconv"
 	"time"
 )
 
 const (
-	QuestionsPrefix = "game_questions_"
+	QuestionsPrefix  = "game_questions_"
+	GameStatusPrefix = "game_status_"
 )
 
 type Config struct {
-	QuestionsTimeOut time.Duration `koanf:"questions_timeout"`
+	QuestionsTimeOut  time.Duration `koanf:"questions_timeout"`
+	GameStatusTimeOut time.Duration `koanf:"game_status_timeout"`
 }
 
 type GameRepository struct {
@@ -43,7 +46,7 @@ func (m GameRepository) CreateMatch(ctx context.Context, game service.Game) (str
 	doc := service.MatchCreation{
 		Players:  game.PlayerIDs,
 		Category: service.MapFromCategories(game.Category),
-		Status:   service.MapToFromGameStatus(game.Status),
+		Status:   string(game.Status),
 	}
 	coll := m.MongoDB.DB.Collection("game")
 	if result, err := coll.InsertOne(ctx, doc); err != nil {
@@ -79,4 +82,16 @@ func (m GameRepository) GetQuestionsByMatchId(ctx context.Context, matchId strin
 	}
 
 	return questions, nil
+}
+
+func (m GameRepository) UpsertUserStatus(ctx context.Context, userId uint64, status service.GameStatus) error {
+	return m.redisDB.Set(ctx, GameStatusPrefix+strconv.FormatUint(userId, 10), string(status), m.Config.GameStatusTimeOut)
+}
+
+func (m GameRepository) GetUserStatus(ctx context.Context, userId uint64) (service.GameStatus, error) {
+	value, err := m.redisDB.Get(ctx, GameStatusPrefix+strconv.FormatUint(userId, 10))
+	if err != nil {
+		return service.GameStatusUnknown, err
+	}
+	return service.MapToGameStatus(value), nil
 }

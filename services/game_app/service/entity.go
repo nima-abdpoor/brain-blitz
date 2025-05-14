@@ -28,20 +28,15 @@ type PlayerAnswer struct {
 	Choice      PossibleAnswerChoice
 }
 
-type GameStatus uint8
+type GameStatus string
 
 const (
-	GameStatusCreated GameStatus = iota + 1
-	GameStatusPending
-	GameStatusStarted
-	GameStatusFinished
-)
-
-const (
-	GSCreated  = "created"
-	GSPending  = "pending"
-	GSStarted  = "started"
-	GSFinished = "finished"
+	GameStatusInitialized GameStatus = "INITIALIZED"
+	GameStatusPending     GameStatus = "PENDING"
+	GameStatusCreated     GameStatus = "CREATED"
+	GameStatusStarted     GameStatus = "STARTED"
+	GameStatusFinished    GameStatus = "FINISHED"
+	GameStatusUnknown     GameStatus = "UNKNOWN"
 )
 
 func GetGameStatus() []GameStatus {
@@ -50,31 +45,16 @@ func GetGameStatus() []GameStatus {
 
 func MapToGameStatus(status string) GameStatus {
 	switch status {
-	case GSCreated:
-		return GameStatusCreated
-	case GSPending:
+	case "PENDING":
 		return GameStatusPending
-	case GSStarted:
+	case "CREATED":
+		return GameStatusCreated
+	case "STARTED":
 		return GameStatusStarted
-	case GSFinished:
+	case "FINISHED":
 		return GameStatusFinished
 	default:
-		return 0
-	}
-}
-
-func MapToFromGameStatus(status GameStatus) string {
-	switch status {
-	case GameStatusCreated:
-		return GSCreated
-	case GameStatusPending:
-		return GSPending
-	case GameStatusStarted:
-		return GSStarted
-	case GameStatusFinished:
-		return GSFinished
-	default:
-		return "UNKNOWN"
+		return GameStatusUnknown
 	}
 }
 

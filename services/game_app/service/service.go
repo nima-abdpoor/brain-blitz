@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net"
 	"strconv"
+	"time"
 )
 
 const (
@@ -23,12 +24,16 @@ const (
 
 type IdToConnection map[uint64]net.Conn
 
-type Config struct{}
+type Config struct {
+	StoreGameStatusTimeOut time.Duration `koanf:"store_game_status_time_out"`
+}
 
 type Repository interface {
 	CreateMatch(ctx context.Context, game Game) (string, error)
 	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
 	GetQuestionsByMatchId(ctx context.Context, matchId string) ([]Question, error)
+	UpsertUserStatus(ctx context.Context, userId uint64, status GameStatus) error
+	GetUserStatus(ctx context.Context, userId uint64) (GameStatus, error)
 }
 
 type Service struct {
@@ -69,6 +74,49 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 	}
 
 	svc.connections[id] = *connection
+	switch svc.getUsersGameStatus(id) {
+	case GameStatusInitialized:
+		{
+
+		}
+	case GameStatusPending:
+		{
+
+		}
+	case GameStatusCreated:
+		{
+
+		}
+	case GameStatusStarted:
+		{
+
+		}
+	case GameStatusFinished:
+		{
+			//err = svc.saveUsersGameStatus(id, GameStatusInitialized)
+			//if err != nil {
+			//	svc.logger.Error(op, "error in storing users GameStatus", slog.String("error", err.Error()))
+			//}
+		}
+	case GameStatusUnknown:
+		{
+			categories := svc.getCategories()
+			categoriesByte, err := json.Marshal(categories)
+			if err != nil {
+				return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
+					"message": "error in marshaling json of Categories",
+					"data":    fmt.Sprint(request),
+				}, svc.logger)
+			}
+			err = svc.webSocket.WriteServerData(svc.connections[id], websocket.OpText, string(categoriesByte))
+			if err != nil {
+				return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
+					"message": "error in returning Categories",
+					"data":    fmt.Sprint(request),
+				}, svc.logger)
+			}
+		}
+	}
 
 	go func(ctx context.Context, conn *net.Conn, rw *bufio.ReadWriter, userID uint64) {
 		defer func() {
@@ -83,7 +131,7 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 				svc.logger.Error("read failed", "userID", userID, "error", err)
 				break
 			}
-			err = svc.readMessage(ctx, conn, code, msg)
+			err = svc.readMessage(ctx, id, conn, code, msg)
 			if err != nil {
 				svc.logger.Error("read failed", "userID", userID, "error", err)
 			}
@@ -149,10 +197,36 @@ func (svc Service) ConsumeQuestions(message []byte, ctx context.Context) error {
 	return nil
 }
 
-func (svc Service) readMessage(ctx context.Context, conn *net.Conn, code websocket.OpCode, message string) error {
+func (svc Service) saveUsersGameStatus(userId uint64, status GameStatus) error {
+	const op = "game.saveUsersGameStatus"
+	ctx, cancel := context.WithTimeout(context.Background(), svc.config.StoreGameStatusTimeOut)
+	defer cancel()
+	err := svc.repository.UpsertUserStatus(ctx, userId, status)
+	if err != nil {
+		svc.logger.Error(op, "error in saving user status", slog.String("error", err.Error()))
+		return err
+	}
+	return nil
+}
+
+func (svc Service) getUsersGameStatus(userId uint64) GameStatus {
+	const op = "game.getUsersGameStatus"
+	ctx, cancel := context.WithTimeout(context.Background(), svc.config.StoreGameStatusTimeOut)
+	defer cancel()
+	status, err := svc.repository.GetUserStatus(ctx, userId)
+	if err != nil {
+		svc.logger.Error(op, "error in getting user status", slog.String("error", err.Error()))
+		return GameStatusUnknown
+	}
+	return status
+}
+
+func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, code websocket.OpCode, message string) error {
+	op := "game.readMessage"
 	svc.logger.Info("received message", "code", code, "message", message)
 
 	var req ProcessGameMessageRequest
+	var response ProcessGameMessageResponse
 	err := json.Unmarshal([]byte(message), &req)
 	if err != nil {
 		return err
@@ -161,7 +235,35 @@ func (svc Service) readMessage(ctx context.Context, conn *net.Conn, code websock
 	switch req.Command {
 	case CommandAddToWaitingList:
 		{
-			fmt.Println("adding to waiting list")
+			svc.logger.Info(op, "adding to waiting list")
+			if MapToCategory(req.Category) == CategoryTypeUnknown {
+				response = ProcessGameMessageResponse{
+					Success: false,
+					Message: "invalid category",
+				}
+			}
+			err = svc.saveUsersGameStatus(id, GameStatusInitialized)
+			if err != nil {
+				svc.logger.Error(op, "error in storing users GameStatus", slog.String("error", err.Error()))
+				response = ProcessGameMessageResponse{
+					Success: false,
+					Message: "internal server error",
+				}
+			}
+			// todo publish userId with category in broker
+			response = ProcessGameMessageResponse{
+				Success: true,
+				Message: "added to waiting list successfully",
+			}
+			addToWaitingListResponse, err := json.Marshal(response)
+			if err != nil {
+				return err
+			}
+
+			err = svc.webSocket.WriteServerData(*conn, code, string(addToWaitingListResponse))
+			if err != nil {
+				return err
+			}
 		}
 	case CommandReady:
 		{
@@ -207,4 +309,21 @@ func (svc Service) writeMessage(ids []uint64, msg string) error {
 		}
 	}
 	return nil
+}
+
+func (svc Service) getCategories() GameInitResponse {
+	var categories []string
+
+	for _, category := range GetCategories() {
+		categories = append(categories, string(category))
+	}
+
+	users := []int{2}
+
+	result := GameInitResponse{
+		Categories:      categories,
+		NumberOfPlayers: users,
+	}
+
+	return result
 }

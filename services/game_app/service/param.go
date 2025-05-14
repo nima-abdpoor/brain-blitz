@@ -16,7 +16,19 @@ const (
 	CommandUnknownCommand   Command = "UNKNOWN"
 )
 
+type GameInitResponse struct {
+	Categories      []string `json:"categories"`
+	NumberOfPlayers []int    `json:"numberOfPlayers"`
+}
+
 type ProcessGameMessageRequest struct {
-	MatchId string  `json:"matchId"`
-	Command Command `json:"command"`
+	MatchId         string  `json:"matchId"`
+	Command         Command `json:"command"`
+	Category        string  `json:"category"`
+	NumberOfPlayers int     `json:"players"`
+}
+
+type ProcessGameMessageResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
