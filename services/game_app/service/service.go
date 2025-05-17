@@ -32,7 +32,7 @@ type Config struct {
 }
 
 type Repository interface {
-	CreateMatch(ctx context.Context, game Game) (string, error)
+	CreateGame(ctx context.Context, game Game) (string, error)
 	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
 	GetQuestionsByMatchId(ctx context.Context, matchId string) ([]Question, error)
 	UpsertUserStatus(ctx context.Context, userId uint64, status GameStatus) error
@@ -158,9 +158,15 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 	matchedUsers := MapFromProtoMessageToEntity(users)
 	createdMatches := make([]MatchedUsers, 0)
 	for _, matchedUser := range matchedUsers {
-		result, err := svc.repository.CreateMatch(ctx, Game{
-			PlayerIDs: matchedUser.UserId,
+		result, err := svc.repository.CreateGame(ctx, Game{
+			Id:        nil,
+			Players:   matchedUser.UserId,
+			MatchId:   matchedUser.MatchId,
 			Category:  matchedUser.Category,
+			Status:    GameStatusPending,
+			Question:  nil,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		})
 		if err != nil {
 			svc.logger.Error(op, "error in creating match", slog.String("error", err.Error()))
@@ -196,7 +202,7 @@ func (svc Service) ConsumeQuestions(message []byte, ctx context.Context) error {
 
 	err = svc.repository.SaveQuestionsByMatchId(ctx, matchId, questions)
 	if err != nil {
-		svc.logger.Error(op, "error in saving questions", slog.String("error", err.Error()))
+		svc.logger.Error(op, "error in saving Questions", slog.String("error", err.Error()))
 	}
 
 	return nil

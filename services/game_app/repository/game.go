@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"strconv"
 	"time"
@@ -40,16 +41,17 @@ func NewGameRepository(config Config, logger logger.SlogAdapter, db *mongo.Datab
 	}
 }
 
-func (m GameRepository) CreateMatch(ctx context.Context, game service.Game) (string, error) {
-	const op = "game.CreateMatch"
-
-	doc := service.MatchCreation{
-		Players:  game.PlayerIDs,
-		Category: service.MapFromCategories(game.Category),
-		Status:   string(game.Status),
+func (m GameRepository) CreateGame(ctx context.Context, game service.Game) (string, error) {
+	const op = "game.CreateGame"
+	questions, err := m.GetQuestionsByMatchId(ctx, game.MatchId)
+	if err != nil {
+		m.Logger.Error(op, "failed to get questions by matchId", err.Error())
+	} else {
+		game.Question = &questions
 	}
+
 	coll := m.MongoDB.DB.Collection("game")
-	if result, err := coll.InsertOne(ctx, doc); err != nil {
+	if result, err := coll.InsertOne(ctx, game); err != nil {
 		return "", errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"message": "Can not create game",
 			"data":    fmt.Sprint(game),
@@ -61,9 +63,27 @@ func (m GameRepository) CreateMatch(ctx context.Context, game service.Game) (str
 }
 
 func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []service.Question) error {
+	op := "game.SaveQuestionsByMatchId"
 	res, err := json.Marshal(questions)
 	if err != nil {
 		return err
+	}
+
+	filter := bson.M{"matchid": matchId}
+	update := bson.M{
+		"$set": bson.M{
+			"updated_at": time.Now(),
+			"question":   questions,
+		},
+	}
+	coll := m.MongoDB.DB.Collection("game")
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		m.Logger.Error(op, "save questions by matchId in mongoDB", err.Error())
+	} else {
+		if result.MatchedCount == 0 {
+			m.Logger.Error(op, "message", fmt.Sprintf("no game found with matchId %s", matchId))
+		}
 	}
 
 	return m.redisDB.Set(ctx, QuestionsPrefix+matchId, res, m.Config.QuestionsTimeOut)

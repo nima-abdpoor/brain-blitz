@@ -5,12 +5,14 @@ import (
 )
 
 type Game struct {
-	ID          uint
-	PlayerIDs   []uint64
-	QuestionIDs []uint
-	Category    []Category
-	Status      GameStatus
-	StartTime   time.Time
+	Id        *string
+	Players   []uint64
+	MatchId   string
+	Category  []Category
+	Status    GameStatus
+	Question  *[]Question
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Player struct {
@@ -59,9 +61,10 @@ func MapToGameStatus(status string) GameStatus {
 }
 
 type Question struct {
-	Id            string     `json:"id"`
-	Content       string     `json:"content"`
-	CorrectAnswer string     `json:"correctAnswer"`
+	Id            string `json:"id"`
+	Content       string `json:"content"`
+	CorrectAnswer string `json:"correctAnswer"`
+	Status        string
 	Choices       []string   `json:"choices"`
 	Category      Category   `json:"category"`
 	Difficulty    Difficulty `json:"difficulty"`
@@ -139,10 +142,12 @@ func MapFromCategories(categories []Category) []string {
 	return result
 }
 
-type MatchCreation struct {
-	Players  []uint64
-	Category []string
-	Status   string
+type GameQuestion struct {
+	Id            string
+	Text          string
+	CorrectAnswer string
+	Choices       []string
+	Category      Category
 }
 
 type MatchedUsers struct {
