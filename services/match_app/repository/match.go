@@ -57,3 +57,17 @@ func (m MatchMakingRepository) GetWaitingListByCategory(ctx context.Context, cat
 		return result, nil
 	}
 }
+
+func (m MatchMakingRepository) RemoveWaitingMember(ctx context.Context, members []service.WaitingMember) error {
+	for _, member := range members {
+		key := fmt.Sprintf("%s:%v", m.Config.WaitingListPrefix, member.Category)
+		err := m.db.ZDelete(ctx, key, redis.Z{
+			Member: member.UserId,
+		})
+		if err != nil {
+			m.Logger.Error("error in deleting user from waiting list", "key", key, "err", err.Error())
+		}
+	}
+
+	return nil
+}

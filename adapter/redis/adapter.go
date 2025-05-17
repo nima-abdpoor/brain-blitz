@@ -52,6 +52,15 @@ func (a Adapter) ZAdd(ctx context.Context, key string, members ...Z) error {
 	return cmd.Err()
 }
 
+func (a Adapter) ZDelete(ctx context.Context, key string, members ...Z) error {
+	var redisMembers []interface{}
+	for _, member := range members {
+		redisMembers = append(redisMembers, member.Member)
+	}
+	cmd := a.client.ZRem(ctx, key, redisMembers...)
+	return cmd.Err()
+}
+
 func (a Adapter) ZRange(ctx context.Context, key string, start, stop int, withScores bool) (error, []Z) {
 	var cmd *redis.ZSliceCmd
 	if withScores {

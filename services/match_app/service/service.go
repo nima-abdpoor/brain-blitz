@@ -25,6 +25,7 @@ type Config struct {
 type Repository interface {
 	AddToWaitingList(ctx context.Context, category Category, userId string) error
 	GetWaitingListByCategory(ctx context.Context, category Category) ([]WaitingMember, error)
+	RemoveWaitingMember(ctx context.Context, members []WaitingMember) error
 }
 
 type Service struct {
@@ -130,7 +131,6 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 	}
 
 	// todo remove these users from waiting list
-	// todo rpc call to create a match for this users
 	if len(finalUsers) > 0 {
 		svc.logger.Info(op, "message", "readyUsers for category", "finalUsers for category", fmt.Sprintf("%v", finalUsers))
 		svc.publishFinalUsers(finalUsers)
@@ -153,6 +153,20 @@ func (svc Service) publishFinalUsers(users []MatchedUsers) {
 	err = svc.broker.Publish(ctx, matchMakingTopic, buff)
 	if err != nil {
 		svc.logger.Error("error in producing message.", "topic", matchMakingTopic, "error", err)
+	}
+
+	var waitingMembers []WaitingMember
+	for _, user := range users {
+		for _, userid := range user.UserId {
+			waitingMembers = append(waitingMembers, WaitingMember{
+				UserId:   uint(userid),
+				Category: user.Category[0],
+			})
+		}
+	}
+	err = svc.repository.RemoveWaitingMember(ctx, waitingMembers)
+	if err != nil {
+		svc.logger.Error(op, "message", "error in removing waiting members", err.Error())
 	}
 
 	svc.logger.Info(op, "message", "publishing message...")
