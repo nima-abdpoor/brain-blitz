@@ -34,7 +34,12 @@ type ProcessGameMessageRequest struct {
 }
 
 type ProcessGameMessageResponse struct {
-	Success bool   `json:"success"`
-	Event   Event  `json:"event"`
-	Message string `json:"message"`
+	Success  bool                        `json:"success"`
+	Event    Event                       `json:"event"`
+	Message  string                      `json:"message"`
+	MetaData ProcessGameMetaDataResponse `json:"metaData"`
+}
+
+type ProcessGameMetaDataResponse struct {
+	GameId string `json:"gameId"`
 }

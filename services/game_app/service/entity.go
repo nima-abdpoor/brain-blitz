@@ -152,6 +152,7 @@ type GameQuestion struct {
 
 type MatchedUsers struct {
 	MatchId  string
+	GameId   string
 	Category []Category
 	UserId   []uint64
 }

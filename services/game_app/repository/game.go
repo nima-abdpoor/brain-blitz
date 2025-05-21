@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	QuestionsPrefix  = "game_questions_"
-	GameStatusPrefix = "game_status_"
+	QuestionsPrefix      = "game_questions_"
+	GameUserStatusPrefix = "game_user_status_"
+	GameStatusPrefix     = "game_game_status_"
 )
 
 type Config struct {
@@ -105,13 +106,57 @@ func (m GameRepository) GetQuestionsByMatchId(ctx context.Context, matchId strin
 }
 
 func (m GameRepository) UpsertUserStatus(ctx context.Context, userId uint64, status service.GameStatus) error {
-	return m.redisDB.Set(ctx, GameStatusPrefix+strconv.FormatUint(userId, 10), string(status), m.Config.GameStatusTimeOut)
+	return m.redisDB.Set(ctx, GameUserStatusPrefix+strconv.FormatUint(userId, 10), string(status), m.Config.GameStatusTimeOut)
 }
 
 func (m GameRepository) GetUserStatus(ctx context.Context, userId uint64) (service.GameStatus, error) {
-	value, err := m.redisDB.Get(ctx, GameStatusPrefix+strconv.FormatUint(userId, 10))
+	value, err := m.redisDB.Get(ctx, GameUserStatusPrefix+strconv.FormatUint(userId, 10))
 	if err != nil {
 		return service.GameStatusUnknown, err
 	}
 	return service.MapToGameStatus(value), nil
+}
+
+func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error) {
+	value, err := m.redisDB.Get(ctx, GameStatusPrefix+gameId)
+	if err != nil {
+		return false, err
+	}
+
+	var gs gameStatus
+	if err = json.Unmarshal([]byte(value), &gs); err != nil {
+		return false, err
+	}
+
+	if gs.ExpectedNumberOfPlayers-len(gs.Players) <= 1 {
+		return true, nil
+	}
+
+	for _, id := range gs.Players {
+		if id == *playerId {
+			return false, fmt.Errorf("player %v is already member of ready players", playerId)
+		}
+	}
+
+	if gs.ExpectedNumberOfPlayers == 0 {
+		if numberOfPlayers != nil {
+			gs.ExpectedNumberOfPlayers = *numberOfPlayers
+		}
+	}
+
+	if playerId != nil {
+		gs.Players = append(gs.Players, *playerId)
+	}
+
+	gameStatusJson, err := json.Marshal(gs)
+	if err != nil {
+		return false, err
+	}
+
+	err = m.redisDB.Set(ctx, GameStatusPrefix+gameId, gameStatusJson, m.Config.GameStatusTimeOut)
+	if err != nil {
+		return false, err
+	}
+
+	return false, nil
 }

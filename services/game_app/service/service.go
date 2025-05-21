@@ -34,6 +34,7 @@ type Repository interface {
 	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
 	GetQuestionsByMatchId(ctx context.Context, matchId string) ([]Question, error)
 	UpsertUserStatus(ctx context.Context, userId uint64, status GameStatus) error
+	UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error)
 	GetUserStatus(ctx context.Context, userId uint64) (GameStatus, error)
 }
 
@@ -169,6 +170,7 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 		if err != nil {
 			svc.logger.Error(op, "error in creating match", slog.String("error", err.Error()))
 		} else {
+			matchedUser.GameId = result
 			createdMatches = append(createdMatches, matchedUser)
 		}
 
@@ -181,6 +183,9 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 			Success: true,
 			Event:   EventMatchCreated,
 			Message: "match created",
+			MetaData: ProcessGameMetaDataResponse{
+				GameId: createdMatch.GameId,
+			},
 		}
 		err = svc.writeMessage(createdMatch.UserId, msg)
 		if err != nil {
@@ -311,6 +316,9 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 	case CommandReady:
 		{
 			fmt.Println("ready")
+			// check user if their status is just initialized
+			// update match status and add the user into redis with matchId if not added already
+			// if by adding this user, makes game available, start sending questions.
 			questions, err := svc.repository.GetQuestionsByMatchId(context.Background(), req.MatchId)
 			if err != nil {
 				return err
