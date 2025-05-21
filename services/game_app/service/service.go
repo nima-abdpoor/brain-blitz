@@ -20,16 +20,14 @@ import (
 	"time"
 )
 
-const (
-	MatchCreated = "match_created"
-)
-
 type IdToConnection map[uint64]net.Conn
 
 type Config struct {
 	StoreGameStatusTimeOut          time.Duration `koanf:"store_game_status_time_out"`
 	PublishUserToWaitingListTimeOut time.Duration `koanf:"publish_user_to_waiting_list_time_out"`
 }
+
+const saveUserGameStatusTimeOut = 2 * time.Second
 
 type Repository interface {
 	CreateGame(ctx context.Context, game Game) (string, error)
@@ -178,9 +176,15 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 	}
 
 	for _, createdMatch := range createdMatches {
-		err = svc.writeMessage(createdMatch.UserId, MatchCreated)
+		go svc.saveUsersGameStatus(createdMatch.UserId, GameStatusPending)
+		msg := ProcessGameMessageResponse{
+			Success: true,
+			Event:   EventMatchCreated,
+			Message: "match created",
+		}
+		err = svc.writeMessage(createdMatch.UserId, msg)
 		if err != nil {
-			svc.logger.Error(op, "error writing message", "userId", fmt.Sprintf("%v", createdMatch.UserId), "message", MatchCreated, slog.String("error", err.Error()))
+			svc.logger.Error(op, "error writing message", "userId", fmt.Sprintf("%v", createdMatch.UserId), "message", EventMatchCreated, slog.String("error", err.Error()))
 		}
 	}
 
@@ -208,16 +212,19 @@ func (svc Service) ConsumeQuestions(message []byte, ctx context.Context) error {
 	return nil
 }
 
-func (svc Service) saveUsersGameStatus(userId uint64, status GameStatus) error {
+func (svc Service) saveUsersGameStatus(userId []uint64, status GameStatus) {
 	const op = "game.saveUsersGameStatus"
-	ctx, cancel := context.WithTimeout(context.Background(), svc.config.StoreGameStatusTimeOut)
-	defer cancel()
-	err := svc.repository.UpsertUserStatus(ctx, userId, status)
-	if err != nil {
-		svc.logger.Error(op, "error in saving user status", slog.String("error", err.Error()))
-		return err
+
+	for _, id := range userId {
+		go func(id uint64) {
+			upsertUserStatusCtx, cancel := context.WithTimeout(context.Background(), saveUserGameStatusTimeOut)
+			defer cancel()
+
+			if err := svc.repository.UpsertUserStatus(upsertUserStatusCtx, id, status); err != nil {
+				svc.logger.Error(op, "error in saving user status", "error", err.Error())
+			}
+		}(id)
 	}
-	return nil
 }
 
 func (svc Service) getUsersGameStatus(userId uint64) GameStatus {
@@ -261,22 +268,8 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 					return err
 				}
 			}
-			err = svc.saveUsersGameStatus(id, GameStatusInitialized)
-			if err != nil {
-				svc.logger.Error(op, "error in storing users GameStatus", slog.String("error", err.Error()))
-				response = ProcessGameMessageResponse{
-					Success: false,
-					Message: "internal server error",
-				}
-				addToWaitingListResponse, err := json.Marshal(response)
-				if err != nil {
-					return err
-				}
-				err = svc.webSocket.WriteServerData(*conn, code, string(addToWaitingListResponse))
-				if err != nil {
-					return err
-				}
-			}
+			go svc.saveUsersGameStatus([]uint64{id}, GameStatusInitialized)
+
 			brokerCtx, cancel := context.WithTimeout(context.Background(), svc.config.PublishUserToWaitingListTimeOut)
 			defer cancel()
 			buff, err := proto.Marshal(MapWaitingListRequestToProtoMessage(id, req.Category))
@@ -345,14 +338,18 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 	return nil
 }
 
-func (svc Service) writeMessage(ids []uint64, msg string) error {
+func (svc Service) writeMessage(ids []uint64, msg ProcessGameMessageResponse) error {
 	const op = "game.service.writeMessage"
 
 	for _, id := range ids {
 		if connection, exists := svc.connections[id]; !exists {
 			return fmt.Errorf("id: %d not found", id)
 		} else {
-			err := svc.webSocket.WriteServerData(connection, websocket.OpText, msg)
+			jsonMsg, err := json.Marshal(msg)
+			if err != nil {
+				svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
+			}
+			err = svc.webSocket.WriteServerData(connection, websocket.OpText, string(jsonMsg))
 			if err != nil {
 				svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
 			}
