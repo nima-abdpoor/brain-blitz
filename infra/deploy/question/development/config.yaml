@@ -1,0 +1,30 @@
+total_shutdown_timeout:
+  15s
+
+http_server:
+  port: 5004
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+postgres_db:
+  host: user-db
+  port: 5432
+  user: "user_admin"
+  password: "password123"
+  db_name: question_db
+  ssl_mode: disable
+  max_idle_conns: 15
+  max_open_conns: 100
+  conn_max_lifetime: 5
+  path_of_migration: './services/question_app/repository/migrations'
+
+broker:
+  host: "kafka"
+  port: "9092"
+
+logger:
+  file_path: "logs/question/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7

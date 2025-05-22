@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/redis/go-redis/v9"
 	"strconv"
+	"time"
 )
 
 type Config struct {
@@ -51,6 +52,15 @@ func (a Adapter) ZAdd(ctx context.Context, key string, members ...Z) error {
 	return cmd.Err()
 }
 
+func (a Adapter) ZDelete(ctx context.Context, key string, members ...Z) error {
+	var redisMembers []interface{}
+	for _, member := range members {
+		redisMembers = append(redisMembers, member.Member)
+	}
+	cmd := a.client.ZRem(ctx, key, redisMembers...)
+	return cmd.Err()
+}
+
 func (a Adapter) ZRange(ctx context.Context, key string, start, stop int, withScores bool) (error, []Z) {
 	var cmd *redis.ZSliceCmd
 	if withScores {
@@ -81,4 +91,12 @@ func (a Adapter) ZRange(ctx context.Context, key string, start, stop int, withSc
 			return nil, zRanges
 		}
 	}
+}
+
+func (a Adapter) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	return a.client.Set(ctx, key, value, expiration).Err()
+}
+
+func (a Adapter) Get(ctx context.Context, key string) (string, error) {
+	return a.client.Get(ctx, key).Result()
 }

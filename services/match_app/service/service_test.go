@@ -2,6 +2,7 @@ package service
 
 import (
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
+	"BrainBlitz.com/game/services/game_app/service"
 	"context"
 	"errors"
 	"fmt"
@@ -20,6 +21,12 @@ func (m MockLogger) Error(msg string, args ...any) {}
 
 type MockRepo struct {
 	mock.Mock
+}
+
+func (m *MockRepo) RemoveWaitingMember(ctx context.Context, members []WaitingMember) error {
+	args := m.Called(ctx, members)
+	fmt.Println("====>", args.Error(0))
+	return args.Error(0)
 }
 
 func (m *MockRepo) AddToWaitingList(ctx context.Context, category Category, userId string) error {
@@ -58,11 +65,11 @@ func TestAddToWaitingList_Success(t *testing.T) {
 	svc := NewService(mockRepo, config, mockBroker, MockLogger{})
 
 	req := AddToWaitingListRequest{
-		Category: "music",
+		Category: string(service.CategoryTypeMusic),
 		UserId:   "123",
 	}
 
-	mockRepo.On("AddToWaitingList", mock.Anything, MapToCategory("music"), "123").Return(nil)
+	mockRepo.On("AddToWaitingList", mock.Anything, MapToCategory(string(service.CategoryTypeMusic)), "123").Return(nil)
 
 	resp, err := svc.AddToWaitingList(context.Background(), req)
 
@@ -107,7 +114,7 @@ func TestAddToWaitingList(t *testing.T) {
 		_, err := svc.AddToWaitingList(context.Background(), req)
 
 		assert.Error(t, err)
-		assert.Equal(t, err.Error(), errmsg.SomeThingWentWrong)
+		assert.Equal(t, err.Error(), errmsg.InvalidInputErrMsg)
 	})
 }
 
@@ -144,14 +151,20 @@ func TestMatchWaitUsers_MatchingLogic(t *testing.T) {
 	svc := NewService(mockRepo, Config{}, mockBroker, mockLogger)
 
 	now := time.Now().Unix()
-	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeMusic).Return([]WaitingMember{
+	members := []WaitingMember{
 		{UserId: 1, TimeStamp: now, Category: CategoryTypeMusic},
 		{UserId: 2, TimeStamp: now + 1, Category: CategoryTypeMusic},
-	}, nil)
+	}
+	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeMusic).Return(members, nil)
 
 	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeSport).Return([]WaitingMember{}, nil)
 	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeTech).Return([]WaitingMember{}, nil)
 
+	membersThatMustBeRemoved := []WaitingMember{
+		{UserId: 1, Category: CategoryTypeMusic},
+		{UserId: 2, Category: CategoryTypeMusic},
+	}
+	mockRepo.On("RemoveWaitingMember", mock.Anything, membersThatMustBeRemoved).Return(nil)
 	mockBroker.On("Publish", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil)
 
 	_, err := svc.MatchWaitUsers(context.Background(), MatchWaitedUsersRequest{})
@@ -173,6 +186,12 @@ func TestPublishFinalUsers_PublishesMessage(t *testing.T) {
 			UserId:   []uint64{1, 2},
 		},
 	}
+
+	membersThatMustBeRemoved := []WaitingMember{
+		{UserId: 1, Category: CategoryTypeSport},
+		{UserId: 2, Category: CategoryTypeSport},
+	}
+	mockRepo.On("RemoveWaitingMember", mock.Anything, membersThatMustBeRemoved).Return(nil)
 
 	mockBroker.On("Publish", mock.Anything, "matchMaking_v1_matchUsers", mock.AnythingOfType("[]uint8")).Return(nil)
 

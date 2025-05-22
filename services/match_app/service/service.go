@@ -2,13 +2,18 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/contract/match/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"fmt"
+	"github.com/oklog/ulid/v2"
 	"github.com/thoas/go-funk"
 	"google.golang.org/protobuf/proto"
+	"log/slog"
+	"math/rand"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -20,6 +25,7 @@ type Config struct {
 type Repository interface {
 	AddToWaitingList(ctx context.Context, category Category, userId string) error
 	GetWaitingListByCategory(ctx context.Context, category Category) ([]WaitingMember, error)
+	RemoveWaitingMember(ctx context.Context, members []WaitingMember) error
 }
 
 type Service struct {
@@ -91,7 +97,7 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 	for _, member := range waitingMembers {
 		index := funk.IndexOf(readyUsers, func(users MatchedUsers) bool {
 			for _, category := range users.Category {
-				if category.String() == member.Category.String() {
+				if string(category) == string(member.Category) {
 					return true
 				}
 			}
@@ -114,7 +120,10 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 		if r%2 != 0 {
 			r--
 		}
+		entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+		id := ulid.MustNew(ulid.Timestamp(time.Now()), entropy)
 		finalUsers = append(finalUsers, MatchedUsers{
+			Id:       id.String(),
 			Category: readyUser.Category,
 			UserId:   readyUser.UserId[:r],
 		})
@@ -122,7 +131,6 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 	}
 
 	// todo remove these users from waiting list
-	// todo rpc call to create a match for this users
 	if len(finalUsers) > 0 {
 		svc.logger.Info(op, "message", "readyUsers for category", "finalUsers for category", fmt.Sprintf("%v", finalUsers))
 		svc.publishFinalUsers(finalUsers)
@@ -147,5 +155,45 @@ func (svc Service) publishFinalUsers(users []MatchedUsers) {
 		svc.logger.Error("error in producing message.", "topic", matchMakingTopic, "error", err)
 	}
 
+	var waitingMembers []WaitingMember
+	for _, user := range users {
+		for _, userid := range user.UserId {
+			waitingMembers = append(waitingMembers, WaitingMember{
+				UserId:   uint(userid),
+				Category: user.Category[0],
+			})
+		}
+	}
+	err = svc.repository.RemoveWaitingMember(ctx, waitingMembers)
+	if err != nil {
+		svc.logger.Error(op, "message", "error in removing waiting members", err.Error())
+	}
+
 	svc.logger.Info(op, "message", "publishing message...")
+}
+
+func (svc Service) ConsumeJoinMatchQueueRequest(message []byte, ctx context.Context) error {
+	const op = "match.ConsumeJoinMatchQueueRequest"
+
+	addToWaitingListRequestProto := &golang.AddToWaitingList{}
+	err := proto.Unmarshal(message, addToWaitingListRequestProto)
+	if err != nil {
+		svc.logger.Error(op, "error in unmarshalling add to waiting list request message", slog.String("error", err.Error()))
+		return err
+	}
+
+	userId, category := MapFromAddToWaitingListProtoToEntity(addToWaitingListRequestProto)
+	if category == CategoryTypeUnknown {
+		svc.logger.Error(op, "unknown category received by consumer")
+		return err
+	}
+	err = svc.repository.AddToWaitingList(ctx, category, strconv.FormatUint(userId, 10))
+	if err != nil {
+		svc.logger.Error(op, "error in storing add to waiting list request message", slog.String("error", err.Error()))
+		return err
+	}
+
+	svc.logger.Info(op, "message", "consumed message successfully", "userId", userId, "category", string(category))
+
+	return nil
 }

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package match;
+option go_package = "contract/question/golang";
+
+message Questions {
+  string matchId = 1;
+  repeated Question questions = 2;
+}
+
+message Question {
+  string questionId = 1;
+  string content = 2;
+  string correctAnswer = 3;
+  repeated string choices = 4;
+  string category = 5;
+  string difficulty = 6;
+}

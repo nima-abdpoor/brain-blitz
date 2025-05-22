@@ -40,6 +40,7 @@ func (c Consumer) Consume() {
 func (c Consumer) getTopics() map[string]func([]byte, context.Context) error {
 	var topics = []string{
 		"matchMaking_v1_matchUsers",
+		"question_v1_questions",
 	}
 
 	result := make(map[string]func([]byte, context.Context) error)
@@ -47,6 +48,8 @@ func (c Consumer) getTopics() map[string]func([]byte, context.Context) error {
 		switch topic {
 		case "matchMaking_v1_matchUsers":
 			result[topic] = c.service.ConsumeMatchCreated
+		case "question_v1_questions":
+			result[topic] = c.service.ConsumeQuestions
 		default:
 			c.logger.Warn("Unknown topic", "topic", topic)
 			return result

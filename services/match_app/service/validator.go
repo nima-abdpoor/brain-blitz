@@ -22,7 +22,7 @@ func ValidateAddToWaitingListRequest(req AddToWaitingListRequest) error {
 		return err
 	}
 
-	if MapToCategory(req.Category) == 0 {
+	if MapToCategory(req.Category) == CategoryTypeUnknown {
 		return fmt.Errorf(ErrInvalidCategory)
 	}
 

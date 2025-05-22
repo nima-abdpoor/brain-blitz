@@ -28,6 +28,10 @@ type mockRepo struct {
 	waitingList map[service.Category][]string
 }
 
+func (m *mockRepo) RemoveWaitingMember(ctx context.Context, members []service.WaitingMember) error {
+	return nil
+}
+
 func (m *mockRepo) AddToWaitingList(ctx context.Context, category service.Category, userId string) error {
 	if m.waitingList == nil {
 		m.waitingList = make(map[service.Category][]string)
@@ -60,7 +64,7 @@ func TestAddToWaitingListIntegration(t *testing.T) {
 
 		body := service.AddToWaitingListRequest{
 			UserId:   "1",
-			Category: service.Music,
+			Category: string(service.CategoryTypeMusic),
 		}
 		bodyJSON, _ := json.Marshal(body)
 

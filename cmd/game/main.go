@@ -23,7 +23,7 @@ func main() {
 		Prefix:       "GAME_",
 		Delimiter:    ".",
 		Separator:    "__",
-		YamlFilePath: filepath.Join(workingDir, "deploy", "game", "development", "config.yaml"),
+		YamlFilePath: filepath.Join(workingDir, "infra", "deploy", "game", "development", "config.yaml"),
 		CallbackEnv:  nil,
 	}
 

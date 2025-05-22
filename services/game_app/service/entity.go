@@ -1,17 +1,18 @@
 package service
 
 import (
-	"strconv"
 	"time"
 )
 
 type Game struct {
-	ID          uint
-	PlayerIDs   []uint64
-	QuestionIDs []uint
-	Category    []Category
-	Status      GameStatus
-	StartTime   time.Time
+	Id        *string
+	Players   []uint64
+	MatchId   string
+	Category  []Category
+	Status    GameStatus
+	Question  *[]Question
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Player struct {
@@ -29,20 +30,15 @@ type PlayerAnswer struct {
 	Choice      PossibleAnswerChoice
 }
 
-type GameStatus uint8
+type GameStatus string
 
 const (
-	GameStatusCreated GameStatus = iota + 1
-	GameStatusPending
-	GameStatusStarted
-	GameStatusFinished
-)
-
-const (
-	GSCreated  = "created"
-	GSPending  = "pending"
-	GSStarted  = "started"
-	GSFinished = "finished"
+	GameStatusInitialized GameStatus = "INITIALIZED"
+	GameStatusPending     GameStatus = "PENDING"
+	GameStatusCreated     GameStatus = "CREATED"
+	GameStatusStarted     GameStatus = "STARTED"
+	GameStatusFinished    GameStatus = "FINISHED"
+	GameStatusUnknown     GameStatus = "UNKNOWN"
 )
 
 func GetGameStatus() []GameStatus {
@@ -51,41 +47,27 @@ func GetGameStatus() []GameStatus {
 
 func MapToGameStatus(status string) GameStatus {
 	switch status {
-	case GSCreated:
-		return GameStatusCreated
-	case GSPending:
+	case "PENDING":
 		return GameStatusPending
-	case GSStarted:
+	case "CREATED":
+		return GameStatusCreated
+	case "STARTED":
 		return GameStatusStarted
-	case GSFinished:
+	case "FINISHED":
 		return GameStatusFinished
 	default:
-		return 0
-	}
-}
-
-func MapToFromGameStatus(status GameStatus) string {
-	switch status {
-	case GameStatusCreated:
-		return GSCreated
-	case GameStatusPending:
-		return GSPending
-	case GameStatusStarted:
-		return GSStarted
-	case GameStatusFinished:
-		return GSFinished
-	default:
-		return "UNKNOWN"
+		return GameStatusUnknown
 	}
 }
 
 type Question struct {
-	ID              uint
-	Text            string
-	PossibleAnswers []PossibleAnswers
-	CorrectAnswerID uint
-	Difficulty      QuestionDifficulty
-	CategoryID      uint
+	Id            string `json:"id"`
+	Content       string `json:"content"`
+	CorrectAnswer string `json:"correctAnswer"`
+	Status        string
+	Choices       []string   `json:"choices"`
+	Category      Category   `json:"category"`
+	Difficulty    Difficulty `json:"difficulty"`
 }
 
 type PossibleAnswers struct {
@@ -99,30 +81,27 @@ type PossibleAnswerChoice uint8
 type QuestionDifficulty uint8
 
 const (
-	QuestionDifficultyEasy QuestionDifficulty = iota + 1
-	QuestionDifficultyMedium
-	QuestionDifficultyHard
-)
-
-const (
 	PossibleAnswerChoiceA PossibleAnswerChoice = iota + 1
 	PossibleAnswerChoiceB
 	PossibleAnswerChoiceC
 	PossibleAnswerChoiceD
 )
 
-type Category uint8
+type Category string
+type Difficulty string
 
 const (
-	CategoryTypeSport Category = iota + 1
-	CategoryTypeMusic
-	CategoryTypeTech
+	CategoryTypeSport   Category = "SPORT"
+	CategoryTypeMusic   Category = "MUSIC"
+	CategoryTypeTech    Category = "TECH"
+	CategoryTypeUnknown Category = "UNKNOWN"
 )
 
 const (
-	Sport = "sport"
-	Music = "music"
-	Tech  = "technology"
+	DifficultEasy    Difficulty = "EASY"
+	DifficultMedium  Difficulty = "MEDIUM"
+	DifficultHard    Difficulty = "HARD"
+	DifficultUnknown Difficulty = "UNKNOWN"
 )
 
 func GetCategories() []Category {
@@ -131,51 +110,49 @@ func GetCategories() []Category {
 
 func MapToCategory(category string) Category {
 	switch category {
-	case Music:
-		return CategoryTypeMusic
-	case Sport:
+	case "SPORT":
 		return CategoryTypeSport
-	case Tech:
+	case "MUSIC":
+		return CategoryTypeMusic
+	case "TECH":
 		return CategoryTypeTech
-	//todo select randomly
 	default:
-		return 0
+		return CategoryTypeUnknown
 	}
 }
 
-func MapFromCategory(category Category) string {
-	switch category {
-	case CategoryTypeMusic:
-		return Music
-	case CategoryTypeSport:
-		return Sport
-	case CategoryTypeTech:
-		return Tech
-	// todo select randomly
+func MapToDifficulty(difficulty string) Difficulty {
+	switch difficulty {
+	case "EASY":
+		return DifficultEasy
+	case "MEDIUM":
+		return DifficultMedium
+	case "HARD":
+		return DifficultHard
 	default:
-		return "Unknown"
+		return DifficultUnknown
 	}
 }
 
 func MapFromCategories(categories []Category) []string {
 	var result []string
 	for _, category := range categories {
-		result = append(result, MapFromCategory(category))
+		result = append(result, string(category))
 	}
 	return result
 }
 
-func (c Category) String() string {
-	return strconv.Itoa(int(c))
-}
-
-type MatchCreation struct {
-	Players  []uint64
-	Category []string
-	Status   string
+type GameQuestion struct {
+	Id            string
+	Text          string
+	CorrectAnswer string
+	Choices       []string
+	Category      Category
 }
 
 type MatchedUsers struct {
+	MatchId  string
+	GameId   string
 	Category []Category
 	UserId   []uint64
 }

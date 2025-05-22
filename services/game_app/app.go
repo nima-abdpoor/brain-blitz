@@ -2,6 +2,7 @@ package game_app
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/adapter/websocket"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
@@ -29,15 +30,16 @@ type Application struct {
 }
 
 func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Application {
-	gameRepository := repository.NewGameRepository(config.Repository, logger, db)
+	redisAdapter := redis.New(config.Redis)
+	gameRepository := repository.NewGameRepository(config.Repository, logger, db, redisAdapter)
 	ws := websocket.NewWS(config.WebSocket)
-	gameService := service.NewService(config.Service, gameRepository, ws, logger)
 
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
 	if err != nil {
 		logger.Error("Error creating kafka broker", "error", err)
 		panic(err)
 	}
+	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker, logger)
 
 	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
 	userHandler := http.NewHandler(gameService, logger)

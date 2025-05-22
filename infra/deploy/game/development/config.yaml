@@ -25,7 +25,16 @@ broker:
   port: "9092"
 
 repository:
+  questions_timeout: 1h
+  game_status_timeout: 1h
 
+service:
+  store_game_status_time_out: 1m
+  publish_user_to_waiting_list_time_out: 1m
+
+redis:
+  host: localhost
+  Port: 6379
 
 logger:
   file_path: "logs/game/service.log"
