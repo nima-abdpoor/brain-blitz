@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestValidateAddToWaitingListRequest(t *testing.T) {
 			name: "valid request",
 			request: AddToWaitingListRequest{
 				UserId:   "123",
-				Category: "music",
+				Category: "MUSIC",
 			},
 			expectError: false,
 		},
@@ -49,6 +50,7 @@ func TestValidateAddToWaitingListRequest(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), test.errorText)
 			} else {
+				fmt.Println("erwaasdf--------->", err)
 				assert.NoError(t, err)
 			}
 		})
