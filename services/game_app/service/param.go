@@ -28,6 +28,7 @@ type GameInitResponse struct {
 
 type ProcessGameMessageRequest struct {
 	MatchId         string  `json:"matchId"`
+	GameId          string  `json:"gameId"`
 	Command         Command `json:"command"`
 	Category        string  `json:"category"`
 	NumberOfPlayers int     `json:"players"`

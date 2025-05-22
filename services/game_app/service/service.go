@@ -28,6 +28,7 @@ type Config struct {
 }
 
 const saveUserGameStatusTimeOut = 2 * time.Second
+const saveGameStatusTimeOut = 2 * time.Second
 
 type Repository interface {
 	CreateGame(ctx context.Context, game Game) (string, error)
@@ -179,6 +180,10 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 
 	for _, createdMatch := range createdMatches {
 		go svc.saveUsersGameStatus(createdMatch.UserId, GameStatusPending)
+
+		numberOfPlayers := len(createdMatch.UserId)
+		go svc.saveGameStatus(createdMatch.GameId, nil, &numberOfPlayers)
+
 		msg := ProcessGameMessageResponse{
 			Success: true,
 			Event:   EventMatchCreated,
@@ -230,6 +235,25 @@ func (svc Service) saveUsersGameStatus(userId []uint64, status GameStatus) {
 			}
 		}(id)
 	}
+}
+
+func (svc Service) saveGameStatus(gameId string, userId *uint64, numberOfPlayers *int) bool {
+	const op = "game.saveGameStatus"
+
+	ctx, cancel := context.WithTimeout(context.Background(), saveGameStatusTimeOut)
+	defer cancel()
+
+	var id *int
+	if userId != nil {
+		uId := int(*userId)
+		id = &uId
+	}
+	isGameReady, err := svc.repository.UpsertReadyPlayer(ctx, gameId, id, numberOfPlayers)
+	if err != nil {
+		svc.logger.Error(op, "error in saving ready player")
+	}
+
+	return isGameReady
 }
 
 func (svc Service) getUsersGameStatus(userId uint64) GameStatus {
@@ -317,8 +341,11 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 		{
 			fmt.Println("ready")
 			// check user if their status is just initialized
-			// update match status and add the user into redis with matchId if not added already
-			// if by adding this user, makes game available, start sending questions.
+			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
+			if isGameReady {
+				fmt.Println("we should send the questions")
+				//todo we should start sending the questions
+			}
 			questions, err := svc.repository.GetQuestionsByMatchId(context.Background(), req.MatchId)
 			if err != nil {
 				return err

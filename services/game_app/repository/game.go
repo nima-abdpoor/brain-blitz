@@ -120,7 +120,23 @@ func (m GameRepository) GetUserStatus(ctx context.Context, userId uint64) (servi
 func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error) {
 	value, err := m.redisDB.Get(ctx, GameStatusPrefix+gameId)
 	if err != nil {
-		return false, err
+		var players = 2
+		if numberOfPlayers != nil {
+			players = *numberOfPlayers
+		}
+		gameStatusJson, err := json.Marshal(gameStatus{
+			ExpectedNumberOfPlayers: players,
+			Players:                 []int{},
+		})
+		if err != nil {
+			return false, err
+		}
+		err = m.redisDB.Set(ctx, GameStatusPrefix+gameId, gameStatusJson, m.Config.GameStatusTimeOut)
+		if err != nil {
+			return false, err
+		}
+
+		return false, nil
 	}
 
 	var gs gameStatus
@@ -128,19 +144,14 @@ func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, pl
 		return false, err
 	}
 
-	if gs.ExpectedNumberOfPlayers-len(gs.Players) <= 1 {
+	if gs.ExpectedNumberOfPlayers-len(gs.Players) == 0 ||
+		gs.ExpectedNumberOfPlayers-len(gs.Players) == 1 {
 		return true, nil
 	}
 
 	for _, id := range gs.Players {
 		if id == *playerId {
 			return false, fmt.Errorf("player %v is already member of ready players", playerId)
-		}
-	}
-
-	if gs.ExpectedNumberOfPlayers == 0 {
-		if numberOfPlayers != nil {
-			gs.ExpectedNumberOfPlayers = *numberOfPlayers
 		}
 	}
 
