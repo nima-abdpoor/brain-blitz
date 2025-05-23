@@ -5,14 +5,15 @@ import (
 )
 
 type Game struct {
-	Id        *string
-	Players   []uint64
-	MatchId   string
-	Category  []Category
-	Status    GameStatus
-	Question  *[]Question
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Id                   *string     `bson:"id"`
+	Players              []uint64    `bson:"players"`
+	MatchId              string      `bson:"match_id"`
+	Category             []Category  `bson:"category"`
+	Status               GameStatus  `bson:"status"`
+	CurrentQuestionIndex int         `bson:"current_question_index"`
+	Question             *[]Question `bson:"questions"`
+	CreatedAt            time.Time   `bson:"created_at"`
+	UpdatedAt            time.Time   `bson:"updated_at"`
 }
 
 type Player struct {

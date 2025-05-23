@@ -70,11 +70,11 @@ func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId stri
 		return err
 	}
 
-	filter := bson.M{"matchid": matchId}
+	filter := bson.M{"match_id": matchId}
 	update := bson.M{
 		"$set": bson.M{
 			"updated_at": time.Now(),
-			"question":   questions,
+			"questions":  questions,
 		},
 	}
 	coll := m.MongoDB.DB.Collection("game")
