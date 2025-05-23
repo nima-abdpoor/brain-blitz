@@ -19,6 +19,7 @@ const (
 
 const (
 	EventMatchCreated Event = "MATCH_CREATED"
+	NewQuestion       Event = "NEW_QUESTION"
 )
 
 type GameInitResponse struct {
@@ -42,5 +43,13 @@ type ProcessGameMessageResponse struct {
 }
 
 type ProcessGameMetaDataResponse struct {
-	GameId string `json:"gameId"`
+	GameId   string                 `json:"gameId"`
+	Question ProcessGameNewQuestion `json:"question"`
+}
+
+type ProcessGameNewQuestion struct {
+	Id         string     `json:"id"`
+	Content    string     `json:"content"`
+	Choices    []string   `json:"choices"`
+	Difficulty Difficulty `json:"difficulty"`
 }

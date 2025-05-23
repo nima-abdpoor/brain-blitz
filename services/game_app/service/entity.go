@@ -5,15 +5,14 @@ import (
 )
 
 type Game struct {
-	Id                   *string     `bson:"id"`
-	Players              []uint64    `bson:"players"`
-	MatchId              string      `bson:"match_id"`
-	Category             []Category  `bson:"category"`
-	Status               GameStatus  `bson:"status"`
-	CurrentQuestionIndex int         `bson:"current_question_index"`
-	Question             *[]Question `bson:"questions"`
-	CreatedAt            time.Time   `bson:"created_at"`
-	UpdatedAt            time.Time   `bson:"updated_at"`
+	Id        *string     `bson:"id"`
+	Players   []uint64    `bson:"players"`
+	MatchId   string      `bson:"match_id"`
+	Category  []Category  `bson:"category"`
+	Status    GameStatus  `bson:"status"`
+	Question  *[]Question `bson:"questions"`
+	CreatedAt time.Time   `bson:"created_at"`
+	UpdatedAt time.Time   `bson:"updated_at"`
 }
 
 type Player struct {
@@ -61,11 +60,17 @@ func MapToGameStatus(status string) GameStatus {
 	}
 }
 
+type GameQuestions struct {
+	Questions            []Question `json:"questions"`
+	Players              []uint64   `json:"players"`
+	CurrentQuestionIndex int        `bson:"currentQuestionIndex"`
+}
+
 type Question struct {
-	Id            string `json:"id"`
-	Content       string `json:"content"`
-	CorrectAnswer string `json:"correctAnswer"`
-	Status        string
+	Id            string     `json:"id"`
+	Content       string     `json:"content"`
+	CorrectAnswer string     `json:"correctAnswer"`
+	Status        string     `json:"status"`
 	Choices       []string   `json:"choices"`
 	Category      Category   `json:"category"`
 	Difficulty    Difficulty `json:"difficulty"`

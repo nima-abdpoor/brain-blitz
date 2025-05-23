@@ -25,6 +25,7 @@ type IdToConnection map[uint64]net.Conn
 type Config struct {
 	StoreGameStatusTimeOut          time.Duration `koanf:"store_game_status_time_out"`
 	PublishUserToWaitingListTimeOut time.Duration `koanf:"publish_user_to_waiting_list_time_out"`
+	QuestionInterval                time.Duration `koanf:"question_interval"`
 }
 
 const saveUserGameStatusTimeOut = 2 * time.Second
@@ -32,8 +33,13 @@ const saveGameStatusTimeOut = 2 * time.Second
 
 type Repository interface {
 	CreateGame(ctx context.Context, game Game) (string, error)
+	GetGame(ctx context.Context, gameId string) (Game, error)
+
 	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
-	GetQuestionsByMatchId(ctx context.Context, matchId string) ([]Question, error)
+	GetQuestionsByGameId(ctx context.Context, gameId string) (GameQuestions, error)
+	GetQuestionsByMatchId(ctx context.Context, matchId string) (GameQuestions, error)
+	IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error
+
 	UpsertUserStatus(ctx context.Context, userId uint64, status GameStatus) error
 	UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error)
 	GetUserStatus(ctx context.Context, userId uint64) (GameStatus, error)
@@ -339,26 +345,10 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 		}
 	case CommandReady:
 		{
-			fmt.Println("ready")
 			// check user if their status is just initialized
 			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
 			if isGameReady {
-				fmt.Println("we should send the questions")
-				//todo we should start sending the questions
-			}
-			questions, err := svc.repository.GetQuestionsByMatchId(context.Background(), req.MatchId)
-			if err != nil {
-				return err
-			}
-
-			jsonQuestions, err := json.Marshal(questions)
-			if err != nil {
-				return err
-			}
-
-			err = svc.webSocket.WriteServerData(*conn, code, string(jsonQuestions))
-			if err != nil {
-				return err
+				return svc.sendQuestionToPlayer(ctx, req.GameId)
 			}
 		}
 	case CommandGetCategories:
@@ -370,6 +360,66 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			fmt.Println("unknown")
 		}
 	}
+	return nil
+}
+
+func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) error {
+	op := "game.sendQuestionToPlayer"
+	svc.logger.Info(op, "start sending questions to players", gameId)
+
+	gameQuestions, err := svc.repository.GetQuestionsByGameId(context.Background(), gameId)
+	if err != nil {
+		return err
+	}
+
+	index := gameQuestions.CurrentQuestionIndex
+
+	for len(gameQuestions.Questions) > index {
+		gameResponse := ProcessGameMessageResponse{
+			Success: true,
+			Event:   NewQuestion,
+			Message: "new question",
+			MetaData: ProcessGameMetaDataResponse{
+				GameId: gameId,
+				Question: ProcessGameNewQuestion{
+					Id:         gameQuestions.Questions[index].Id,
+					Content:    gameQuestions.Questions[index].Content,
+					Choices:    gameQuestions.Questions[index].Choices,
+					Difficulty: gameQuestions.Questions[index].Difficulty,
+				},
+			},
+		}
+
+		jsonQuestions, err := json.Marshal(gameResponse)
+		if err != nil {
+			return err
+		}
+		for _, playerId := range gameQuestions.Players {
+			conn := svc.connections[playerId]
+			err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonQuestions))
+			if err != nil {
+				svc.logger.Error(
+					op, "error in sending question to player",
+					"playerId", playerId,
+					"gameId", gameId,
+					slog.String("error", err.Error()),
+				)
+			}
+		}
+
+		index++
+		err = svc.repository.IncreaseGameQuestionCurrentIndex(context.Background(), gameId)
+		if err != nil {
+			svc.logger.Error(
+				op, "error in increasing current question id",
+				"gameId", gameId,
+				slog.String("error", err.Error()),
+			)
+		}
+
+		time.Sleep(svc.config.QuestionInterval)
+	}
+
 	return nil
 }
 

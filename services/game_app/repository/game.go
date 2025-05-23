@@ -48,7 +48,7 @@ func (m GameRepository) CreateGame(ctx context.Context, game service.Game) (stri
 	if err != nil {
 		m.Logger.Error(op, "failed to get questions by matchId", err.Error())
 	} else {
-		game.Question = &questions
+		game.Question = &questions.Questions
 	}
 
 	coll := m.MongoDB.DB.Collection("game")
@@ -63,9 +63,44 @@ func (m GameRepository) CreateGame(ctx context.Context, game service.Game) (stri
 	}
 }
 
+func (m GameRepository) GetGame(ctx context.Context, gameId string) (service.Game, error) {
+	op := "game.GetGame"
+
+	coll := m.MongoDB.DB.Collection("game")
+	filter := bson.M{"_id": gameId}
+	var game service.Game
+
+	if err := coll.FindOne(ctx, filter).Decode(&game); err != nil {
+		m.Logger.Error(op, fmt.Sprintf("error in getting game record of %s", filter), "error", err.Error())
+		return game, err
+	}
+
+	go func() {
+		cacheCtx, cancel := context.WithTimeout(context.Background(), m.Config.GameStatusTimeOut)
+		defer cancel()
+
+		gs := service.GameQuestions{
+			Questions:            *game.Question,
+			Players:              game.Players,
+			CurrentQuestionIndex: 0,
+		}
+		err := m.saveQuestionByGameId(cacheCtx, gameId, gs)
+		if err != nil {
+			m.Logger.Error(op, fmt.Sprintf("error in caching game questions %s", gameId), "error", err.Error())
+		}
+	}()
+
+	return game, nil
+}
+
 func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []service.Question) error {
 	op := "game.SaveQuestionsByMatchId"
-	res, err := json.Marshal(questions)
+
+	gQ := service.GameQuestions{
+		Questions:            questions,
+		CurrentQuestionIndex: 0,
+	}
+	res, err := json.Marshal(gQ)
 	if err != nil {
 		return err
 	}
@@ -78,28 +113,66 @@ func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId stri
 		},
 	}
 	coll := m.MongoDB.DB.Collection("game")
-	result, err := coll.UpdateOne(ctx, filter, update)
+	updateResult, err := coll.UpdateOne(ctx, filter, update)
 	if err != nil {
 		m.Logger.Error(op, "save questions by matchId in mongoDB", err.Error())
+
+		redisErr := m.redisDB.Set(ctx, QuestionsPrefix+matchId, res, m.Config.QuestionsTimeOut)
+		if redisErr != nil {
+			m.Logger.Error(op, "save questions by matchId in redis", err.Error())
+		}
 	} else {
-		if result.MatchedCount == 0 {
+		if updateResult.MatchedCount == 0 {
 			m.Logger.Error(op, "message", fmt.Sprintf("no game found with matchId %s", matchId))
+			redisErr := m.redisDB.Set(ctx, QuestionsPrefix+matchId, res, m.Config.QuestionsTimeOut)
+			if redisErr != nil {
+				m.Logger.Error(op, "save questions by matchId in redis", err.Error())
+			}
 		}
 	}
 
-	return m.redisDB.Set(ctx, QuestionsPrefix+matchId, res, m.Config.QuestionsTimeOut)
-}
-
-func (m GameRepository) GetQuestionsByMatchId(ctx context.Context, matchId string) ([]service.Question, error) {
-	value, err := m.redisDB.Get(ctx, QuestionsPrefix+matchId)
-	if err != nil {
-		return nil, err
+	var selectResult struct {
+		ID      primitive.ObjectID `bson:"_id"`
+		Players []uint64           `bson:"players"`
+	}
+	if err := coll.FindOne(ctx, filter).Decode(&selectResult); err != nil {
+		m.Logger.Error(op, fmt.Sprintf("error in getting game record of %s", filter), "error", err.Error())
 	}
 
-	var questions []service.Question
+	gQ.Players = selectResult.Players
+	gqJson, err := json.Marshal(gQ)
+	if err != nil {
+		return err
+	}
+
+	return m.redisDB.Set(ctx, QuestionsPrefix+selectResult.ID.Hex(), gqJson, m.Config.QuestionsTimeOut)
+}
+
+func (m GameRepository) GetQuestionsByGameId(ctx context.Context, gameId string) (service.GameQuestions, error) {
+	var questions service.GameQuestions
+	value, err := m.redisDB.Get(ctx, QuestionsPrefix+gameId)
+	if err != nil {
+		return questions, err
+	}
+
 	err = json.Unmarshal([]byte(value), &questions)
 	if err != nil {
-		return nil, err
+		return questions, err
+	}
+
+	return questions, nil
+}
+
+func (m GameRepository) GetQuestionsByMatchId(ctx context.Context, matchId string) (service.GameQuestions, error) {
+	var questions service.GameQuestions
+	value, err := m.redisDB.Get(ctx, QuestionsPrefix+matchId)
+	if err != nil {
+		return questions, err
+	}
+
+	err = json.Unmarshal([]byte(value), &questions)
+	if err != nil {
+		return questions, err
 	}
 
 	return questions, nil
@@ -170,4 +243,33 @@ func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, pl
 	}
 
 	return false, nil
+}
+
+func (m GameRepository) IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error {
+	op := "game.IncreaseGameQuestionCurrentIndex"
+
+	gameQuestions, err := m.GetQuestionsByGameId(ctx, gameId)
+	if err != nil {
+		m.Logger.Error(op, "get questions by gameId", "gameId", gameId, "error", err.Error())
+		return err
+	}
+
+	gameQuestions.CurrentQuestionIndex++
+
+	err = m.saveQuestionByGameId(ctx, gameId, gameQuestions)
+	if err != nil {
+		m.Logger.Error(op, "error in saving game questions", "gameId", gameId, "error", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m GameRepository) saveQuestionByGameId(ctx context.Context, gameId string, gameQuestions service.GameQuestions) error {
+	gs, err := json.Marshal(&gameQuestions)
+	if err != nil {
+		return err
+	}
+
+	return m.redisDB.Set(ctx, QuestionsPrefix+gameId, gs, m.Config.QuestionsTimeOut)
 }
