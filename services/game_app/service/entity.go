@@ -15,19 +15,35 @@ type Game struct {
 	UpdatedAt time.Time   `bson:"updated_at"`
 }
 
-type Player struct {
-	ID     uint
-	UserID uint
-	GameID uint
-	Score  int
-	Answer []PlayerAnswer
+type PlayerAnswer struct {
+	GameId            string    `bson:"game_id"`
+	QuestionIDs       string    `bson:"question_id"`
+	PlayerID          string    `bson:"player_id"`
+	PlayerChoice      string    `bson:"player_choice"`
+	CorrectChoice     string    `bson:"correct_choice"`
+	AnswerTime        time.Time `bson:"answer_time"`
+	ValidTimeToAnswer time.Time `bson:"valid_time_to_answer"`
+	Options           []string  `bson:"Option"`
+	Point             int       `bson:"point"`
+	Category          Category  `bson:"category"`
 }
 
-type PlayerAnswer struct {
-	ID          uint
-	QuestionIDs []uint
-	PlayerID    []uint
-	Choice      PossibleAnswerChoice
+type LeaderBoard struct {
+	GameId       string
+	PlayersPoint []PlayerPoint
+}
+
+type QuestionCorrectness struct {
+	QuestionId    string
+	PlayerChoice  string
+	CorrectChoice string
+	IsCorrect     bool
+}
+
+type PlayerPoint struct {
+	PlayerId            string
+	Point               int
+	QuestionCorrectness []QuestionCorrectness
 }
 
 type GameStatus string
@@ -67,13 +83,14 @@ type GameQuestions struct {
 }
 
 type Question struct {
-	Id            string     `json:"id"`
-	Content       string     `json:"content"`
-	CorrectAnswer string     `json:"correctAnswer"`
-	Status        string     `json:"status"`
-	Choices       []string   `json:"choices"`
-	Category      Category   `json:"category"`
-	Difficulty    Difficulty `json:"difficulty"`
+	Id              string     `json:"id"`
+	Content         string     `json:"content"`
+	CorrectAnswer   string     `json:"correctAnswer"`
+	Status          string     `json:"status"`
+	Choices         []string   `json:"choices"`
+	Category        Category   `json:"category"`
+	ValidAnswerTime time.Time  `json:"validAnswerTime"`
+	Difficulty      Difficulty `json:"difficulty"`
 }
 
 type PossibleAnswers struct {

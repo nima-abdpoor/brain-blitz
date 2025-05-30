@@ -40,6 +40,8 @@ type Repository interface {
 	GetQuestionsByMatchId(ctx context.Context, matchId string) (GameQuestions, error)
 	IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error
 
+	SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer PlayerAnswer) (LeaderBoard, error)
+
 	UpsertUserStatus(ctx context.Context, userId uint64, status GameStatus) error
 	UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error)
 	GetUserStatus(ctx context.Context, userId uint64) (GameStatus, error)
@@ -348,7 +350,10 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			// check user if their status is just initialized
 			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
 			if isGameReady {
-				return svc.sendQuestionToPlayer(ctx, req.GameId)
+				err = svc.sendQuestionToPlayer(ctx, req.GameId)
+				if err == nil {
+					fmt.Println("game completed")
+				}
 			}
 		}
 	case CommandGetCategories:
@@ -358,6 +363,30 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 	case CommandUnknownCommand:
 		{
 			fmt.Println("unknown")
+		}
+	case CommandAnswer:
+		{
+			playerResponse, err := svc.savePlayerAnswer(ctx, id, req.GameAnswer)
+			if err != nil {
+				svc.logger.Error(op, "error in saving answer of a player", slog.String("error", err.Error()))
+			}
+
+			response.Event = AnswerAccepted
+			response.Message = "answer accepted"
+			response.Success = true
+			response.MetaData = ProcessGameMetaDataResponse{
+				GameId: req.GameId,
+				Answer: playerResponse,
+			}
+			answerAcceptedJson, err := json.Marshal(response)
+			if err != nil {
+				return err
+			}
+
+			err = svc.webSocket.WriteServerData(*conn, code, string(answerAcceptedJson))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -421,6 +450,51 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 	}
 
 	return nil
+}
+
+func (svc Service) savePlayerAnswer(ctx context.Context, playerId uint64, answer ProcessGameAnswer) (ProcessGameLeaderBoard, error) {
+	op := "game.savePlayerAnswer"
+
+	var leaderBoardResult ProcessGameLeaderBoard
+
+	ps := PlayerAnswer{
+		GameId:       answer.GameId,
+		QuestionIDs:  answer.QuestionId,
+		PlayerID:     strconv.FormatUint(playerId, 10),
+		PlayerChoice: answer.Answer,
+		AnswerTime:   time.Now(),
+	}
+
+	leaderBoard, err := svc.repository.SavePlayerAnswer(ctx, answer.GameId, ps)
+	if err != nil {
+		svc.logger.Error(op, "error in saving answer of a player", slog.String("error", err.Error()))
+		return leaderBoardResult, err
+	}
+
+	var playerPoints []ProcessGamePlayerPoint
+
+	for _, playerPoint := range leaderBoard.PlayersPoint {
+		var ansResult []ProcessGameAnswerResult
+		for _, questionAnswers := range playerPoint.QuestionCorrectness {
+			ansResult = append(ansResult, ProcessGameAnswerResult{
+				QuestionId:    questionAnswers.QuestionId,
+				CorrectAnswer: questionAnswers.CorrectChoice,
+				PlayerAnswer:  questionAnswers.PlayerChoice,
+				IsCorrect:     questionAnswers.IsCorrect,
+			})
+		}
+		playerPoints = append(playerPoints, ProcessGamePlayerPoint{
+			PlayerId: playerPoint.PlayerId,
+			Point:    playerPoint.Point,
+			Answers:  ansResult,
+		})
+	}
+	leaderBoardResult = ProcessGameLeaderBoard{
+		GameId:      answer.GameId,
+		PlayerPoint: playerPoints,
+	}
+
+	return leaderBoardResult, nil
 }
 
 func (svc Service) writeMessage(ids []uint64, msg ProcessGameMessageResponse) error {

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -22,8 +23,9 @@ const (
 )
 
 type Config struct {
-	QuestionsTimeOut  time.Duration `koanf:"questions_timeout"`
-	GameStatusTimeOut time.Duration `koanf:"game_status_timeout"`
+	QuestionsTimeOut   time.Duration `koanf:"questions_timeout"`
+	GameStatusTimeOut  time.Duration `koanf:"game_status_timeout"`
+	ValidAnswerTimeOut time.Duration `koanf:"valid_answer_timeout"`
 }
 
 type GameRepository struct {
@@ -254,6 +256,8 @@ func (m GameRepository) IncreaseGameQuestionCurrentIndex(ctx context.Context, ga
 		return err
 	}
 
+	gameQuestions.Questions[gameQuestions.CurrentQuestionIndex].ValidAnswerTime = time.Now().UTC().Add(m.Config.ValidAnswerTimeOut)
+
 	gameQuestions.CurrentQuestionIndex++
 
 	err = m.saveQuestionByGameId(ctx, gameId, gameQuestions)
@@ -272,4 +276,144 @@ func (m GameRepository) saveQuestionByGameId(ctx context.Context, gameId string,
 	}
 
 	return m.redisDB.Set(ctx, QuestionsPrefix+gameId, gs, m.Config.QuestionsTimeOut)
+}
+
+func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer service.PlayerAnswer) (service.LeaderBoard, error) {
+	op := "game.SavePlayerAnswer"
+
+	var leaderBoard service.LeaderBoard
+	var playerAnswerResult []service.PlayerAnswer
+	questionIdToTTL := make(map[string]time.Time)
+
+	gameQuestion, err := m.GetQuestionsByGameId(context.Background(), gameId)
+	if err != nil {
+		m.Logger.Error(op, "get questions by gameId", "gameId", gameId, "error", err.Error())
+		return leaderBoard, err
+	}
+
+	questionIdFound := false
+	for _, question := range gameQuestion.Questions {
+		if !questionIdFound && playerAnswer.QuestionIDs == question.Id {
+			playerAnswer.CorrectChoice = question.CorrectAnswer
+			playerAnswer.Options = question.Choices
+			playerAnswer.Category = question.Category
+			playerAnswer.ValidTimeToAnswer = question.ValidAnswerTime
+			questionIdFound = true
+		}
+		questionIdToTTL[question.Id] = question.ValidAnswerTime
+	}
+
+	coll := m.MongoDB.DB.Collection("player_answers")
+
+	storedPlayerAnswerFilter := bson.M{"game_id": gameId, "player_id": playerAnswer.PlayerID, "question_id": playerAnswer.QuestionIDs}
+	var storedPlayerAnswer service.PlayerAnswer
+	err = coll.FindOne(context.Background(), storedPlayerAnswerFilter).Decode(&storedPlayerAnswer)
+	if err != nil {
+		m.Logger.Error(op, "get error finding playerId with questionId",
+			"gameId", gameId,
+			"playerId", playerAnswer.PlayerID,
+			"questionId", playerAnswer.QuestionIDs,
+			"error", err.Error())
+	}
+
+	if storedPlayerAnswer.PlayerID == playerAnswer.PlayerID &&
+		storedPlayerAnswer.GameId == playerAnswer.GameId &&
+		storedPlayerAnswer.QuestionIDs == playerAnswer.QuestionIDs {
+		return leaderBoard, fmt.Errorf("player %v already answered this question %s", playerAnswer.PlayerID, playerAnswer.QuestionIDs)
+	}
+
+	_, err = coll.InsertOne(context.Background(), playerAnswer)
+	if err != nil {
+		return leaderBoard, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+			"message": "Can not insert player answer",
+			"data":    fmt.Sprint(playerAnswer),
+		}, m.Logger)
+	}
+
+	coll = m.MongoDB.DB.Collection("player_answers")
+	filter := bson.M{
+		"game_id": gameId,
+	}
+
+	cursor, err := coll.Find(context.Background(), filter)
+	if err != nil {
+		m.Logger.Error(op, "find all player answers", "filter", fmt.Sprint(filter), "error", err.Error())
+		return leaderBoard, err
+	}
+	//defer cursor.Close()
+
+	if err := cursor.All(ctx, &playerAnswerResult); err != nil {
+		m.Logger.Error(op, "decode player answers", "error", err.Error())
+		return leaderBoard, err
+	}
+
+	var playerPoint []service.PlayerPoint
+	playerToPoint := make(map[string]*service.PlayerPoint)
+
+	for _, ans := range playerAnswerResult {
+		isCorrect := ans.PlayerChoice == ans.CorrectChoice && !ans.AnswerTime.After(questionIdToTTL[ans.QuestionIDs])
+
+		if isCorrect {
+			if player, exists := playerToPoint[ans.PlayerID]; exists {
+				player.Point = player.Point + 10
+
+				player.QuestionCorrectness = append(player.QuestionCorrectness, service.QuestionCorrectness{
+					PlayerChoice:  ans.PlayerChoice,
+					CorrectChoice: ans.CorrectChoice,
+					IsCorrect:     isCorrect,
+				})
+			} else {
+				playerToPoint[ans.PlayerID] = &service.PlayerPoint{
+					PlayerId: ans.PlayerID,
+					Point:    10,
+					QuestionCorrectness: []service.QuestionCorrectness{{
+						PlayerChoice:  ans.PlayerChoice,
+						CorrectChoice: ans.CorrectChoice,
+						IsCorrect:     isCorrect,
+					},
+					},
+				}
+			}
+		} else {
+			if player, exists := playerToPoint[ans.PlayerID]; exists {
+				player.Point -= 2
+
+				player.QuestionCorrectness = append(player.QuestionCorrectness, service.QuestionCorrectness{
+					QuestionId:    ans.QuestionIDs,
+					PlayerChoice:  ans.PlayerChoice,
+					CorrectChoice: ans.CorrectChoice,
+					IsCorrect:     isCorrect,
+				})
+			} else {
+				playerToPoint[ans.PlayerID] = &service.PlayerPoint{
+					PlayerId: ans.PlayerID,
+					Point:    -2,
+					QuestionCorrectness: []service.QuestionCorrectness{{
+						PlayerChoice:  ans.PlayerChoice,
+						CorrectChoice: ans.CorrectChoice,
+						IsCorrect:     isCorrect,
+					},
+					},
+				}
+			}
+		}
+	}
+	for player, point := range playerToPoint {
+		playerPoint = append(playerPoint, service.PlayerPoint{
+			PlayerId:            player,
+			Point:               point.Point,
+			QuestionCorrectness: point.QuestionCorrectness,
+		})
+	}
+
+	sort.Slice(playerPoint, func(i, j int) bool {
+		return playerPoint[i].Point > playerPoint[j].Point
+	})
+
+	leaderBoard = service.LeaderBoard{
+		GameId:       gameId,
+		PlayersPoint: playerPoint,
+	}
+
+	return leaderBoard, nil
 }
