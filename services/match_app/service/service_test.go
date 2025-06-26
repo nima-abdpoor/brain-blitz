@@ -25,7 +25,6 @@ type MockRepo struct {
 
 func (m *MockRepo) RemoveWaitingMember(ctx context.Context, members []WaitingMember) error {
 	args := m.Called(ctx, members)
-	fmt.Println("====>", args.Error(0))
 	return args.Error(0)
 }
 
