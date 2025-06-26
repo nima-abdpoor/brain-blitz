@@ -294,6 +294,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			if MapToCategory(req.Category) == CategoryTypeUnknown {
 				response = ProcessGameMessageResponse{
 					Success: false,
+					Event:   Error,
 					Message: "invalid category",
 				}
 				addToWaitingListResponse, err := json.Marshal(response)
@@ -320,6 +321,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				svc.logger.Error(op, "error in publishing join request message into broker", slog.String("error", err.Error()))
 				response = ProcessGameMessageResponse{
 					Success: false,
+					Event:   Error,
 					Message: "internal server error",
 				}
 				addToWaitingListResponse, err := json.Marshal(response)
@@ -333,6 +335,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			}
 			response = ProcessGameMessageResponse{
 				Success: true,
+				Event:   AddedToWaitingList,
 				Message: "added to waiting list successfully",
 			}
 			addToWaitingListResponse, err := json.Marshal(response)
@@ -360,10 +363,6 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 		{
 			fmt.Println("get categories")
 		}
-	case CommandUnknownCommand:
-		{
-			fmt.Println("unknown")
-		}
 	case CommandAnswer:
 		{
 			playerResponse, err := svc.savePlayerAnswer(ctx, id, req.GameAnswer)
@@ -388,6 +387,23 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				return err
 			}
 		}
+	default:
+		{
+			svc.logger.Error(op, "invalid command", "command", req.Command, req.MatchId)
+			response = ProcessGameMessageResponse{
+				Success: false,
+				Event:   Error,
+				Message: "invalid command",
+			}
+			addToWaitingListResponse, err := json.Marshal(response)
+			if err != nil {
+				return err
+			}
+			err = svc.webSocket.WriteServerData(*conn, code, string(addToWaitingListResponse))
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -401,54 +417,44 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 		return err
 	}
 
-	index := gameQuestions.CurrentQuestionIndex
+	var questionsResponse []ProcessGameQuestion
 
-	for len(gameQuestions.Questions) > index {
-		gameResponse := ProcessGameMessageResponse{
-			Success: true,
-			Event:   NewQuestion,
-			Message: "new question",
-			MetaData: ProcessGameMetaDataResponse{
-				GameId: gameId,
-				Question: ProcessGameNewQuestion{
-					Id:         gameQuestions.Questions[index].Id,
-					Content:    gameQuestions.Questions[index].Content,
-					Choices:    gameQuestions.Questions[index].Choices,
-					Difficulty: gameQuestions.Questions[index].Difficulty,
-				},
-			},
-		}
+	for _, questions := range gameQuestions.Questions {
+		questionsResponse = append(questionsResponse, ProcessGameQuestion{
+			Id:         questions.Id,
+			Content:    questions.Content,
+			Choices:    questions.Choices,
+			Difficulty: questions.Difficulty,
+			TTL:        questions.ValidAnswerTime,
+		})
+	}
 
-		jsonQuestions, err := json.Marshal(gameResponse)
-		if err != nil {
-			return err
-		}
-		for _, playerId := range gameQuestions.Players {
-			conn := svc.connections[playerId]
-			err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonQuestions))
-			if err != nil {
-				svc.logger.Error(
-					op, "error in sending question to player",
-					"playerId", playerId,
-					"gameId", gameId,
-					slog.String("error", err.Error()),
-				)
-			}
-		}
+	gameMessageResponse := ProcessGameMessageResponse{
+		Success: true,
+		Event:   NewQuestion,
+		Message: "new question",
+		MetaData: ProcessGameMetaDataResponse{
+			GameId:    gameId,
+			Questions: questionsResponse,
+		},
+	}
 
-		index++
-		err = svc.repository.IncreaseGameQuestionCurrentIndex(context.Background(), gameId)
+	jsonQuestions, err := json.Marshal(gameMessageResponse)
+	if err != nil {
+		return err
+	}
+	for _, playerId := range gameQuestions.Players {
+		conn := svc.connections[playerId]
+		err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonQuestions))
 		if err != nil {
 			svc.logger.Error(
-				op, "error in increasing current question id",
+				op, "error in sending questions to player",
+				"playerId", playerId,
 				"gameId", gameId,
 				slog.String("error", err.Error()),
 			)
 		}
-
-		time.Sleep(svc.config.QuestionInterval)
 	}
-
 	return nil
 }
 

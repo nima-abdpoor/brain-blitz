@@ -1,5 +1,7 @@
 package service
 
+import "time"
+
 type ProcessGameRequest struct {
 	Id string
 }
@@ -11,17 +13,19 @@ type Command string
 type Event string
 
 const (
+	CommandReady            Command = "READY"
+	CommandAnswer           Command = "ANSWER"
+	CommandUnknownCommand   Command = "UNKNOWN"
 	CommandGetCategories    Command = "GET_CATEGORIES"
 	CommandAddToWaitingList Command = "ADD_TO_WAITING_LIST"
-	CommandAnswer           Command = "ANSWER"
-	CommandReady            Command = "READY"
-	CommandUnknownCommand   Command = "UNKNOWN"
 )
 
 const (
-	EventMatchCreated Event = "MATCH_CREATED"
-	NewQuestion       Event = "NEW_QUESTION"
-	AnswerAccepted    Event = "ANSWER_ACCEPTED"
+	Error              Event = "ERROR"
+	EventMatchCreated  Event = "MATCH_CREATED"
+	AnswerAccepted     Event = "ANSWER_ACCEPTED"
+	NewQuestion        Event = "QUESTIONS_PUBLISHED"
+	AddedToWaitingList Event = "ADDED_TO_WAITING_LIST"
 )
 
 type GameInitResponse struct {
@@ -52,9 +56,9 @@ type ProcessGameMessageResponse struct {
 }
 
 type ProcessGameMetaDataResponse struct {
-	GameId   string                 `json:"gameId"`
-	Question ProcessGameNewQuestion `json:"question"`
-	Answer   ProcessGameLeaderBoard `json:"leaderBoard"`
+	GameId    string                 `json:"gameId"`
+	Questions []ProcessGameQuestion  `json:"questions"`
+	Answer    ProcessGameLeaderBoard `json:"leaderBoard"`
 }
 
 type ProcessGameLeaderBoard struct {
@@ -75,9 +79,10 @@ type ProcessGameAnswerResult struct {
 	IsCorrect     bool   `json:"isCorrect"`
 }
 
-type ProcessGameNewQuestion struct {
+type ProcessGameQuestion struct {
 	Id         string     `json:"id"`
 	Content    string     `json:"content"`
 	Choices    []string   `json:"choices"`
 	Difficulty Difficulty `json:"difficulty"`
+	TTL        time.Time  `json:"ttl"`
 }
