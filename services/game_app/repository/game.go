@@ -269,6 +269,29 @@ func (m GameRepository) IncreaseGameQuestionCurrentIndex(ctx context.Context, ga
 	return nil
 }
 
+func (m GameRepository) SetValidAnswerTimeForQuestions(ctx context.Context, gameId string) error {
+	op := "game.SetValidAnswerTimeForQuestions"
+
+	gameQuestions, err := m.GetQuestionsByGameId(ctx, gameId)
+	if err != nil {
+		m.Logger.Error(op, "get questions by gameId", "gameId", gameId, "error", err.Error())
+		return err
+	}
+
+	for i := range gameQuestions.Questions {
+		ttl := m.Config.ValidAnswerTimeOut * time.Duration(i+1)
+		gameQuestions.Questions[i].ValidAnswerTime = time.Now().UTC().Add(ttl)
+	}
+
+	err = m.saveQuestionByGameId(ctx, gameId, gameQuestions)
+	if err != nil {
+		m.Logger.Error(op, "error in saving game questions", "gameId", gameId, "error", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (m GameRepository) saveQuestionByGameId(ctx context.Context, gameId string, gameQuestions service.GameQuestions) error {
 	gs, err := json.Marshal(&gameQuestions)
 	if err != nil {

@@ -39,6 +39,7 @@ type Repository interface {
 	GetQuestionsByGameId(ctx context.Context, gameId string) (GameQuestions, error)
 	GetQuestionsByMatchId(ctx context.Context, matchId string) (GameQuestions, error)
 	IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error
+	SetValidAnswerTimeForQuestions(ctx context.Context, gameId string) error
 
 	SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer PlayerAnswer) (LeaderBoard, error)
 
@@ -353,6 +354,23 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			// check user if their status is just initialized
 			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
 			if isGameReady {
+				err = svc.repository.SetValidAnswerTimeForQuestions(context.Background(), req.GameId)
+				if err != nil {
+					response = ProcessGameMessageResponse{
+						Success: false,
+						Event:   Error,
+						Message: "internal server error",
+					}
+					readyResponse, err := json.Marshal(response)
+					if err != nil {
+						return err
+					}
+					err = svc.webSocket.WriteServerData(*conn, code, string(readyResponse))
+					if err != nil {
+						return err
+					}
+				}
+
 				err = svc.sendQuestionToPlayer(ctx, req.GameId)
 				if err == nil {
 					fmt.Println("game completed")
