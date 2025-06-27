@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/grpc/codes"
+	"net/http"
 	"sort"
 	"strconv"
 	"time"
@@ -26,6 +28,13 @@ type Config struct {
 	QuestionsTimeOut   time.Duration `koanf:"questions_timeout"`
 	GameStatusTimeOut  time.Duration `koanf:"game_status_timeout"`
 	ValidAnswerTimeOut time.Duration `koanf:"valid_answer_timeout"`
+	ScoreConfig        ScoreConfig   `koanf:"score"`
+}
+
+type ScoreConfig struct {
+	BaseScore     int           `koanf:"base_score"`
+	MaxBonus      int           `koanf:"max_bonus"`
+	BonusDeadline time.Duration `koanf:"bonus_deadline"`
 }
 
 type GameRepository struct {
@@ -301,19 +310,16 @@ func (m GameRepository) saveQuestionByGameId(ctx context.Context, gameId string,
 	return m.redisDB.Set(ctx, QuestionsPrefix+gameId, gs, m.Config.QuestionsTimeOut)
 }
 
-func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer service.PlayerAnswer) (service.LeaderBoard, error) {
+func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer service.PlayerAnswer) error {
 	op := "game.SavePlayerAnswer"
-
-	var leaderBoard service.LeaderBoard
-	var playerAnswerResult []service.PlayerAnswer
-	questionIdToTTL := make(map[string]time.Time)
 
 	gameQuestion, err := m.GetQuestionsByGameId(context.Background(), gameId)
 	if err != nil {
 		m.Logger.Error(op, "get questions by gameId", "gameId", gameId, "error", err.Error())
-		return leaderBoard, err
+		return err
 	}
 
+	questionIdToTTL := make(map[string]time.Time)
 	questionIdFound := false
 	for _, question := range gameQuestion.Questions {
 		if !questionIdFound && playerAnswer.QuestionIDs == question.Id {
@@ -321,7 +327,41 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 			playerAnswer.Options = question.Choices
 			playerAnswer.Category = question.Category
 			playerAnswer.ValidTimeToAnswer = question.ValidAnswerTime
+			timeDiff := time.Duration(question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Seconds())
+			fmt.Println("===>>>", question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Milliseconds(), m.Config.ValidAnswerTimeOut.Milliseconds())
+			if question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Milliseconds() > m.Config.ValidAnswerTimeOut.Milliseconds() {
+				m.Logger.Info(op,
+					"message", "subtract of player answerTime and the validAnswerTime is greater than allowable Question ttl",
+					"validTimeAnswer", playerAnswer.ValidTimeToAnswer,
+					"playerTimeAnswer", playerAnswer.AnswerTime,
+					"timeDiff", timeDiff.Milliseconds(),
+					"question ttl", m.Config.ValidAnswerTimeOut.Milliseconds(),
+				)
+
+				return errApp.New(op,
+					"INVALID_ANSWER",
+					"answered to question quickly",
+					http.StatusBadRequest,
+					codes.InvalidArgument,
+					nil,
+					nil,
+				)
+			}
+			isCorrect := playerAnswer.PlayerChoice == question.CorrectAnswer
+			score := m.CalculateScore(isCorrect, playerAnswer.AnswerTime, question.ValidAnswerTime)
+			playerAnswer.TimeDiff = timeDiff
+			playerAnswer.Point = score
 			questionIdFound = true
+
+			m.Logger.Info(op+"_score calculated",
+				"gameId", gameId,
+				"playerId", playerAnswer.PlayerID,
+				"validTimeAnswer", playerAnswer.ValidTimeToAnswer,
+				"playerTimeAnswer", playerAnswer.AnswerTime,
+				"timeDiff", timeDiff,
+				"isCorrect", isCorrect,
+				"point", score,
+			)
 		}
 		questionIdToTTL[question.Id] = question.ValidAnswerTime
 	}
@@ -342,18 +382,27 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 	if storedPlayerAnswer.PlayerID == playerAnswer.PlayerID &&
 		storedPlayerAnswer.GameId == playerAnswer.GameId &&
 		storedPlayerAnswer.QuestionIDs == playerAnswer.QuestionIDs {
-		return leaderBoard, fmt.Errorf("player %v already answered this question %s", playerAnswer.PlayerID, playerAnswer.QuestionIDs)
+		return fmt.Errorf("player %v already answered this question %s", playerAnswer.PlayerID, playerAnswer.QuestionIDs)
 	}
 
 	_, err = coll.InsertOne(context.Background(), playerAnswer)
 	if err != nil {
-		return leaderBoard, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
+		return errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"message": "Can not insert player answer",
 			"data":    fmt.Sprint(playerAnswer),
 		}, m.Logger)
 	}
 
-	coll = m.MongoDB.DB.Collection("player_answers")
+	return nil
+}
+
+func (m GameRepository) GetLeaderBoard(ctx context.Context, gameId string) (service.LeaderBoard, error) {
+	op := "game.GetLeaderBoard"
+
+	var leaderBoard service.LeaderBoard
+	var playerAnswerResult []service.PlayerAnswer
+
+	coll := m.MongoDB.DB.Collection("player_answers")
 	filter := bson.M{
 		"game_id": gameId,
 	}
@@ -374,7 +423,7 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 	playerToPoint := make(map[string]*service.PlayerPoint)
 
 	for _, ans := range playerAnswerResult {
-		isCorrect := ans.PlayerChoice == ans.CorrectChoice && !ans.AnswerTime.After(questionIdToTTL[ans.QuestionIDs])
+		isCorrect := ans.PlayerChoice == ans.CorrectChoice && !ans.AnswerTime.After(ans.ValidTimeToAnswer)
 
 		if isCorrect {
 			if player, exists := playerToPoint[ans.PlayerID]; exists {
@@ -439,4 +488,24 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 	}
 
 	return leaderBoard, nil
+}
+
+func (m GameRepository) CalculateScore(isCorrect bool, answerTime, validAnswerTime time.Time) int {
+	if !isCorrect || answerTime.After(validAnswerTime) {
+		return 0
+	}
+
+	timeDiff := validAnswerTime.Sub(answerTime).Seconds()
+
+	var bonus int
+	fmt.Println("--------------->", timeDiff, m.Config.ScoreConfig.BonusDeadline.Seconds())
+	if timeDiff >= m.Config.ScoreConfig.BonusDeadline.Seconds() {
+		bonus = m.Config.ScoreConfig.MaxBonus
+		fmt.Println("==>1", bonus)
+	} else {
+		bonus = int(float64(m.Config.ScoreConfig.MaxBonus) * (timeDiff / m.Config.ScoreConfig.BonusDeadline.Seconds()))
+		fmt.Println("==>2", bonus)
+	}
+
+	return m.Config.ScoreConfig.BaseScore + bonus
 }

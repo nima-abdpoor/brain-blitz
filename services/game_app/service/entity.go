@@ -16,16 +16,17 @@ type Game struct {
 }
 
 type PlayerAnswer struct {
-	GameId            string    `bson:"game_id"`
-	QuestionIDs       string    `bson:"question_id"`
-	PlayerID          string    `bson:"player_id"`
-	PlayerChoice      string    `bson:"player_choice"`
-	CorrectChoice     string    `bson:"correct_choice"`
-	AnswerTime        time.Time `bson:"answer_time"`
-	ValidTimeToAnswer time.Time `bson:"valid_time_to_answer"`
-	Options           []string  `bson:"Option"`
-	Point             int       `bson:"point"`
-	Category          Category  `bson:"category"`
+	GameId            string        `bson:"game_id"`
+	QuestionIDs       string        `bson:"question_id"`
+	PlayerID          string        `bson:"player_id"`
+	PlayerChoice      string        `bson:"player_choice"`
+	CorrectChoice     string        `bson:"correct_choice"`
+	AnswerTime        time.Time     `bson:"answer_time"`
+	ValidTimeToAnswer time.Time     `bson:"valid_time_to_answer"`
+	TimeDiff          time.Duration `bson:"time_diff"`
+	Options           []string      `bson:"Option"`
+	Point             int           `bson:"point"`
+	Category          Category      `bson:"category"`
 }
 
 type LeaderBoard struct {
