@@ -328,7 +328,6 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 			playerAnswer.Category = question.Category
 			playerAnswer.ValidTimeToAnswer = question.ValidAnswerTime
 			timeDiff := time.Duration(question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Seconds())
-			fmt.Println("===>>>", question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Milliseconds(), m.Config.ValidAnswerTimeOut.Milliseconds())
 			if question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Milliseconds() > m.Config.ValidAnswerTimeOut.Milliseconds() {
 				m.Logger.Info(op,
 					"message", "subtract of player answerTime and the validAnswerTime is greater than allowable Question ttl",
