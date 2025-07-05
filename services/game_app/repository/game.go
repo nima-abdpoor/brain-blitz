@@ -402,12 +402,26 @@ func (m GameRepository) GetLeaderBoard(ctx context.Context, gameId string) (serv
 	var leaderBoard service.LeaderBoard
 	var playerAnswerResult []service.PlayerAnswer
 
-	coll := m.MongoDB.DB.Collection("player_answers")
+	gameCollection := m.MongoDB.DB.Collection("game")
+	objectId, err := primitive.ObjectIDFromHex(gameId)
+	if err != nil {
+		m.Logger.Error(op, fmt.Sprintf("error in converting gameId to objectId %s", gameId), "error", err.Error())
+		return leaderBoard, err
+	}
+	gameFilter := bson.M{"_id": objectId}
+	var storedGame service.Game
+
+	if err = gameCollection.FindOne(context.Background(), gameFilter).Decode(&storedGame); err != nil {
+		m.Logger.Error(op, fmt.Sprintf("error in getting game record of %s", gameFilter), "error", err.Error())
+		return leaderBoard, err
+	}
+
+	playerAnswersCollection := m.MongoDB.DB.Collection("player_answers")
 	filter := bson.M{
 		"game_id": gameId,
 	}
 
-	cursor, err := coll.Find(context.Background(), filter)
+	cursor, err := playerAnswersCollection.Find(context.Background(), filter)
 	if err != nil {
 		m.Logger.Error(op, "find all player answers", "filter", fmt.Sprint(filter), "error", err.Error())
 		return leaderBoard, err
@@ -423,53 +437,40 @@ func (m GameRepository) GetLeaderBoard(ctx context.Context, gameId string) (serv
 	playerToPoint := make(map[string]*service.PlayerPoint)
 
 	for _, ans := range playerAnswerResult {
-		isCorrect := ans.PlayerChoice == ans.CorrectChoice && !ans.AnswerTime.After(ans.ValidTimeToAnswer)
+		isCorrect := ans.TimeDiff > 0 && ans.Point > 0
+		if player, exists := playerToPoint[ans.PlayerID]; exists {
+			player.Point += ans.Point
 
-		if isCorrect {
-			if player, exists := playerToPoint[ans.PlayerID]; exists {
-				player.Point = player.Point + 10
-
-				player.QuestionCorrectness = append(player.QuestionCorrectness, service.QuestionCorrectness{
-					PlayerChoice:  ans.PlayerChoice,
-					CorrectChoice: ans.CorrectChoice,
-					IsCorrect:     isCorrect,
-				})
-			} else {
-				playerToPoint[ans.PlayerID] = &service.PlayerPoint{
-					PlayerId: ans.PlayerID,
-					Point:    10,
-					QuestionCorrectness: []service.QuestionCorrectness{{
-						PlayerChoice:  ans.PlayerChoice,
-						CorrectChoice: ans.CorrectChoice,
-						IsCorrect:     isCorrect,
-					},
-					},
-				}
-			}
+			player.QuestionCorrectness = append(player.QuestionCorrectness, service.QuestionCorrectness{
+				PlayerChoice:  ans.PlayerChoice,
+				CorrectChoice: ans.CorrectChoice,
+				IsCorrect:     isCorrect,
+			})
 		} else {
-			if player, exists := playerToPoint[ans.PlayerID]; exists {
-				player.Point -= 2
-
-				player.QuestionCorrectness = append(player.QuestionCorrectness, service.QuestionCorrectness{
-					QuestionId:    ans.QuestionIDs,
+			playerToPoint[ans.PlayerID] = &service.PlayerPoint{
+				PlayerId: ans.PlayerID,
+				Point:    ans.Point,
+				QuestionCorrectness: []service.QuestionCorrectness{{
 					PlayerChoice:  ans.PlayerChoice,
 					CorrectChoice: ans.CorrectChoice,
 					IsCorrect:     isCorrect,
-				})
-			} else {
-				playerToPoint[ans.PlayerID] = &service.PlayerPoint{
-					PlayerId: ans.PlayerID,
-					Point:    -2,
-					QuestionCorrectness: []service.QuestionCorrectness{{
-						PlayerChoice:  ans.PlayerChoice,
-						CorrectChoice: ans.CorrectChoice,
-						IsCorrect:     isCorrect,
-					},
-					},
-				}
+				},
+				},
 			}
 		}
 	}
+
+	for _, player := range storedGame.Players {
+		playerId := strconv.FormatInt(int64(player), 10)
+		if _, exists := playerToPoint[playerId]; !exists {
+			playerToPoint[playerId] = &service.PlayerPoint{
+				PlayerId:            playerId,
+				Point:               0,
+				QuestionCorrectness: []service.QuestionCorrectness{},
+			}
+		}
+	}
+
 	for player, point := range playerToPoint {
 		playerPoint = append(playerPoint, service.PlayerPoint{
 			PlayerId:            player,
@@ -498,13 +499,10 @@ func (m GameRepository) CalculateScore(isCorrect bool, answerTime, validAnswerTi
 	timeDiff := validAnswerTime.Sub(answerTime).Seconds()
 
 	var bonus int
-	fmt.Println("--------------->", timeDiff, m.Config.ScoreConfig.BonusDeadline.Seconds())
 	if timeDiff >= m.Config.ScoreConfig.BonusDeadline.Seconds() {
 		bonus = m.Config.ScoreConfig.MaxBonus
-		fmt.Println("==>1", bonus)
 	} else {
 		bonus = int(float64(m.Config.ScoreConfig.MaxBonus) * (timeDiff / m.Config.ScoreConfig.BonusDeadline.Seconds()))
-		fmt.Println("==>2", bonus)
 	}
 
 	return m.Config.ScoreConfig.BaseScore + bonus

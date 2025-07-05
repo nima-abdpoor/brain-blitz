@@ -400,6 +400,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				if err != nil {
 					return err
 				}
+				return nil
 			}
 
 			response.Event = AnswerAccepted
