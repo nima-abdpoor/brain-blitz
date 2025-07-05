@@ -39,8 +39,10 @@ type Repository interface {
 	GetQuestionsByGameId(ctx context.Context, gameId string) (GameQuestions, error)
 	GetQuestionsByMatchId(ctx context.Context, matchId string) (GameQuestions, error)
 	IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error
+	SetValidAnswerTimeForQuestions(ctx context.Context, gameId string) error
 
-	SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer PlayerAnswer) (LeaderBoard, error)
+	SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer PlayerAnswer) error
+	GetLeaderBoard(ctx context.Context, gameId string) (LeaderBoard, error)
 
 	UpsertUserStatus(ctx context.Context, userId uint64, status GameStatus) error
 	UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error)
@@ -353,6 +355,23 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			// check user if their status is just initialized
 			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
 			if isGameReady {
+				err = svc.repository.SetValidAnswerTimeForQuestions(context.Background(), req.GameId)
+				if err != nil {
+					response = ProcessGameMessageResponse{
+						Success: false,
+						Event:   Error,
+						Message: "internal server error",
+					}
+					readyResponse, err := json.Marshal(response)
+					if err != nil {
+						return err
+					}
+					err = svc.webSocket.WriteServerData(*conn, code, string(readyResponse))
+					if err != nil {
+						return err
+					}
+				}
+
 				err = svc.sendQuestionToPlayer(ctx, req.GameId)
 				if err == nil {
 					fmt.Println("game completed")
@@ -368,6 +387,20 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			playerResponse, err := svc.savePlayerAnswer(ctx, id, req.GameAnswer)
 			if err != nil {
 				svc.logger.Error(op, "error in saving answer of a player", slog.String("error", err.Error()))
+				response = ProcessGameMessageResponse{
+					Success: false,
+					Event:   Error,
+					Message: err.Error(),
+				}
+				errorResponse, err := json.Marshal(response)
+				if err != nil {
+					return err
+				}
+				err = svc.webSocket.WriteServerData(*conn, code, string(errorResponse))
+				if err != nil {
+					return err
+				}
+				return nil
 			}
 
 			response.Event = AnswerAccepted
@@ -468,12 +501,18 @@ func (svc Service) savePlayerAnswer(ctx context.Context, playerId uint64, answer
 		QuestionIDs:  answer.QuestionId,
 		PlayerID:     strconv.FormatUint(playerId, 10),
 		PlayerChoice: answer.Answer,
-		AnswerTime:   time.Now(),
+		AnswerTime:   time.Now().UTC(),
 	}
 
-	leaderBoard, err := svc.repository.SavePlayerAnswer(ctx, answer.GameId, ps)
+	err := svc.repository.SavePlayerAnswer(ctx, answer.GameId, ps)
 	if err != nil {
 		svc.logger.Error(op, "error in saving answer of a player", slog.String("error", err.Error()))
+		return leaderBoardResult, err
+	}
+
+	leaderBoard, err := svc.repository.GetLeaderBoard(ctx, answer.GameId)
+	if err != nil {
+		svc.logger.Error(op, "error in getting leader board", slog.String("error", err.Error()))
 		return leaderBoardResult, err
 	}
 
