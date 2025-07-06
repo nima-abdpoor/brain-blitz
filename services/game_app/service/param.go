@@ -26,6 +26,7 @@ const (
 	AnswerAccepted     Event = "ANSWER_ACCEPTED"
 	NewQuestion        Event = "QUESTIONS_PUBLISHED"
 	AddedToWaitingList Event = "ADDED_TO_WAITING_LIST"
+	EventCompleted     Event = "COMPLETED"
 )
 
 type GameInitResponse struct {

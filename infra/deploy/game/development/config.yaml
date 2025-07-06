@@ -27,10 +27,26 @@ broker:
 repository:
   questions_timeout: 1h
   game_status_timeout: 1h
+  valid_answer_timeout: 2m2s
+  score:
+    base_score: 5
+    max_bonus: 10
+    bonus_deadline: 115s
+
+task_publisher:
+  redis_config:
+    host: localhost
+    port: 6379
+
+task_worker:
+  redis_config:
+    host: localhost
+    port: 6379
 
 service:
   store_game_status_time_out: 1m
   publish_user_to_waiting_list_time_out: 1m
+  question_interval: 15s
 
 redis:
   host: localhost

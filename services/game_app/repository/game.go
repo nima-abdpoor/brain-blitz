@@ -78,7 +78,12 @@ func (m GameRepository) GetGame(ctx context.Context, gameId string) (service.Gam
 	op := "game.GetGame"
 
 	coll := m.MongoDB.DB.Collection("game")
-	filter := bson.M{"_id": gameId}
+	objectId, err := primitive.ObjectIDFromHex(gameId)
+	if err != nil {
+		m.Logger.Error(op, fmt.Sprintf("error in converting gameId to objectId %s", gameId), "error", err.Error())
+		return service.Game{}, err
+	}
+	filter := bson.M{"_id": objectId}
 	var game service.Game
 
 	if err := coll.FindOne(ctx, filter).Decode(&game); err != nil {
@@ -278,27 +283,28 @@ func (m GameRepository) IncreaseGameQuestionCurrentIndex(ctx context.Context, ga
 	return nil
 }
 
-func (m GameRepository) SetValidAnswerTimeForQuestions(ctx context.Context, gameId string) error {
+func (m GameRepository) SetValidAnswerTimeForQuestions(ctx context.Context, gameId string) (finalTTL time.Duration, err error) {
 	op := "game.SetValidAnswerTimeForQuestions"
 
 	gameQuestions, err := m.GetQuestionsByGameId(ctx, gameId)
 	if err != nil {
 		m.Logger.Error(op, "get questions by gameId", "gameId", gameId, "error", err.Error())
-		return err
+		return 0, err
 	}
 
 	for i := range gameQuestions.Questions {
 		ttl := m.Config.ValidAnswerTimeOut * time.Duration(i+1)
+		finalTTL += ttl
 		gameQuestions.Questions[i].ValidAnswerTime = time.Now().UTC().Add(ttl)
 	}
 
 	err = m.saveQuestionByGameId(ctx, gameId, gameQuestions)
 	if err != nil {
 		m.Logger.Error(op, "error in saving game questions", "gameId", gameId, "error", err.Error())
-		return err
+		return 0, err
 	}
 
-	return nil
+	return finalTTL, err
 }
 
 func (m GameRepository) saveQuestionByGameId(ctx context.Context, gameId string, gameQuestions service.GameQuestions) error {
