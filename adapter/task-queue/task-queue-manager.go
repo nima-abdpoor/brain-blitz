@@ -1,4 +1,4 @@
-package task_queue
+package taskqueue
 
 import (
 	"context"
@@ -52,12 +52,27 @@ const (
 	GroupOpt
 )
 
-type HandlerFunc func(ctx context.Context, payload map[string]interface{}) error
-
-type PublishNewTask interface {
-	Publish(ctx context.Context, taskType string, payload any, opt ...Option) error
+func MaxRetry(n int) Option {
+	if n < 0 {
+		n = 0
+	}
+	return retryOption(n)
 }
 
-type ProcessTask interface {
+func ProcessAt(t time.Time) Option {
+	return processAtOption(t)
+}
+
+func ProcessIn(d time.Duration) Option {
+	return processInOption(d)
+}
+
+type HandlerFunc func(ctx context.Context, payload map[string]interface{}) error
+
+type TaskPublisher interface {
+	Publish(ctx context.Context, taskType string, payload any, opt ...Option) (takeId string, err error)
+}
+
+type TaskProcessor interface {
 	Process(ctx context.Context, handlers map[string]HandlerFunc) error
 }

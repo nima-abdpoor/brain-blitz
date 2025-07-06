@@ -1,4 +1,4 @@
-package task_queue
+package taskqueue
 
 import (
 	"BrainBlitz.com/game/pkg/logger"
@@ -64,10 +64,10 @@ func NewWorkerAsynq(logger logger.Logger, config WorkerConfig) AsynqTaskQueueWor
 	}
 }
 
-func (a *AsynqTaskQueuePublisher) Publish(ctx context.Context, taskType string, payload any, options ...Option) (error, string) {
+func (a *AsynqTaskQueuePublisher) Publish(ctx context.Context, taskType string, payload any, options ...Option) (string, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 
 	var asynqOptions []asynq.Option
@@ -87,17 +87,17 @@ func (a *AsynqTaskQueuePublisher) Publish(ctx context.Context, taskType string, 
 				asynqOptions = append(asynqOptions, asynq.ProcessIn(opt.Value().(time.Duration)))
 			}
 		default:
-			return fmt.Errorf("unknow option type"), ""
+			return "", fmt.Errorf("unknow option type")
 		}
 	}
 
 	task := asynq.NewTask(taskType, data, asynqOptions...)
 	info, err := a.client.EnqueueContext(ctx, task)
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 
-	return nil, info.ID
+	return info.ID, nil
 }
 
 func (a *AsynqTaskQueueWorker) Process(ctx context.Context, handlers map[string]HandlerFunc) error {

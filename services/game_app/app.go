@@ -3,6 +3,7 @@ package game_app
 import (
 	"BrainBlitz.com/game/adapter/broker"
 	"BrainBlitz.com/game/adapter/redis"
+	"BrainBlitz.com/game/adapter/task-queue"
 	"BrainBlitz.com/game/adapter/websocket"
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
@@ -19,14 +20,16 @@ import (
 )
 
 type Application struct {
-	Repository   service.Repository
-	Service      service.Service
-	UserHandler  http.Handler
-	Consumer     service.Consumer
-	HTTPServer   http.Server
-	Config       Config
-	Logger       logger.SlogAdapter
-	shutdownHTTP func(wg *sync.WaitGroup)
+	Repository    service.Repository
+	Service       service.Service
+	UserHandler   http.Handler
+	Consumer      service.Consumer
+	HTTPServer    http.Server
+	TaskPublisher taskqueue.TaskPublisher
+	TaskProcessor service.TaskWorker
+	Config        Config
+	Logger        logger.SlogAdapter
+	shutdownHTTP  func(wg *sync.WaitGroup)
 }
 
 func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Application {
@@ -39,19 +42,26 @@ func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Applica
 		logger.Error("Error creating kafka broker", "error", err)
 		panic(err)
 	}
-	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker, logger)
+
+	taskPublisher := taskqueue.NewPublisherAsynq(logger, config.TaskPublisher)
+	tw := taskqueue.NewWorkerAsynq(logger, config.TaskWorker)
+
+	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker, &taskPublisher, logger)
+	taskWorker := service.NewTaskWorker(logger, gameService, &tw)
 
 	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
 	userHandler := http.NewHandler(gameService, logger)
 
 	app := Application{
-		Repository:  gameRepository,
-		Service:     gameService,
-		UserHandler: userHandler,
-		Consumer:    consumer,
-		HTTPServer:  http.New(httpserver.New(config.HTTPServer), userHandler, logger),
-		Config:      config,
-		Logger:      logger,
+		Repository:    gameRepository,
+		Service:       gameService,
+		UserHandler:   userHandler,
+		Consumer:      consumer,
+		HTTPServer:    http.New(httpserver.New(config.HTTPServer), userHandler, logger),
+		TaskPublisher: &taskPublisher,
+		TaskProcessor: taskWorker,
+		Config:        config,
+		Logger:        logger,
 	}
 
 	app.shutdownHTTP = func(wg *sync.WaitGroup) { go app.shutdownHTTPServer(wg) }
@@ -84,7 +94,7 @@ func (app Application) Start() {
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
@@ -98,6 +108,11 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		defer wg.Done()
 		app.Logger.Info("Consumer Started")
 		app.Consumer.Consume()
+	}()
+	go func() {
+		defer wg.Done()
+		app.Logger.Info("TaskWorker Started")
+		app.TaskProcessor.Process()
 	}()
 }
 

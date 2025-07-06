@@ -2,6 +2,7 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/adapter/task-queue"
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/contract/event"
 	"BrainBlitz.com/game/contract/match/golang"
@@ -39,7 +40,7 @@ type Repository interface {
 	GetQuestionsByGameId(ctx context.Context, gameId string) (GameQuestions, error)
 	GetQuestionsByMatchId(ctx context.Context, matchId string) (GameQuestions, error)
 	IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error
-	SetValidAnswerTimeForQuestions(ctx context.Context, gameId string) error
+	SetValidAnswerTimeForQuestions(ctx context.Context, gameId string) (time.Duration, error)
 
 	SavePlayerAnswer(ctx context.Context, gameId string, playerAnswer PlayerAnswer) error
 	GetLeaderBoard(ctx context.Context, gameId string) (LeaderBoard, error)
@@ -50,22 +51,31 @@ type Repository interface {
 }
 
 type Service struct {
-	config      Config
-	repository  Repository
-	webSocket   websocket.WebSocket
-	connections IdToConnection
-	broker      broker.Broker
-	logger      logger.SlogAdapter
+	config        Config
+	repository    Repository
+	webSocket     websocket.WebSocket
+	connections   IdToConnection
+	taskPublisher taskqueue.TaskPublisher
+	broker        broker.Broker
+	logger        logger.SlogAdapter
 }
 
-func NewService(config Config, repo Repository, ws websocket.WebSocket, broker broker.Broker, logger logger.SlogAdapter) Service {
+func NewService(
+	config Config,
+	repo Repository,
+	ws websocket.WebSocket,
+	broker broker.Broker,
+	taskPublisher taskqueue.TaskPublisher,
+	logger logger.SlogAdapter,
+) Service {
 	return Service{
-		config:      config,
-		repository:  repo,
-		webSocket:   ws,
-		logger:      logger,
-		broker:      broker,
-		connections: IdToConnection{},
+		config:        config,
+		repository:    repo,
+		webSocket:     ws,
+		logger:        logger,
+		broker:        broker,
+		taskPublisher: taskPublisher,
+		connections:   IdToConnection{},
 	}
 }
 
@@ -355,7 +365,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			// check user if their status is just initialized
 			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
 			if isGameReady {
-				err = svc.repository.SetValidAnswerTimeForQuestions(context.Background(), req.GameId)
+				finalTTL, err := svc.repository.SetValidAnswerTimeForQuestions(context.Background(), req.GameId)
 				if err != nil {
 					response = ProcessGameMessageResponse{
 						Success: false,
@@ -373,9 +383,17 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				}
 
 				err = svc.sendQuestionToPlayer(ctx, req.GameId)
-				if err == nil {
-					fmt.Println("game completed")
+
+				taskId, err := svc.taskPublisher.Publish(context.Background(), "game:completed", struct {
+					GameId string `json:"gameId"`
+				}{
+					GameId: req.GameId,
+				}, taskqueue.MaxRetry(3), taskqueue.ProcessIn(finalTTL))
+				if err != nil {
+					svc.logger.Error(op, "error in publishing task", "error", err.Error())
 				}
+
+				svc.logger.Info(op, "game completion task published", "taskId", taskId, "gameId", req.GameId)
 			}
 		}
 	case CommandGetCategories:
@@ -577,4 +595,94 @@ func (svc Service) getCategories() GameInitResponse {
 	}
 
 	return result
+}
+
+func (svc Service) ProcessGameCompletion(ctx context.Context, payload map[string]interface{}) error {
+	op := "service.ProcessGameCompletion"
+
+	gameId := payload["gameId"].(string)
+
+	leaderBoard, err := svc.repository.GetLeaderBoard(ctx, gameId)
+	if err != nil {
+		svc.logger.Error(op, "error in getting leader board", slog.String("error", err.Error()))
+		gameInfo, err := svc.repository.GetGame(ctx, gameId)
+		if err != nil {
+			svc.logger.Error(op, "error in getting game info", "gameId", gameId, slog.String("error", err.Error()))
+			return err
+		}
+
+		for _, playerId := range gameInfo.Players {
+			conn := svc.connections[playerId]
+			response := ProcessGameMessageResponse{
+				Success: false,
+				Event:   EventCompleted,
+				Message: "internal server error",
+			}
+			jsonResponse, err := json.Marshal(response)
+			if err != nil {
+				return err
+			}
+			err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonResponse))
+			if err != nil {
+				return err
+			}
+		}
+		return err
+	}
+
+	var playerPoints []ProcessGamePlayerPoint
+
+	for _, playerPoint := range leaderBoard.PlayersPoint {
+		var ansResult []ProcessGameAnswerResult
+		for _, questionAnswers := range playerPoint.QuestionCorrectness {
+			ansResult = append(ansResult, ProcessGameAnswerResult{
+				QuestionId:    questionAnswers.QuestionId,
+				CorrectAnswer: questionAnswers.CorrectChoice,
+				PlayerAnswer:  questionAnswers.PlayerChoice,
+				IsCorrect:     questionAnswers.IsCorrect,
+			})
+		}
+		playerPoints = append(playerPoints, ProcessGamePlayerPoint{
+			PlayerId: playerPoint.PlayerId,
+			Point:    playerPoint.Point,
+			Answers:  ansResult,
+		})
+	}
+	leaderBoardResult := ProcessGameLeaderBoard{
+		GameId:      gameId,
+		PlayerPoint: playerPoints,
+	}
+
+	msg := ProcessGameMessageResponse{
+		Success: true,
+		Event:   EventCompleted,
+		Message: "game completed",
+		MetaData: ProcessGameMetaDataResponse{
+			GameId: gameId,
+			Answer: leaderBoardResult,
+		},
+	}
+
+	jsonResponse, err := json.Marshal(msg)
+	if err != nil {
+		svc.logger.Info(op, "error in converting struct to json", "error", err.Error())
+	}
+
+	for _, playerPoint := range playerPoints {
+		playerId, err := strconv.ParseInt(playerPoint.PlayerId, 10, 64)
+		if err != nil {
+			svc.logger.Info(op, "error in converting playerId from string to int", "playerId", playerPoint.PlayerId, "error", err.Error())
+			return err
+		}
+		conn := svc.connections[uint64(playerId)]
+		err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonResponse))
+		if err != nil {
+			svc.logger.Error(op, "error writing message", "playerId", fmt.Sprintf("%v", playerId), "message", EventCompleted, slog.String("error", err.Error()))
+			return err
+		}
+		delete(svc.connections, uint64(playerId))
+		conn.Close()
+	}
+
+	return nil
 }
