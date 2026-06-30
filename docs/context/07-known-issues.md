@@ -2,32 +2,23 @@
 
 ## Bugs
 
-### 1. Auth adapter `GetRefreshToken` returns an access token
+سیفثقتنغعغفققم۴صقثظ### 1. ~~Auth adapter `GetRefreshToken` returns an access token~~ **FIXED** (Phase 1 / R-01)
 
-**File**: `adapter/auth/client.go:52`
+**File**: `adapter/auth/client.go`
 
-`GetRefreshToken` calls `GetAccessToken` on the gRPC stub instead of `GetRefreshToken`. The returned "refresh token" is actually a second access token with the same TTL as an access token (24h), not the configured refresh TTL (120h). This means refresh tokens behave identically to access tokens.
+`GetRefreshToken` was calling `GetAccessToken` on the gRPC stub instead of `GetRefreshToken`. Fixed: now builds `CreateRefreshTokenRequest`, calls `GetRefreshToken`, and returns `res.RefreshToken`. Test: `adapter/auth/client_test.go`.
 
-```go
-// Bug: calling GetAccessToken instead of GetRefreshToken
-res, err := client.GetAccessToken(ctx, req)
-```
+### 2. ~~`fmt.Println` leaks JWT secret key to stdout~~ **FIXED** (Phase 1 / R-02)
 
-### 2. `fmt.Println` leaks JWT secret key to stdout
+**File**: `services/auth_app/service/service.go`
 
-**File**: `services/auth_app/service/service.go:62`
+The debug print `fmt.Println(svc.config.SecretKey, signedString, err)` was removed. Existing `TestCreateAccessToken` test continues to pass.
 
-```go
-fmt.Println(svc.config.SecretKey, signedString, err)
-```
-
-This debug print statement logs the signing secret and every generated token on every access token creation. This is a critical security issue in production.
-
-### 3. In-memory WebSocket connection map is not thread-safe
+### 3. ~~In-memory WebSocket connection map is not thread-safe~~ **FIXED** (Phase 1 / R-03)
 
 **File**: `services/game_app/service/service.go`
 
-`svc.connections` is a `map[uint64]net.Conn` modified from multiple goroutines (the read loop goroutine, `ConsumeMatchCreated`, and `ProcessGameCompletion`). Concurrent map writes will cause a runtime panic.
+`svc.connections` is a `map[uint64]net.Conn` modified from multiple goroutines. Fixed: `*sync.RWMutex` field added to `Service`; all map reads use `RLock/RUnlock`, all writes use `Lock/Unlock`. Test: `services/game_app/service/service_test.go` (run with `-race`).
 
 ### 4. ZRange parameters are reversed in `GetWaitingListByCategory`
 
@@ -46,18 +37,11 @@ maxTime := int(time.Now().UnixMicro())
 
 `Config` includes `GRPCServer grpc.Config` but `app.go` never creates or starts a gRPC server. This dead config field is misleading.
 
-### 6. `UpsertReadyPlayer` ready-check logic returns `true` prematurely
+### 6. ~~`UpsertReadyPlayer` ready-check logic returns `true` prematurely~~ **FIXED** (Phase 1 / R-04)
 
-**File**: `services/game_app/repository/game.go:236`
+**File**: `services/game_app/repository/game.go`
 
-```go
-if gs.ExpectedNumberOfPlayers-len(gs.Players) == 0 ||
-    gs.ExpectedNumberOfPlayers-len(gs.Players) == 1 {
-    return true, nil
-}
-```
-
-The condition `== 1` means the game is considered "ready" when there is still **one player missing**. This causes the game to start before all players have confirmed ready.
+The `== 1` branch in the early-return guard was removed. The final return now computes `len(gs.Players) == gs.ExpectedNumberOfPlayers` so the game starts only after every player's READY state is persisted. Test: `services/game_app/repository/game_test.go`.
 
 ## Technical Debt
 

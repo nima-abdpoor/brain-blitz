@@ -74,10 +74,10 @@ Key business features that are missing or incomplete:
 
 | Item | Severity | File |
 |---|---|---|
-| Auth adapter GetRefreshToken bug | Critical | `adapter/auth/client.go` |
-| fmt.Println of secret key | Critical | `services/auth_app/service/service.go:62` |
-| No concurrency safety on connections map | High | `services/game_app/service/service.go` |
-| UpsertReadyPlayer ready condition | High | `services/game_app/repository/game.go:236` |
+| ~~Auth adapter GetRefreshToken bug~~ **FIXED (R-01)** | ~~Critical~~ | `adapter/auth/client.go` |
+| ~~fmt.Println of secret key~~ **FIXED (R-02)** | ~~Critical~~ | `services/auth_app/service/service.go` |
+| ~~No concurrency safety on connections map~~ **FIXED (R-03)** | ~~High~~ | `services/game_app/service/service.go` |
+| ~~UpsertReadyPlayer ready condition~~ **FIXED (R-04)** | ~~High~~ | `services/game_app/repository/game.go` |
 | No Kafka consumer groups | High | `adapter/broker/kafka-broker.go` |
 | AddQuestion not implemented | Medium | `services/question_app/service/service.go` |
 | No metrics anywhere | Medium | 15+ locations |
@@ -154,11 +154,11 @@ Key business features that are missing or incomplete:
 
 ## Recommended Priorities
 
-### Immediate (this sprint)
-1. Fix auth adapter `GetRefreshToken` to call the correct gRPC method
-2. Remove `fmt.Println(svc.config.SecretKey, ...)` from auth service
-3. Add `sync.RWMutex` to Game Service WebSocket connection map
-4. Fix `UpsertReadyPlayer` ready condition (off by one)
+### Immediate (this sprint) — **COMPLETED in Phase 1**
+1. ~~Fix auth adapter `GetRefreshToken` to call the correct gRPC method~~ — **DONE** (R-01)
+2. ~~Remove `fmt.Println(svc.config.SecretKey, ...)` from auth service~~ — **DONE** (R-02)
+3. ~~Add `sync.RWMutex` to Game Service WebSocket connection map~~ — **DONE** (R-03)
+4. ~~Fix `UpsertReadyPlayer` ready condition (off by one)~~ — **DONE** (R-04)
 
 ### Short Term (next 2 sprints)
 5. Implement `AddQuestion` API end-to-end

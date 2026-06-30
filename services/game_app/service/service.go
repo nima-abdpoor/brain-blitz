@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -55,6 +56,7 @@ type Service struct {
 	repository    Repository
 	webSocket     websocket.WebSocket
 	connections   IdToConnection
+	mu            *sync.RWMutex
 	taskPublisher taskqueue.TaskPublisher
 	broker        broker.Broker
 	logger        logger.SlogAdapter
@@ -76,6 +78,7 @@ func NewService(
 		broker:        broker,
 		taskPublisher: taskPublisher,
 		connections:   IdToConnection{},
+		mu:            &sync.RWMutex{},
 	}
 }
 
@@ -98,7 +101,9 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 		}, svc.logger)
 	}
 
+	svc.mu.Lock()
 	svc.connections[id] = *connection
+	svc.mu.Unlock()
 	switch svc.getUsersGameStatus(id) {
 	case GameStatusInitialized:
 		{
@@ -133,7 +138,10 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 					"data":    fmt.Sprint(request),
 				}, svc.logger)
 			}
-			err = svc.webSocket.WriteServerData(svc.connections[id], websocket.OpText, string(categoriesByte))
+			svc.mu.RLock()
+			initialConn := svc.connections[id]
+			svc.mu.RUnlock()
+			err = svc.webSocket.WriteServerData(initialConn, websocket.OpText, string(categoriesByte))
 			if err != nil {
 				return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
 					"message": "error in returning Categories",
@@ -146,7 +154,9 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 	go func(ctx context.Context, conn *net.Conn, rw *bufio.ReadWriter, userID uint64) {
 		defer func() {
 			(*conn).Close()
+			svc.mu.Lock()
 			delete(svc.connections, userID)
+			svc.mu.Unlock()
 			svc.logger.Info("connection closed", "userID", userID)
 		}()
 
@@ -495,7 +505,9 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 		return err
 	}
 	for _, playerId := range gameQuestions.Players {
+		svc.mu.RLock()
 		conn := svc.connections[playerId]
+		svc.mu.RUnlock()
 		err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonQuestions))
 		if err != nil {
 			svc.logger.Error(
@@ -564,17 +576,19 @@ func (svc Service) writeMessage(ids []uint64, msg ProcessGameMessageResponse) er
 	const op = "game.service.writeMessage"
 
 	for _, id := range ids {
-		if connection, exists := svc.connections[id]; !exists {
+		svc.mu.RLock()
+		connection, exists := svc.connections[id]
+		svc.mu.RUnlock()
+		if !exists {
 			return fmt.Errorf("id: %d not found", id)
-		} else {
-			jsonMsg, err := json.Marshal(msg)
-			if err != nil {
-				svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
-			}
-			err = svc.webSocket.WriteServerData(connection, websocket.OpText, string(jsonMsg))
-			if err != nil {
-				svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
-			}
+		}
+		jsonMsg, err := json.Marshal(msg)
+		if err != nil {
+			svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
+		}
+		err = svc.webSocket.WriteServerData(connection, websocket.OpText, string(jsonMsg))
+		if err != nil {
+			svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
 		}
 	}
 	return nil
@@ -612,7 +626,9 @@ func (svc Service) ProcessGameCompletion(ctx context.Context, payload map[string
 		}
 
 		for _, playerId := range gameInfo.Players {
+			svc.mu.RLock()
 			conn := svc.connections[playerId]
+			svc.mu.RUnlock()
 			response := ProcessGameMessageResponse{
 				Success: false,
 				Event:   EventCompleted,
@@ -674,13 +690,17 @@ func (svc Service) ProcessGameCompletion(ctx context.Context, payload map[string
 			svc.logger.Info(op, "error in converting playerId from string to int", "playerId", playerPoint.PlayerId, "error", err.Error())
 			return err
 		}
+		svc.mu.RLock()
 		conn := svc.connections[uint64(playerId)]
+		svc.mu.RUnlock()
 		err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonResponse))
 		if err != nil {
 			svc.logger.Error(op, "error writing message", "playerId", fmt.Sprintf("%v", playerId), "message", EventCompleted, slog.String("error", err.Error()))
 			return err
 		}
+		svc.mu.Lock()
 		delete(svc.connections, uint64(playerId))
+		svc.mu.Unlock()
 		conn.Close()
 	}
 

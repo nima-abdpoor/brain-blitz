@@ -56,17 +56,17 @@ func (c *Client) GetRefreshToken(ctx context.Context, request CreateRefreshToken
 			Value: data.Value,
 		})
 	}
-	req := &golang.CreateAccessTokenRequest{
+	req := &golang.CreateRefreshTokenRequest{
 		Data: requestData,
 	}
 
-	res, err := client.GetAccessToken(ctx, req)
+	res, err := client.GetRefreshToken(ctx, req)
 	if err != nil || res == nil {
 		return CreateRefreshTokenResponse{}, err
 	}
 
 	return CreateRefreshTokenResponse{
-		RefreshToken: res.AccessToken,
+		RefreshToken: res.RefreshToken,
 		ExpireTime:   res.ExpireTime,
 	}, nil
 }

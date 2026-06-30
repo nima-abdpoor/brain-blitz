@@ -233,8 +233,7 @@ func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, pl
 		return false, err
 	}
 
-	if gs.ExpectedNumberOfPlayers-len(gs.Players) == 0 ||
-		gs.ExpectedNumberOfPlayers-len(gs.Players) == 1 {
+	if gs.ExpectedNumberOfPlayers-len(gs.Players) == 0 {
 		return true, nil
 	}
 
@@ -258,7 +257,7 @@ func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, pl
 		return false, err
 	}
 
-	return false, nil
+	return len(gs.Players) == gs.ExpectedNumberOfPlayers, nil
 }
 
 func (m GameRepository) IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error {
