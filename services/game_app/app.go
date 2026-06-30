@@ -1,0 +1,146 @@
+package game_app
+
+import (
+	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/adapter/redis"
+	"BrainBlitz.com/game/adapter/task-queue"
+	"BrainBlitz.com/game/adapter/websocket"
+	httpserver "BrainBlitz.com/game/pkg/http_server"
+	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/pkg/mongo"
+	"BrainBlitz.com/game/services/game_app/delivery/http"
+	"BrainBlitz.com/game/services/game_app/repository"
+	"BrainBlitz.com/game/services/game_app/service"
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+)
+
+type Application struct {
+	Repository    service.Repository
+	Service       service.Service
+	UserHandler   http.Handler
+	Consumer      service.Consumer
+	HTTPServer    http.Server
+	TaskPublisher taskqueue.TaskPublisher
+	TaskProcessor service.TaskWorker
+	Config        Config
+	Logger        logger.SlogAdapter
+	shutdownHTTP  func(wg *sync.WaitGroup)
+}
+
+func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Application {
+	redisAdapter := redis.New(config.Redis)
+	gameRepository := repository.NewGameRepository(config.Repository, logger, db, redisAdapter)
+	ws := websocket.NewWS(config.WebSocket)
+
+	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)
+	if err != nil {
+		logger.Error("Error creating kafka broker", "error", err)
+		panic(err)
+	}
+
+	taskPublisher := taskqueue.NewPublisherAsynq(logger, config.TaskPublisher)
+	tw := taskqueue.NewWorkerAsynq(logger, config.TaskWorker)
+
+	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker, &taskPublisher, logger)
+	taskWorker := service.NewTaskWorker(logger, gameService, &tw)
+
+	consumer := service.NewConsumer(kafkaBroker, gameService, logger)
+	userHandler := http.NewHandler(gameService, logger)
+
+	app := Application{
+		Repository:    gameRepository,
+		Service:       gameService,
+		UserHandler:   userHandler,
+		Consumer:      consumer,
+		HTTPServer:    http.New(httpserver.New(config.HTTPServer), userHandler, logger),
+		TaskPublisher: &taskPublisher,
+		TaskProcessor: taskWorker,
+		Config:        config,
+		Logger:        logger,
+	}
+
+	app.shutdownHTTP = func(wg *sync.WaitGroup) { go app.shutdownHTTPServer(wg) }
+
+	return app
+}
+
+func (app Application) Start() {
+	var wg sync.WaitGroup
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	startServers(app, &wg)
+	<-ctx.Done()
+	app.Logger.Info("Shutdown signal received...")
+
+	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.TotalShutdownTimeout)
+	defer cancel()
+
+	if app.shutdownServers(shutdownTimeoutCtx) {
+		app.Logger.Info("Servers shut down gracefully")
+	} else {
+		app.Logger.Warn("Shutdown timed out, exiting application")
+		os.Exit(1)
+	}
+
+	wg.Wait()
+	app.Logger.Info("match_app stopped")
+}
+
+func startServers(app Application, wg *sync.WaitGroup) {
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
+		if err := app.HTTPServer.Serve(); err != nil {
+			// todo add metrics
+			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), "error", err)
+		}
+		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+	}()
+	go func() {
+		defer wg.Done()
+		app.Logger.Info("Consumer Started")
+		app.Consumer.Consume()
+	}()
+	go func() {
+		defer wg.Done()
+		app.Logger.Info("TaskWorker Started")
+		app.TaskProcessor.Process()
+	}()
+}
+
+func (app Application) shutdownServers(ctx context.Context) bool {
+	shutdownDone := make(chan struct{})
+
+	go func() {
+		var shutdownWg sync.WaitGroup
+		shutdownWg.Add(1)
+		app.shutdownHTTP(&shutdownWg)
+
+		shutdownWg.Wait()
+		close(shutdownDone)
+	}()
+
+	select {
+	case <-shutdownDone:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func (app Application) shutdownHTTPServer(wg *sync.WaitGroup) {
+	defer wg.Done()
+	httpShutdownCtx, httpCancel := context.WithTimeout(context.Background(), app.Config.HTTPServer.ShutDownCtxTimeout)
+	defer httpCancel()
+	if err := app.HTTPServer.Stop(httpShutdownCtx); err != nil {
+		app.Logger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))
+	}
+}

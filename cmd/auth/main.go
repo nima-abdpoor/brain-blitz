@@ -1,9 +1,9 @@
 package main
 
 import (
-	"BrainBlitz.com/game/auth_app"
 	cfgloader "BrainBlitz.com/game/pkg/cfg_loader"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/services/auth_app"
 	"log"
 	"os"
 	"path/filepath"

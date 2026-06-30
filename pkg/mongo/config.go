@@ -2,7 +2,13 @@ package mongo
 
 import "time"
 
+type Instance struct {
+	Host string `koanf:"host"`
+	Port int    `koanf:"port"`
+}
+
 type Config struct {
+	Instances         []Instance    `koanf:"mongo_instances"`
 	User              string        `koanf:"user"`
 	Hosts             []string      `koanf:"host"`
 	Ports             []string      `koanf:"port"`

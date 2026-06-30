@@ -1,9 +1,9 @@
 package main
 
 import (
-	"BrainBlitz.com/game/match_app"
 	cfgloader "BrainBlitz.com/game/pkg/cfg_loader"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/services/match_app"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,7 +20,7 @@ func main() {
 		Prefix:       "MATCH_",
 		Delimiter:    ".",
 		Separator:    "__",
-		YamlFilePath: filepath.Join(workingDir, "deploy", "match", "development", "config.yaml"),
+		YamlFilePath: filepath.Join(workingDir, "infra", "deploy", "match", "development", "config.yaml"),
 		CallbackEnv:  nil,
 	}
 

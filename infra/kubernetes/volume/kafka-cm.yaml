@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-configmap
+data:
+  broker-host: "kafka"
+  broker-port: "9092"

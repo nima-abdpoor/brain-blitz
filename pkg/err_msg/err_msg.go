@@ -11,7 +11,6 @@ var (
 	ErrFailedUnmarshalJson  = errors.New("unmarshal data to JSON failed")
 )
 
-// Define constant messages generally
 const (
 	MessageMissingXUserData  = "Missing X-User-Data header"
 	MessageMissingXUserId    = "Invalid user id"
@@ -24,7 +23,9 @@ const (
 	ErrorMsgNotFound                = "record not found"
 	SomeThingWentWrong              = "something went wrong"
 	InvalidUserNameErrMsg           = "invalid username"
+	InvalidInputErrMsg              = "invalid input"
 	InvalidUserNameOrPasswordErrMsg = "invalid username or password"
+	UserNotFoundErrMsg              = "user not found"
 	InvalidBody                     = "Invalid request body"
 	DuplicateUsername               = "username already exists"
 	InvalidAuthentication           = "authentication is required"

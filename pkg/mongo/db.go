@@ -13,13 +13,13 @@ type Database struct {
 }
 
 func NewDB(config Config, ctx context.Context) (*Database, error) {
-	if len(config.Hosts) == 0 || len(config.Ports) == 0 || len(config.Hosts) != len(config.Ports) {
-		return nil, fmt.Errorf("invalid MongoDB configuration: mismatched hosts and ports")
+	if len(config.Instances) == 0 {
+		return nil, fmt.Errorf("invalid MongoDB configuration: no instances provided")
 	}
 
 	var hosts []string
-	for i, host := range config.Hosts {
-		hosts = append(hosts, fmt.Sprintf("%s:%s", host, config.Ports[i]))
+	for _, instance := range config.Instances {
+		hosts = append(hosts, fmt.Sprintf("%s:%d", instance.Host, instance.Port))
 	}
 
 	uri := fmt.Sprintf("mongodb://%s/%s", strings.Join(hosts, ","), config.Name)
@@ -29,7 +29,6 @@ func NewDB(config Config, ctx context.Context) (*Database, error) {
 
 	clientOptions := options.Client().ApplyURI(uri)
 	client, err := mongo.Connect(ctx, clientOptions)
-
 	if err != nil {
 		return nil, err
 	}
