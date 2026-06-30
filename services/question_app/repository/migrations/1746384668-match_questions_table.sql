@@ -1,3 +1,6 @@
+-- UNUSED: No repository method reads or writes this table.
+-- Likely intended to cache which questions were assigned to each match; never implemented.
+
 -- +migrate Up
 CREATE TABLE match_questions
 (

@@ -2,6 +2,7 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/contract/event"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
 	"sync"
@@ -39,16 +40,16 @@ func (c Consumer) Consume() {
 
 func (c Consumer) getTopics() map[string]func([]byte, context.Context) error {
 	var topics = []string{
-		"matchMaking_v1_matchUsers",
-		"question_v1_questions",
+		event.MATCH_V1_MATCH_USERS,
+		event.QUESTION_V1_QUESTIONS,
 	}
 
 	result := make(map[string]func([]byte, context.Context) error)
 	for _, topic := range topics {
 		switch topic {
-		case "matchMaking_v1_matchUsers":
+		case event.MATCH_V1_MATCH_USERS:
 			result[topic] = c.service.ConsumeMatchCreated
-		case "question_v1_questions":
+		case event.QUESTION_V1_QUESTIONS:
 			result[topic] = c.service.ConsumeQuestions
 		default:
 			c.logger.Warn("Unknown topic", "topic", topic)

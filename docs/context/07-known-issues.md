@@ -31,11 +31,11 @@ maxTime := int(time.Now().UnixMicro())
 
 `MinTimeWaitingListSelection` is configured as `-20m`, so `mintTime` is 20 minutes in the past. However the `ZRange` call passes `(mintTime, maxTime)` — start and stop for a time-ordered sorted set. The Redis `ZRangeByScore` command receives `Min: mintTime, Max: maxTime` which is the correct range (past → now). This is fine, but the variable names are confusing.
 
-### 5. Match Service config includes `GRPCServer` but no gRPC server is started
+### 5. ~~Match Service config includes `GRPCServer` but no gRPC server is started~~ **FIXED** (Phase 2 / R-14)
 
-**File**: `services/match_app/config.go:9`, `services/match_app/app.go`
+**File**: `services/match_app/config.go`
 
-`Config` includes `GRPCServer grpc.Config` but `app.go` never creates or starts a gRPC server. This dead config field is misleading.
+`GRPCServer grpc.Config` field removed. The `pkg/grpc` import was the only reference; the match YAML config had no `grpc_server` key, so koanf was already silently ignoring this field.
 
 ### 6. ~~`UpsertReadyPlayer` ready-check logic returns `true` prematurely~~ **FIXED** (Phase 1 / R-04)
 
@@ -112,16 +112,9 @@ No implementation. There is no way to add questions to the database via the API.
 
 After the game completes (Asynq task fires), the game's `status` field in MongoDB is never updated to `FINISHED`. The document remains with status `PENDING` indefinitely.
 
-### 16. Makefile references non-existent path
+### 16. ~~Makefile references non-existent path~~ **FIXED** (Phase 2)
 
-**File**: `Makefile:41`
-
-```makefile
-sqlc-generate:
-    sudo sqlc generate --file internal/infra/repository/sqlc/sqlc.yml
-```
-
-The path `internal/infra/repository/sqlc/sqlc.yml` does not exist. `sqlc` was likely considered but not adopted; this target is dead.
+`install-sqlc` and `sqlc-generate` targets removed from `Makefile`. `install-sqlc` was also removed from the `all` target and `.PHONY` list. `sqlc` was never adopted; the referenced `internal/infra/repository/sqlc/sqlc.yml` does not exist.
 
 ### 17. `wg.Add(3)` in Game Service `startServers` is placed before goroutines
 
@@ -131,17 +124,16 @@ The path `internal/infra/repository/sqlc/sqlc.yml` does not exist. `sqlc` was li
 
 ## TODOs from Comments
 
+Stale `// todo add metrics` and dead TODO blocks were removed in Phase 2. Remaining:
+
 | File | TODO |
 |---|---|
-| `services/auth_app/app.go:74,85` | `// todo add metrics` |
-| `services/auth_app/service/service.go:124` | `// todo add metrics` |
 | `services/user_app/service/service.go:84` | `// todo add to metrics` |
 | `services/user_app/delivery/http/handler.go` (Profile) | `// todo check if logger needed`, `// todo add metrics` |
 | `cmd/user/main.go:41` | `//todo retry to connect in result of connection failure` |
 | `cmd/question/main.go:40` | `//todo retry to connect in result of connection failure` |
 | `services/game_app/service/service.go:121` | Commented-out status reset logic |
 | `services/game_app/repository/game.go:46` | `//todo check the possibility of conversion` |
-| `services/match_app/service/service.go:133` | `// todo remove these users from waiting list` |
 | `services/user_app/repository/user.go:45` | `// should we do this automatically by defining function in postgres or not?` |
 
 ## Security Concerns

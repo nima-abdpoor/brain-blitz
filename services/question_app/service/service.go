@@ -2,6 +2,7 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/contract/event"
 	"BrainBlitz.com/game/contract/match/golang"
 	"BrainBlitz.com/game/pkg/logger"
 	"context"
@@ -34,7 +35,7 @@ func (svc Service) AddQuestion(ctx context.Context, request AddQuestionRequest) 
 }
 
 func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) error {
-	questionsTopic := "question_v1_questions"
+	questionsTopic := event.QUESTION_V1_QUESTIONS
 	const op = "service.consumeMatchCreated"
 	const limit = 10
 
@@ -57,7 +58,6 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 
 		buff, err := proto.Marshal(MapQuestionsToProtoMessage(matchedUser.MatchId, questions))
 		if err != nil {
-			//todo update metrics
 			svc.Logger.Error(op, "message", "error in marshaling questions message", err.Error())
 		}
 

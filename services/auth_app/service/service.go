@@ -120,7 +120,6 @@ func (svc Service) ValidateToken(ctx context.Context, request ValidateTokenReque
 		}, svc.logger)
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
-		// todo add metrics
 		return ValidateTokenResponse{Valid: false}, errApp.Wrap(op, err, errApp.ErrUnauthorized, map[string]string{
 			"message": "casting Problem with JWT Claims",
 			"data":    fmt.Sprint(request),

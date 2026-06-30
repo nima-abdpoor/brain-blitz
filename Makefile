@@ -28,18 +28,6 @@ install-sql-migrate:
         	echo "sql-migrate already installed ✔"; \
         fi
 
-install-sqlc:
-	@command -v sqlc >/dev/null 2>&1; \
-		if [ $$? -ne 0 ]; then \
-	    	echo >&2 "sqlc is not installed. Installing sqlc..."; \
-	    	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest; \
-		else \
-      		echo "sqlc already installed ✔"; \
-      	fi
-
-sqlc-generate:
-	sudo sqlc generate --file internal/infra/repository/sqlc/sqlc.yml
-
 migrate-up:
 	sql-migrate up -env=production -config=internal/infra/config/db/dbconfig.yml
 
@@ -47,6 +35,6 @@ done:
 	@echo -e "\nALL TASKS DONE ✅";
 
 
-all: install-docker install-docker-compose install-sqlc install-sql-migrate migrate-up done
+all: install-docker install-docker-compose install-sql-migrate migrate-up done
 
-.PHONY: install-docker install-sqlc sqlc-generate install-docker-compose install-sql-migrate migrate-up
+.PHONY: install-docker install-docker-compose install-sql-migrate migrate-up

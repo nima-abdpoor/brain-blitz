@@ -1,6 +1,7 @@
 package service
 
 import (
+	"BrainBlitz.com/game/contract/event"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/services/game_app/service"
 	"context"
@@ -169,7 +170,7 @@ func TestMatchWaitUsers_MatchingLogic(t *testing.T) {
 	_, err := svc.MatchWaitUsers(context.Background(), MatchWaitedUsersRequest{})
 	assert.NoError(t, err)
 
-	mockBroker.AssertCalled(t, "Publish", mock.Anything, "matchMaking_v1_matchUsers", mock.AnythingOfType("[]uint8"))
+	mockBroker.AssertCalled(t, "Publish", mock.Anything, event.MATCH_V1_MATCH_USERS, mock.AnythingOfType("[]uint8"))
 }
 
 func TestPublishFinalUsers_PublishesMessage(t *testing.T) {
@@ -192,9 +193,9 @@ func TestPublishFinalUsers_PublishesMessage(t *testing.T) {
 	}
 	mockRepo.On("RemoveWaitingMember", mock.Anything, membersThatMustBeRemoved).Return(nil)
 
-	mockBroker.On("Publish", mock.Anything, "matchMaking_v1_matchUsers", mock.AnythingOfType("[]uint8")).Return(nil)
+	mockBroker.On("Publish", mock.Anything, event.MATCH_V1_MATCH_USERS, mock.AnythingOfType("[]uint8")).Return(nil)
 
 	svc.publishFinalUsers(users)
 
-	mockBroker.AssertCalled(t, "Publish", mock.Anything, "matchMaking_v1_matchUsers", mock.AnythingOfType("[]uint8"))
+	mockBroker.AssertCalled(t, "Publish", mock.Anything, event.MATCH_V1_MATCH_USERS, mock.AnythingOfType("[]uint8"))
 }

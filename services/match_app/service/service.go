@@ -2,6 +2,7 @@ package service
 
 import (
 	"BrainBlitz.com/game/adapter/broker"
+	"BrainBlitz.com/game/contract/event"
 	"BrainBlitz.com/game/contract/match/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
@@ -130,7 +131,6 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 		svc.logger.Info(op, "message", "readyUsers for category", "readyUsers", fmt.Sprintf("%v", readyUser))
 	}
 
-	// todo remove these users from waiting list
 	if len(finalUsers) > 0 {
 		svc.logger.Info(op, "message", "readyUsers for category", "finalUsers for category", fmt.Sprintf("%v", finalUsers))
 		svc.publishFinalUsers(finalUsers)
@@ -140,11 +140,10 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 
 func (svc Service) publishFinalUsers(users []MatchedUsers) {
 	const op = "matchMakingHandler.publishFinalUsers"
-	matchMakingTopic := "matchMaking_v1_matchUsers"
+	matchMakingTopic := event.MATCH_V1_MATCH_USERS
 
 	buff, err := proto.Marshal(MapFromEntityToProtoMessage(users))
 	if err != nil {
-		//todo update metrics
 		svc.logger.Error(op, "message", "error in marshaling match message", err.Error())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
