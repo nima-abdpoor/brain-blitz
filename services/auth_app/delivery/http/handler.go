@@ -75,6 +75,9 @@ func (h Handler) ValidateToken(ctx echo.Context) error {
 		msg, code := errApp.ToHTTPJson(err)
 		return ctx.JSON(code, msg)
 	}
+	if !response.Valid {
+		return ctx.JSON(http.StatusUnauthorized, response)
+	}
 
 	if response.Valid {
 		for _, data := range response.AdditionalData {

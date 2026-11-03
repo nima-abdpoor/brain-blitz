@@ -25,6 +25,7 @@ const saveGameStatusTimeOut = 2 * time.Second
 type Repository interface {
 	CreateGame(ctx context.Context, game Game) (string, error)
 	GetGame(ctx context.Context, gameId string) (Game, error)
+	FinishGame(ctx context.Context, gameId string) error
 
 	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
 	GetQuestionsByGameId(ctx context.Context, gameId string) (GameQuestions, error)
@@ -69,4 +70,17 @@ func NewService(
 		connections:   IdToConnection{},
 		mu:            &sync.RWMutex{},
 	}
+}
+
+// A reader for an old socket must not delete a replacement connection.
+func (svc Service) closeConnection(userID uint64, conn net.Conn) {
+	if conn == nil {
+		return
+	}
+	_ = conn.Close()
+	svc.mu.Lock()
+	if svc.connections[userID] == conn {
+		delete(svc.connections, userID)
+	}
+	svc.mu.Unlock()
 }

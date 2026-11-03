@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 type MockLogger struct{}
@@ -95,4 +96,31 @@ func TestValidateToken_MissingAuthHeader(t *testing.T) {
 	var resp service.ValidateTokenResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	assert.False(t, resp.Valid)
+}
+
+// ForwardAuth uses the status code to allow or reject a request. A JSON body
+// containing valid=false must never be returned with a successful status.
+func TestValidateToken_RejectsInvalidTokens(t *testing.T) {
+	const secret = "test-signing-secret"
+	expired := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id": "123", "role": "user", "exp": time.Now().Add(-time.Hour).Unix(),
+	})
+	expiredToken, err := expired.SignedString([]byte(secret))
+	assert.NoError(t, err)
+	for name, token := range map[string]string{
+		"malformed":       "invalid.token.value",
+		"wrong signature": generateTestJWT("another-secret"),
+		"expired":         expiredToken,
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/validate", nil)
+			req.Header.Set(echo.HeaderAuthorization, token)
+			rec := httptest.NewRecorder()
+			h := NewHandler(service.NewService(service.Config{SecretKey: secret}, MockLogger{}), MockLogger{})
+			assert.NoError(t, h.ValidateToken(e.NewContext(req, rec)))
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+			assert.Empty(t, rec.Header().Get("X-User-ID"))
+		})
+	}
 }

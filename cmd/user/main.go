@@ -24,7 +24,7 @@ func main() {
 		Prefix:       "USER_",
 		Delimiter:    ".",
 		Separator:    "__",
-		YamlFilePath: filepath.Join(workingDir, "deploy", "user", "development", "config.yaml"),
+		YamlFilePath: filepath.Join(workingDir, "infra", "deploy", "user", "development", "config.yaml"),
 		CallbackEnv:  nil,
 	}
 

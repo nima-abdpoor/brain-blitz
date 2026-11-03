@@ -55,14 +55,7 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 		{
 
 		}
-	case GameStatusFinished:
-		{
-			//err = svc.saveUsersGameStatus(id, GameStatusInitialized)
-			//if err != nil {
-			//	svc.logger.Error(op, "error in storing users GameStatus", slog.String("error", err.Error()))
-			//}
-		}
-	case GameStatusUnknown:
+	case GameStatusFinished, GameStatusUnknown:
 		{
 			categories := svc.getCategories()
 			categoriesByte, err := json.Marshal(categories)
@@ -87,10 +80,7 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 
 	go func(ctx context.Context, conn *net.Conn, rw *bufio.ReadWriter, userID uint64) {
 		defer func() {
-			(*conn).Close()
-			svc.mu.Lock()
-			delete(svc.connections, userID)
-			svc.mu.Unlock()
+			svc.closeConnection(userID, *conn)
 			svc.logger.Info("connection closed", "userID", userID)
 		}()
 
@@ -105,7 +95,7 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 				svc.logger.Error("read failed", "userID", userID, "error", err)
 			}
 		}
-	}(ctx.Request().Context(), connection, rw, id)
+	}(context.Background(), connection, rw, id)
 
 	return ProcessGameResponse{}, nil
 }
