@@ -108,9 +108,9 @@ No implementation. There is no way to add questions to the database via the API.
 
 `infra/kubernetes/deployment/` contains manifests for `auth`, `game`, `match`, `user` but not `question`. The Question Service cannot be deployed to Kubernetes without adding this.
 
-### 15. Game completion does not update Game document status
+### 15. ~~Game completion does not update Game document status~~ **FIXED** (Deployment readiness)
 
-After the game completes (Asynq task fires), the game's `status` field in MongoDB is never updated to `FINISHED`. The document remains with status `PENDING` indefinitely.
+Completion now marks the MongoDB document `FINISHED`, resets the entire player roster, notifies connected players including those without answers, and permits reconnection for a new game. The completion timer now agrees with the final question deadline. Unit regressions and the Compose smoke client cover these paths.
 
 ### 16. ~~Makefile references non-existent path~~ **FIXED** (Phase 2)
 
@@ -137,6 +137,9 @@ Stale `// todo add metrics` and dead TODO blocks were removed in Phase 2. Remain
 | `services/user_app/repository/user.go:45` | `// should we do this automatically by defining function in postgres or not?` |
 
 ## Security Concerns
+
+The single-computer Compose setup now requires generated secrets, exposes only a loopback API gateway, and keeps databases and administration ports private. The notes below also describe older development defaults and direct source configurations.
+
 
 1. **JWT secret key logged to stdout** (see Bug #2 above) — critical.
 2. **JWT secret default value** is `SECRET_KEY` (literal string) — insecure default.

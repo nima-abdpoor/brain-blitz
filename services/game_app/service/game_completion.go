@@ -5,102 +5,63 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"strconv"
 )
 
 func (svc Service) ProcessGameCompletion(ctx context.Context, payload map[string]interface{}) error {
-	op := "service.ProcessGameCompletion"
-
-	gameId := payload["gameId"].(string)
-
-	leaderBoard, err := svc.repository.GetLeaderBoard(ctx, gameId)
+	gameID, ok := payload["gameId"].(string)
+	if !ok || gameID == "" {
+		return fmt.Errorf("game completion payload requires gameId")
+	}
+	game, err := svc.repository.GetGame(ctx, gameID)
 	if err != nil {
-		svc.logger.Error(op, "error in getting leader board", slog.String("error", err.Error()))
-		gameInfo, err := svc.repository.GetGame(ctx, gameId)
-		if err != nil {
-			svc.logger.Error(op, "error in getting game info", "gameId", gameId, slog.String("error", err.Error()))
-			return err
-		}
-
-		for _, playerId := range gameInfo.Players {
-			svc.mu.RLock()
-			conn := svc.connections[playerId]
-			svc.mu.RUnlock()
-			response := ProcessGameMessageResponse{
-				Success: false,
-				Event:   EventCompleted,
-				Message: "internal server error",
-			}
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				return err
-			}
-			err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonResponse))
-			if err != nil {
-				return err
-			}
-		}
+		return err
+	}
+	leaderboard, err := svc.repository.GetLeaderBoard(ctx, gameID)
+	if err != nil {
 		return err
 	}
 
-	var playerPoints []ProcessGamePlayerPoint
-
-	for _, playerPoint := range leaderBoard.PlayersPoint {
-		var ansResult []ProcessGameAnswerResult
-		for _, questionAnswers := range playerPoint.QuestionCorrectness {
-			ansResult = append(ansResult, ProcessGameAnswerResult{
-				QuestionId:    questionAnswers.QuestionId,
-				CorrectAnswer: questionAnswers.CorrectChoice,
-				PlayerAnswer:  questionAnswers.PlayerChoice,
-				IsCorrect:     questionAnswers.IsCorrect,
+	points := make([]ProcessGamePlayerPoint, 0, len(leaderboard.PlayersPoint))
+	for _, player := range leaderboard.PlayersPoint {
+		answers := make([]ProcessGameAnswerResult, 0, len(player.QuestionCorrectness))
+		for _, answer := range player.QuestionCorrectness {
+			answers = append(answers, ProcessGameAnswerResult{
+				QuestionId: answer.QuestionId, CorrectAnswer: answer.CorrectChoice,
+				PlayerAnswer: answer.PlayerChoice, IsCorrect: answer.IsCorrect,
 			})
 		}
-		playerPoints = append(playerPoints, ProcessGamePlayerPoint{
-			PlayerId: playerPoint.PlayerId,
-			Point:    playerPoint.Point,
-			Answers:  ansResult,
-		})
+		points = append(points, ProcessGamePlayerPoint{PlayerId: player.PlayerId, Point: player.Point, Answers: answers})
 	}
-	leaderBoardResult := ProcessGameLeaderBoard{
-		GameId:      gameId,
-		PlayerPoint: playerPoints,
-	}
-
-	msg := ProcessGameMessageResponse{
-		Success: true,
-		Event:   EventCompleted,
-		Message: "game completed",
+	response, err := json.Marshal(ProcessGameMessageResponse{
+		Success: true, Event: EventCompleted, Message: "game completed",
 		MetaData: ProcessGameMetaDataResponse{
-			GameId: gameId,
-			Answer: leaderBoardResult,
+			GameId: gameID,
+			Answer: ProcessGameLeaderBoard{GameId: gameID, PlayerPoint: points},
 		},
-	}
-
-	jsonResponse, err := json.Marshal(msg)
+	})
 	if err != nil {
-		svc.logger.Info(op, "error in converting struct to json", "error", err.Error())
+		return err
+	}
+	if err := svc.repository.FinishGame(ctx, gameID); err != nil {
+		return err
 	}
 
-	for _, playerPoint := range playerPoints {
-		playerId, err := strconv.ParseInt(playerPoint.PlayerId, 10, 64)
-		if err != nil {
-			svc.logger.Info(op, "error in converting playerId from string to int", "playerId", playerPoint.PlayerId, "error", err.Error())
+	// Notify the full roster, including players who did not submit an answer.
+	// Disconnected players still get their state reset so they can play again.
+	for _, playerID := range game.Players {
+		if err := svc.repository.UpsertUserStatus(ctx, playerID, GameStatusFinished); err != nil {
 			return err
 		}
 		svc.mu.RLock()
-		conn := svc.connections[uint64(playerId)]
+		conn := svc.connections[playerID]
 		svc.mu.RUnlock()
-		err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonResponse))
-		if err != nil {
-			svc.logger.Error(op, "error writing message", "playerId", fmt.Sprintf("%v", playerId), "message", EventCompleted, slog.String("error", err.Error()))
-			return err
+		if conn == nil {
+			continue
 		}
-		svc.mu.Lock()
-		delete(svc.connections, uint64(playerId))
-		svc.mu.Unlock()
-		conn.Close()
+		if err := svc.webSocket.WriteServerData(conn, websocket.OpText, string(response)); err != nil {
+			svc.logger.Warn("game completion delivery failed", "playerId", playerID, "error", err.Error())
+		}
+		svc.closeConnection(playerID, conn)
 	}
-
 	return nil
 }

@@ -1,0 +1,41 @@
+name: Deployment readiness
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPOSE_FILE: docker-compose.yml:compose.smoke.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate test-only secrets and validate configuration
+        run: |
+          python3 scripts/init-env.py
+          docker compose config --quiet
+      - name: Build applications and check images
+        run: docker compose --profile tools --parallel 2 build checks smoke bb-auth-service bb-user-service bb-match-service bb-game-service bb-question-service
+      - name: Tests, vet, and both Linux architectures
+        run: docker compose --profile tools run --rm checks
+      - name: Start infrastructure and applications
+        run: docker compose up -d --wait --wait-timeout 300
+      - name: Seed questions and play a two-player game
+        run: |
+          docker compose --profile tools run --rm seed-demo
+          docker compose --profile tools run --rm smoke
+      - name: Show failure diagnostics
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail 100
+      - name: Stop the test deployment
+        if: always()
+        run: docker compose down

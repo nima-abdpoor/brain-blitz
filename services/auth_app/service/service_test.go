@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -117,4 +119,34 @@ func TestValidateToken(t *testing.T) {
 		_, err := svc.ValidateToken(ctx, validateReq)
 		assert.Error(t, err)
 	})
+}
+
+func TestIssuedTokensExpireAtConfiguredTime(t *testing.T) {
+	svc := setupTestService()
+	data := []CreateTokenRequest{{Key: "id", Value: "123"}, {Key: "role", Value: "user"}}
+	before := time.Now().Unix()
+	access, err := svc.CreateAccessToken(context.Background(), CreateAccessTokenRequest{Data: data})
+	require.NoError(t, err)
+	refresh, err := svc.CreateRefreshToken(context.Background(), CreateRefreshTokenRequest{Data: data})
+	require.NoError(t, err)
+	for _, tc := range []struct {
+		name, value string
+		lifetime    time.Duration
+	}{
+		{"access", access.AccessToken, time.Hour},
+		{"refresh", refresh.RefreshToken, 24 * time.Hour},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			token, err := jwt.Parse(tc.value, func(*jwt.Token) (interface{}, error) { return []byte("test-secret"), nil })
+			require.NoError(t, err)
+			expiry, err := token.Claims.GetExpirationTime()
+			require.NoError(t, err)
+			require.NotNil(t, expiry)
+			assert.GreaterOrEqual(t, expiry.Unix(), before+int64(tc.lifetime/time.Second))
+			assert.LessOrEqual(t, expiry.Unix(), time.Now().Unix()+int64(tc.lifetime/time.Second))
+		})
+	}
+	result, err := svc.ValidateToken(context.Background(), ValidateTokenRequest{Token: "Bearer " + access.AccessToken})
+	require.NoError(t, err)
+	assert.True(t, result.Valid)
 }

@@ -1,0 +1,6 @@
+# Only use with an isolated test deployment: it shortens game timers.
+services:
+  bb-game-service:
+    environment:
+      GAME_repository__valid_answer_timeout: 2s
+      GAME_repository__score__bonus_deadline: 1s

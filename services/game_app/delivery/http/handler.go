@@ -28,7 +28,7 @@ func (h Handler) ProcessGame(ctx echo.Context) error {
 		h.logger.Info("Invalid X-User-ID", "id", id)
 		return ctx.JSON(http.StatusBadRequest, errmsg.MessageMissingXUserId)
 	}
-	response, err := h.service.ProcessGame(ctx, service.ProcessGameRequest{
+	_, err := h.service.ProcessGame(ctx, service.ProcessGameRequest{
 		Id: id,
 	})
 
@@ -37,5 +37,6 @@ func (h Handler) ProcessGame(ctx echo.Context) error {
 		return ctx.JSON(code, msg)
 	}
 
-	return ctx.JSON(http.StatusOK, response)
+	// The connection has already been upgraded to WebSocket.
+	return nil
 }

@@ -4,8 +4,11 @@ import (
 	"BrainBlitz.com/game/adapter/redis"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
+	"BrainBlitz.com/game/services/game_app/service"
 	"context"
+	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,8 +34,8 @@ func newTestRepo(t *testing.T) GameRepository {
 
 	return GameRepository{
 		Config: Config{
-			QuestionsTimeOut:  5 * time.Second,
-			GameStatusTimeOut: 5 * time.Second,
+			QuestionsTimeOut:   5 * time.Second,
+			GameStatusTimeOut:  5 * time.Second,
 			ValidAnswerTimeOut: 2 * time.Minute,
 			ScoreConfig: ScoreConfig{
 				BaseScore:     5,
@@ -145,3 +148,69 @@ var _ = func() int {
 
 // Ensure goredis is imported (used inside redis.Adapter internals).
 var _ = goredis.NewClient
+
+func TestQuestionDeadlinesAndCompletionTimerAgree(t *testing.T) {
+	repo := newTestRepo(t)
+	ctx := context.Background()
+	game := service.GameQuestions{Questions: []service.Question{{Id: "q1"}, {Id: "q2"}, {Id: "q3"}}}
+	require.NoError(t, repo.saveQuestionByGameId(ctx, "timed-game", game))
+	before := time.Now()
+	duration, err := repo.SetValidAnswerTimeForQuestions(ctx, "timed-game")
+	require.NoError(t, err)
+	assert.Equal(t, 3*repo.Config.ValidAnswerTimeOut, duration)
+	stored, err := repo.GetQuestionsByGameId(ctx, "timed-game")
+	require.NoError(t, err)
+	for i, q := range stored.Questions {
+		assert.WithinDuration(t, before.Add(time.Duration(i+1)*repo.Config.ValidAnswerTimeOut), q.ValidAnswerTime, time.Second)
+	}
+}
+
+func TestConcurrentReadyPlayersAreNotLost(t *testing.T) {
+	repo := newTestRepo(t)
+	ctx := context.Background()
+	for round := 0; round < 10; round++ {
+		gameID := fmt.Sprintf("concurrent-%d", round)
+		count := 2
+		_, err := repo.UpsertReadyPlayer(ctx, gameID, nil, &count)
+		require.NoError(t, err)
+		start := make(chan struct{})
+		results := make(chan error, 2)
+		var wg sync.WaitGroup
+		for id := 1; id <= 2; id++ {
+			wg.Add(1)
+			go func(player int) {
+				defer wg.Done()
+				<-start
+				_, err := repo.UpsertReadyPlayer(ctx, gameID, &player, nil)
+				results <- err
+			}(id)
+		}
+		close(start)
+		wg.Wait()
+		close(results)
+		for err := range results {
+			require.NoError(t, err)
+		}
+		value, err := repo.redisDB.Get(ctx, GameStatusPrefix+gameID)
+		require.NoError(t, err)
+		var stored gameStatus
+		require.NoError(t, json.Unmarshal([]byte(value), &stored))
+		assert.ElementsMatch(t, []int{1, 2}, stored.Players)
+	}
+}
+
+func TestReadyBeforeRosterInitializationIsRetained(t *testing.T) {
+	repo := newTestRepo(t)
+	ctx := context.Background()
+	player, count := 1, 2
+	ready, err := repo.UpsertReadyPlayer(ctx, "early-ready", &player, nil)
+	require.NoError(t, err)
+	assert.False(t, ready)
+	ready, err = repo.UpsertReadyPlayer(ctx, "early-ready", nil, &count)
+	require.NoError(t, err)
+	assert.False(t, ready)
+	player = 2
+	ready, err = repo.UpsertReadyPlayer(ctx, "early-ready", &player, nil)
+	require.NoError(t, err)
+	assert.True(t, ready)
+}
