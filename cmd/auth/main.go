@@ -20,7 +20,7 @@ func main() {
 		Prefix:       "AUTH_",
 		Delimiter:    ".",
 		Separator:    "__",
-		YamlFilePath: filepath.Join(workingDir, "deploy", "auth", "development", "config.yaml"),
+		YamlFilePath: filepath.Join(workingDir, "infra", "deploy", "auth", "development", "config.yaml"),
 		CallbackEnv:  nil,
 	}
 

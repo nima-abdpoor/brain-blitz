@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"strings"
 	"time"
 )
 
@@ -53,7 +54,7 @@ func (svc Service) CreateAccessToken(ctx context.Context, request CreateAccessTo
 	}
 
 	claims := toJWTClaims(request.Data)
-	claims[expireTimeKey] = svc.config.AccessTokenExpireTime
+	claims[expireTimeKey] = time.Now().Add(svc.config.AccessTokenExpireTime).Unix()
 	claims[jwtIdKey] = uuid.NewString()
 	claims[jwtIssuedAt] = time.Now().Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -81,7 +82,7 @@ func (svc Service) CreateRefreshToken(ctx context.Context, request CreateRefresh
 	}
 
 	claims := toJWTClaims(request.Data)
-	claims[expireTimeKey] = svc.config.RefreshTokenExpireTime
+	claims[expireTimeKey] = time.Now().Add(svc.config.RefreshTokenExpireTime).Unix()
 	claims[jwtIdKey] = uuid.NewString()
 	claims[jwtIssuedAt] = time.Now().Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -109,9 +110,13 @@ func (svc Service) ValidateToken(ctx context.Context, request ValidateTokenReque
 		}, svc.logger)
 	}
 
-	token, err := jwt.Parse(request.Token, func(token *jwt.Token) (interface{}, error) {
+	tokenValue := strings.TrimSpace(request.Token)
+	if parts := strings.Fields(tokenValue); len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+		tokenValue = parts[1]
+	}
+	token, err := jwt.Parse(tokenValue, func(token *jwt.Token) (interface{}, error) {
 		return []byte(svc.config.SecretKey), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 
 	if err != nil {
 		return ValidateTokenResponse{Valid: false}, errApp.Wrap(op, err, errApp.ErrUnauthorized, map[string]string{

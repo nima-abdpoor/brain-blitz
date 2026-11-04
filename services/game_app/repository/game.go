@@ -8,7 +8,9 @@ import (
 	"BrainBlitz.com/game/services/game_app/service"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	goredis "github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc/codes"
@@ -207,57 +209,55 @@ func (m GameRepository) GetUserStatus(ctx context.Context, userId uint64) (servi
 }
 
 func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error) {
-	value, err := m.redisDB.Get(ctx, GameStatusPrefix+gameId)
-	if err != nil {
-		var players = 2
-		if numberOfPlayers != nil {
-			players = *numberOfPlayers
+	key := GameStatusPrefix + gameId
+	client := m.redisDB.Client()
+	for attempt := 0; attempt < 8; attempt++ {
+		ready := false
+		err := client.Watch(ctx, func(tx *goredis.Tx) error {
+			gs := gameStatus{ExpectedNumberOfPlayers: 2, Players: []int{}}
+			value, err := tx.Get(ctx, key).Result()
+			if err == nil {
+				if err := json.Unmarshal([]byte(value), &gs); err != nil {
+					return err
+				}
+			} else if !errors.Is(err, goredis.Nil) {
+				return err
+			}
+			if numberOfPlayers != nil {
+				gs.ExpectedNumberOfPlayers = *numberOfPlayers
+			}
+			if len(gs.Players) == gs.ExpectedNumberOfPlayers {
+				ready = true
+				return nil
+			}
+			if playerId != nil {
+				for _, id := range gs.Players {
+					if id == *playerId {
+						return fmt.Errorf("player %v is already member of ready players", playerId)
+					}
+				}
+				gs.Players = append(gs.Players, *playerId)
+			}
+			data, err := json.Marshal(gs)
+			if err != nil {
+				return err
+			}
+			_, err = tx.TxPipelined(ctx, func(pipe goredis.Pipeliner) error {
+				pipe.Set(ctx, key, data, m.Config.GameStatusTimeOut)
+				return nil
+			})
+			ready = len(gs.Players) == gs.ExpectedNumberOfPlayers
+			return err
+		}, key)
+		if errors.Is(err, goredis.TxFailedErr) {
+			continue
 		}
-		gameStatusJson, err := json.Marshal(gameStatus{
-			ExpectedNumberOfPlayers: players,
-			Players:                 []int{},
-		})
 		if err != nil {
 			return false, err
 		}
-		err = m.redisDB.Set(ctx, GameStatusPrefix+gameId, gameStatusJson, m.Config.GameStatusTimeOut)
-		if err != nil {
-			return false, err
-		}
-
-		return false, nil
+		return ready, nil
 	}
-
-	var gs gameStatus
-	if err = json.Unmarshal([]byte(value), &gs); err != nil {
-		return false, err
-	}
-
-	if gs.ExpectedNumberOfPlayers-len(gs.Players) == 0 {
-		return true, nil
-	}
-
-	for _, id := range gs.Players {
-		if id == *playerId {
-			return false, fmt.Errorf("player %v is already member of ready players", playerId)
-		}
-	}
-
-	if playerId != nil {
-		gs.Players = append(gs.Players, *playerId)
-	}
-
-	gameStatusJson, err := json.Marshal(gs)
-	if err != nil {
-		return false, err
-	}
-
-	err = m.redisDB.Set(ctx, GameStatusPrefix+gameId, gameStatusJson, m.Config.GameStatusTimeOut)
-	if err != nil {
-		return false, err
-	}
-
-	return len(gs.Players) == gs.ExpectedNumberOfPlayers, nil
+	return false, fmt.Errorf("ready-player update conflicted repeatedly for game %s", gameId)
 }
 
 func (m GameRepository) IncreaseGameQuestionCurrentIndex(ctx context.Context, gameId string) error {
@@ -291,10 +291,11 @@ func (m GameRepository) SetValidAnswerTimeForQuestions(ctx context.Context, game
 		return 0, err
 	}
 
+	startedAt := time.Now().UTC()
 	for i := range gameQuestions.Questions {
 		ttl := m.Config.ValidAnswerTimeOut * time.Duration(i+1)
-		finalTTL += ttl
-		gameQuestions.Questions[i].ValidAnswerTime = time.Now().UTC().Add(ttl)
+		finalTTL = ttl
+		gameQuestions.Questions[i].ValidAnswerTime = startedAt.Add(ttl)
 	}
 
 	err = m.saveQuestionByGameId(ctx, gameId, gameQuestions)
@@ -510,4 +511,15 @@ func (m GameRepository) CalculateScore(isCorrect bool, answerTime, validAnswerTi
 	}
 
 	return m.Config.ScoreConfig.BaseScore + bonus
+}
+
+func (m GameRepository) FinishGame(ctx context.Context, gameId string) error {
+	objectID, err := primitive.ObjectIDFromHex(gameId)
+	if err != nil {
+		return err
+	}
+	_, err = m.MongoDB.DB.Collection("game").UpdateOne(ctx, bson.M{"_id": objectID}, bson.M{
+		"$set": bson.M{"status": service.GameStatusFinished, "updated_at": time.Now().UTC()},
+	})
+	return err
 }

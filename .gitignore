@@ -3,3 +3,7 @@
 /.idea/vcs.xml
 /logs/
 /traefik_logs/
+/.env
+/.env.*
+!/.env.example
+/artifacts/

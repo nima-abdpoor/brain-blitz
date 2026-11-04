@@ -1,0 +1,8 @@
+.git
+.idea
+.env
+.env.*
+artifacts
+logs
+traefik_logs
+**/__pycache__

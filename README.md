@@ -2,6 +2,9 @@
 
 A real-time multiplayer quiz game platform built with Go microservices.
 
+For a prepared single-computer deployment and Telegram connectivity, see
+[Run on another computer](docs/run-on-another-computer.md).
+
 ## Project Overview
 
 BrainBlitz matches players into live quiz games by category, delivers timed questions over WebSocket connections, scores answers in real time, and presents a final leaderboard when the game ends. The system is composed of five independently deployable Go services communicating over HTTP, gRPC, Kafka, and WebSocket.
@@ -166,40 +169,30 @@ service:
 
 ## Running Locally
 
-### Step 1: Create the shared Docker network
+Docker Compose v2 and Python 3 are required; Go runs in the build container.
+From the project directory:
 
-```bash
-docker network create bb-network
+```sh
+python3 scripts/init-env.py
+docker compose config --quiet
+docker compose --parallel 2 build
+docker compose up -d --wait --wait-timeout 300
+docker compose --profile tools run --rm seed-demo
+curl --fail http://127.0.0.1:8088/user-service/public/api/v1/health-check
 ```
 
-### Step 2: Start all services
+This starts all five application services, Kafka, PostgreSQL, Redis, a three-node
+MongoDB replica set, and Traefik. Initializer jobs create the Question database,
+Kafka topics, and replica set before their dependent applications start. The
+optional demo import adds 30 questions and can be repeated safely.
 
-```bash
-docker-compose up -d
-```
+The gateway binds to `127.0.0.1:8088` by default. Database and administrative
+ports are private. Set `HTTP_BIND` and `HTTP_PORT` in `.env` when appropriate for
+your deployment. The generated `.env` contains machine-local secrets and must
+not be committed. Monitoring is not part of the default single-computer stack.
 
-This starts: Kafka, PostgreSQL, Redis, MongoDB (3-node replica set), Traefik, Prometheus, Grafana, and all five application services.
-
-### Step 3: Verify services are up
-
-```bash
-curl http://localhost/user-service/public/api/v1/health-check
-curl http://localhost/auth-service/api/v1/health-check
-curl http://localhost/match-service/api/v1/health-check
-curl http://localhost/game-service/api/v1/health-check
-```
-
-### Traefik Dashboard
-
-Available at [http://localhost:8080](http://localhost:8080)
-
-### Grafana
-
-Available at [http://localhost:3000](http://localhost:3000) (default credentials: `admin`/`admin`)
-
-### Prometheus
-
-Available at [http://localhost:9090](http://localhost:9090)
+See [the deployment guide](docs/run-on-another-computer.md) for resource
+requirements, bot connectivity, an end-to-end smoke test, and data backups.
 
 ## Docker
 
@@ -210,7 +203,7 @@ Build a specific service manually:
 ```bash
 docker build -f infra/deploy/auth/development/Dockerfile \
   --build-arg GO_IMAGE_NAME=golang \
-  --build-arg GO_IMAGE_VERSION=1.23 \
+  --build-arg GO_IMAGE_VERSION=1.26 \
   -t brain-blitz/auth .
 ```
 
@@ -259,11 +252,9 @@ make install-sql-migrate
 
 ## Deployment
 
-### Docker Compose (Development)
+### Docker Compose (Single Computer)
 
-```bash
-docker-compose up -d
-```
+Follow [Run on another computer](docs/run-on-another-computer.md).
 
 ### Kubernetes
 
@@ -282,7 +273,7 @@ kubectl apply -f infra/kubernetes/ingress/
 
 ## API Overview
 
-All protected endpoints require a valid JWT in the `Authorization` header, validated by Traefik's ForwardAuth middleware calling Auth Service.
+All protected endpoints require `Authorization: Bearer <accessToken>`, validated by Traefik's ForwardAuth middleware calling Auth Service. Raw access tokens remain accepted for compatibility. Token minting endpoints are internal and are not exposed by the default Compose gateway.
 
 ### Auth Service (`/auth-service`)
 
@@ -323,7 +314,7 @@ Internal service only. No public routes beyond health check.
 
 ## Monitoring
 
-Prometheus scrapes MongoDB metrics from the `bb-mongo-exporter` container at `:9216`. Configure dashboards in Grafana at `:3000`.
+The single-computer Compose stack omits Prometheus, Grafana, and the MongoDB exporter to reduce resource use. Monitoring configuration remains in `prometheus.yml` for a separate monitoring deployment. Administrative monitoring endpoints are not exposed by the default stack.
 
 > Note: Application-level metrics (service latencies, error rates) are not yet instrumented. Many places in the code contain `// todo add metrics`.
 
