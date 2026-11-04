@@ -147,6 +147,7 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      - --providers.docker.constraints=Label(`com.docker.compose.project`,`${COMPOSE_PROJECT_NAME}`)
       - --entrypoints.web.address=:80
       - --accesslog=true
       - --log.level=INFO
@@ -181,6 +182,7 @@ services:
       USER_postgres_db__host: bb-postgres
       USER_postgres_db__password: ${POSTGRES_PASSWORD:?Run python3 scripts/init-env.py first}
       USER_grpc_client__host: bb-auth-service
+      USER_game_service_url: http://bb-game-service:5003
       USER_redis__host: bb-redis
       USER_redis__port: "6379"
     healthcheck:
@@ -260,6 +262,52 @@ services:
       traefik.http.routers.game.middlewares: game-stripprefix,auth
       traefik.http.middlewares.game-stripprefix.stripprefix.prefixes: /game-service
       traefik.http.services.game.loadbalancer.server.port: "5003"
+
+  bb-telegram-bot:
+    profiles: [telegram]
+    build:
+      context: ./clients/telegram-bot
+      dockerfile: deploy/Dockerfile
+      args:
+        GOPROXY: "${GOPROXY:-https://proxy.golang.org|direct}"
+    restart: unless-stopped
+    init: true
+    mem_limit: 256m
+    depends_on:
+      bb-user-service: {condition: service_healthy}
+      bb-game-service: {condition: service_healthy}
+      bb-redis: {condition: service_healthy}
+    environment:
+      BOT_TELEGRAM__BOT_TOKEN: ${BOT_TELEGRAM__BOT_TOKEN:-}
+      HTTPS_PROXY: ${BOT_HTTPS_PROXY:-}
+      NO_PROXY: bb-traefik,bb-redis,localhost,127.0.0.1
+      BOT_BACKEND__USER_SERVICE_URL: http://bb-traefik/user-service
+      BOT_BACKEND__MATCH_SERVICE_URL: http://bb-traefik/match-service
+      BOT_BACKEND__GAME_SERVICE_WS_URL: ws://bb-traefik/game-service/api/v1/process-game
+      BOT_SESSION_STORE__TYPE: redis
+      BOT_SESSION_STORE__REDIS_ADDR: bb-redis:6379
+      BOT_METRICS__ENABLED: "true"
+      BOT_LOGGING__LEVEL: info
+    networks: [bb-network]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  telegram-tests:
+    profiles: [tools]
+    image: golang:1.26-bookworm
+    working_dir: /src/clients/telegram-bot
+    environment:
+      GOPROXY: "${GOPROXY:-https://proxy.golang.org|direct}"
+      BOT_INTEGRATION_USER_SERVICE_URL: http://bb-traefik/user-service
+      BOT_INTEGRATION_GAME_SERVICE_WS_URL: ws://bb-traefik/game-service/api/v1/process-game
+      BOT_INTEGRATION_FULL_GAME: ${BOT_INTEGRATION_FULL_GAME:-0}
+    volumes:
+      - .:/src
+      - go-module-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    command: [go, test, -race, -v, -tags=integration, -count=1, -timeout=3m, ./integration/...]
+    networks: [bb-network]
 
   seed-demo:
     profiles: [tools]
