@@ -74,6 +74,7 @@ func (h Handler) Profile(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, service.ProfileResponse{
+		Statistics:  res.Statistics,
 		ID:          res.ID,
 		Username:    res.Username,
 		DisplayName: res.DisplayName,
