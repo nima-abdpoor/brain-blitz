@@ -5,6 +5,7 @@ import (
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/postgresql"
+	"BrainBlitz.com/game/pkg/timeoptions"
 	"BrainBlitz.com/game/services/question_app/delivery/http"
 	"BrainBlitz.com/game/services/question_app/repository"
 	"BrainBlitz.com/game/services/question_app/service"
@@ -37,7 +38,7 @@ func Setup(config Config, postgresConn *postgresql.Database, logger logger.Logge
 	}
 
 	questionService := service.NewService(repo, kafkaBroker, logger)
-	questionHandler := http.NewHandler(questionService, logger)
+	questionHandler := http.NewHandler(questionService, logger).WithTimeOptions(timeoptions.Store{DB: postgresConn.DB})
 
 	consumer := service.NewConsumer(kafkaBroker, questionService, logger)
 

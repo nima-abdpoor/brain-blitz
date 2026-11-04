@@ -36,4 +36,7 @@ func (s Server) RegisterRoutes() {
 	v1 := s.HTTPServer.Router.Group("/api/v1/question")
 	v1.GET("/health-check", s.healthCheck)
 	v1.POST("/add", s.Handler.AddQuestion)
+	v1.GET("/time-options", s.Handler.TimeOptions)
+	v1.GET("/admin/time-options", s.Handler.AdminTimeOptions)
+	v1.PUT("/admin/time-options/:id", s.Handler.PutTimeOption)
 }
