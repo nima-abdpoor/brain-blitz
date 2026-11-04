@@ -175,6 +175,15 @@ func (m *Manager) SetMetrics(metrics Metrics) {
 	m.metrics = metrics
 }
 
+func (m *Manager) SetDisplayName(ctx context.Context, chatID int64, name string) {
+	sess, err := m.sessions.Get(ctx, chatID)
+	if err != nil {
+		return
+	}
+	sess.DisplayName = name
+	_ = m.sessions.Save(ctx, sess)
+}
+
 // SetGameHandler installs h as this Manager's GameHandler. Exposed as a
 // setter, not just a NewManager parameter, because internal/core/game's own
 // constructor needs a Detacher — typically this same *Manager — which
@@ -232,7 +241,7 @@ func (m *Manager) JoinQueue(ctx context.Context, chatID int64, category string) 
 	}
 	m.getMetrics().WSConnectionOpened()
 
-	if err := conn.Send(ws.Command{Command: ws.CommandAddToWaitingList, Category: category}); err != nil {
+	if err := conn.Send(ws.Command{Command: ws.CommandAddToWaitingList, Category: category, DisplayName: sess.DisplayName}); err != nil {
 		_ = conn.Close()
 		m.getMetrics().WSConnectionClosed()
 		m.abandon(chatID, cs)
@@ -266,7 +275,7 @@ func (m *Manager) abandon(chatID int64, cs *chatSession) {
 // can't happen while this one is Queued or Matched; see JoinQueue's guard).
 func (m *Manager) listen(chatID int64, conn Connection) {
 	err := conn.Listen(func(event ws.Event) {
-		m.handleEvent(chatID, event)
+		m.handleEvent(chatID, event, conn)
 	})
 
 	m.mu.Lock()
@@ -309,10 +318,10 @@ func (m *Manager) getMetrics() Metrics {
 	return m.metrics
 }
 
-func (m *Manager) handleEvent(chatID int64, event ws.Event) {
+func (m *Manager) handleEvent(chatID int64, event ws.Event, source ...Connection) {
 	m.mu.Lock()
 	cs, ok := m.chats[chatID]
-	if !ok {
+	if !ok || (len(source) > 0 && cs.conn != source[0]) {
 		m.mu.Unlock()
 		return
 	}

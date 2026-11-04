@@ -112,10 +112,11 @@ func (c *UserClient) Login(ctx context.Context, email, password string) (auth.Lo
 }
 
 type profileResponse struct {
-	Username    string `json:"username"`
-	DisplayName string `json:"displayName"`
-	Role        string `json:"role"`
-	CreatedAt   int64  `json:"createdAt"`
+	Statistics  *profile.Statistics `json:"statistics"`
+	Username    string              `json:"username"`
+	DisplayName string              `json:"displayName"`
+	Role        string              `json:"role"`
+	CreatedAt   int64               `json:"createdAt"`
 }
 
 // Profile calls GET /api/v1/profile with accessToken as a Bearer credential
@@ -146,6 +147,7 @@ func (c *UserClient) Profile(ctx context.Context, accessToken string) (profile.P
 		return profile.Profile{}, fmt.Errorf("decoding profile response: %w", err)
 	}
 	return profile.Profile{
+		Statistics:  out.Statistics,
 		Username:    out.Username,
 		DisplayName: out.DisplayName,
 		Role:        out.Role,

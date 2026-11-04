@@ -20,10 +20,13 @@ func (h *Handlers) CategoryCallback(ctx context.Context, cb *tgbotapi.CallbackQu
 	chatID := cb.Message.Chat.ID
 	category := strings.TrimPrefix(cb.Data, keyboards.CallbackCategoryPrefix)
 
+	if cb.From != nil {
+		h.matchmaking.SetDisplayName(ctx, chatID, strings.TrimSpace(cb.From.FirstName+" "+cb.From.LastName))
+	}
 	err := h.matchmaking.JoinQueue(ctx, chatID, category)
 	switch {
 	case err == nil:
-		reply := tgbotapi.NewMessage(chatID, "Waiting for opponent…")
+		reply := tgbotapi.NewMessage(chatID, "🔎 Waiting for opponent…")
 		reply.ReplyMarkup = keyboards.Waiting()
 		return reply, nil
 	case errors.Is(err, matchmaking.ErrAlreadyInProgress):
@@ -37,13 +40,7 @@ func (h *Handlers) CategoryCallback(ctx context.Context, cb *tgbotapi.CallbackQu
 	}
 }
 
-// CancelCallback handles the Cancel button shown while waiting for an
-// opponent (keyboards.Waiting). There is no server-side "leave queue"
-// (docs/client/gap-analysis.md G-13): this only stops the bot from acting
-// on a future MATCH_CREATED for this chat — the user's Redis waiting-list
-// entry is untouched server-side until the 20-minute window lapses, so the
-// reply below is deliberately not a bare "Cancelled ✓" (see
-// docs/client/phase4-matchmaking-plan.md §6, an approved Phase 4 decision).
+// CancelCallback closes the waiting socket; the backend removes its queue membership.
 func (h *Handlers) CancelCallback(ctx context.Context, cb *tgbotapi.CallbackQuery) (tgbotapi.Chattable, error) {
 	chatID := cb.Message.Chat.ID
 
@@ -54,7 +51,7 @@ func (h *Handlers) CancelCallback(ctx context.Context, cb *tgbotapi.CallbackQuer
 	}
 
 	reply := tgbotapi.NewMessage(chatID,
-		"You've stopped waiting. Note: if a match was already forming, the other player may briefly wait on you — this is a known backend limitation.")
+		"❌ You've stopped waiting. Choose Play when you're ready for another match.")
 	reply.ReplyMarkup = keyboards.MainMenu()
 	return reply, nil
 }

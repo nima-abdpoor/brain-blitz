@@ -76,7 +76,7 @@ func run() error {
 
 	log := logger.New(cfg.Logging.Level)
 
-	tgAPI, err := tgbotapi.NewBotAPI(cfg.Telegram.BotToken)
+	tgAPI, err := tgbotapi.NewBotAPIWithClient(cfg.Telegram.BotToken, tgbotapi.APIEndpoint, telegram.NewHTTPClient(cfg.Telegram.BotToken))
 	if err != nil {
 		return fmt.Errorf("initializing telegram bot api: %w", err)
 	}
@@ -106,7 +106,8 @@ func run() error {
 	authSvc := auth.NewService(userClient, sessionStore)
 	profileSvc := profile.NewService(userClient, sessionStore)
 
-	matchmakingNotifier := telegram.NewMatchmakingNotifier(tgAPI, log)
+	sender := telegram.NewAPISender(tgAPI)
+	matchmakingNotifier := telegram.NewMatchmakingNotifier(sender, log)
 	// dialer retries a failed connection attempt with backoff
 	// (wsConnectRetryPolicy) and, if configured, waits on the same rate
 	// limiter as HTTP calls — see docs/client/client-architecture.md §9.
@@ -141,13 +142,13 @@ func run() error {
 	matchmakingMgr := matchmaking.NewManager(dialer, matchmakingNotifier, sessionStore, nil)
 	matchmakingMgr.SetMetrics(recorder)
 
-	gameNotifier := telegram.NewGameNotifier(tgAPI, log)
+	gameNotifier := telegram.NewGameNotifier(sender, log, sessionStore)
 	gameMgr := game.NewManager(gameNotifier, matchmakingMgr, log)
 	matchmakingMgr.SetGameHandler(gameMgr)
 
 	handlers := commands.NewHandlers(authSvc, profileSvc, matchmakingMgr, gameMgr, conversation.NewMemoryStore())
 
-	bot := telegram.New(tgAPI, log)
+	bot := telegram.New(sender, log)
 	bot.SetMetrics(recorder)
 	bot.RegisterCommand("start", handlers.Start)
 	bot.RegisterCommand("help", handlers.Help)

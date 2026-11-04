@@ -21,7 +21,7 @@ func (h *Handlers) PlayCallback(ctx context.Context, cb *tgbotapi.CallbackQuery)
 }
 
 func (h *Handlers) playReply(chatID int64) tgbotapi.MessageConfig {
-	reply := tgbotapi.NewMessage(chatID, "Choose a category:")
+	reply := tgbotapi.NewMessage(chatID, "🎮 Choose a category:")
 	reply.ReplyMarkup = keyboards.Category()
 	return reply
 }

@@ -12,6 +12,7 @@ import "time"
 // the duration of a single SignUp/Login call, never persisting it here or
 // anywhere else.
 type Session struct {
+	DisplayName    string
 	TelegramChatID int64
 	UserID         string
 	AccessToken    string

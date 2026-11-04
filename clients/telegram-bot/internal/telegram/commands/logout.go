@@ -20,7 +20,7 @@ func (h *Handlers) LogoutCallback(ctx context.Context, cb *tgbotapi.CallbackQuer
 		return tgbotapi.NewMessage(chatID, genericErrorMessage), nil
 	}
 
-	reply := tgbotapi.NewMessage(chatID, "You've been logged out. Send /start to log back in.")
+	reply := tgbotapi.NewMessage(chatID, "🚪 You've been logged out. Send /start to log back in.")
 	reply.ReplyMarkup = keyboards.Auth()
 	return reply, nil
 }

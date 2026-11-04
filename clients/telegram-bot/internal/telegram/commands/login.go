@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	promptLoginEmail    = "Let's log you in. What's your email address?"
-	promptLoginPassword = "Thanks. Now send your password."
+	promptLoginEmail    = "🔐 Let's log you in. What's your email address?"
+	promptLoginPassword = "🔑 Thanks. Now send your password."
 )
 
 // LoginCallback starts the login conversation by prompting for an email;

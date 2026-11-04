@@ -65,16 +65,19 @@ func TestCategory_HasSportMusicTech(t *testing.T) {
 
 func TestAnswer_EncodesQuestionIDAndIndex(t *testing.T) {
 	kb := Answer("q1", []string{"Paris", "London", "Berlin"})
-	if len(kb.InlineKeyboard) != 1 || len(kb.InlineKeyboard[0]) != 3 {
-		t.Fatalf("Answer layout = %d rows, want 1 row of 3 buttons", len(kb.InlineKeyboard))
+	if len(kb.InlineKeyboard) != 3 {
+		t.Fatalf("Answer layout = %d rows, want 3 rows", len(kb.InlineKeyboard))
 	}
 	want := []string{"answer:q1|0", "answer:q1|1", "answer:q1|2"}
 	for i, w := range want {
-		if got := *kb.InlineKeyboard[0][i].CallbackData; got != w {
+		if len(kb.InlineKeyboard[i]) != 1 {
+			t.Fatalf("answer row %d must contain one full-width button", i)
+		}
+		if got := *kb.InlineKeyboard[i][0].CallbackData; got != w {
 			t.Errorf("button %d data = %q, want %q", i, got, w)
 		}
 	}
-	if got := kb.InlineKeyboard[0][1].Text; got != "London" {
+	if got := kb.InlineKeyboard[1][0].Text; got != "London" {
 		t.Errorf("button 1 label = %q, want the choice text %q", got, "London")
 	}
 }

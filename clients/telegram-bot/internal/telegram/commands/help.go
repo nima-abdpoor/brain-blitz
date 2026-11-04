@@ -11,11 +11,12 @@ import (
 // listed since they don't exist yet (see docs/client/client-roadmap.md,
 // Phases 4-5).
 const helpText = "🧠 BrainBlitz Help\n\n" +
-	"Available commands:\n" +
-	"/start — greet the bot, then register or log in\n" +
-	"/profile — view your BrainBlitz account details\n" +
-	"/help — show this message\n\n" +
-	"Matchmaking and gameplay are coming in a future update."
+	"🎮 /play — choose a category and find an opponent\n" +
+	"👤 /profile — account details, game statistics, and global rank\n" +
+	"🔐 /start — register, log in, or open your menu\n" +
+	"❓ /help — show this message\n\n" +
+	"⏳ Answer before the timer expires. The next question starts when everyone answers or time runs out.\n" +
+	"❌ Use Cancel while searching to leave the queue."
 
 // Help replies to /help. Unlike Profile, this has no auth requirement — the
 // command works the same whether or not the chat is logged in.

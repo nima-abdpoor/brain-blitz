@@ -31,6 +31,7 @@ func (h *Handlers) profileReply(ctx context.Context, chatID int64) tgbotapi.Mess
 	if err == nil {
 		text := fmt.Sprintf("👤 %s\nUsername: %s\nRole: %s\nMember since: %s",
 			p.DisplayName, p.Username, p.Role, p.CreatedAt.Format("2006-01-02"))
+		text += formatStatistics(p.Statistics)
 		reply := tgbotapi.NewMessage(chatID, text)
 		reply.ReplyMarkup = keyboards.MainMenu()
 		return reply
@@ -58,4 +59,16 @@ func (h *Handlers) profileReply(ctx context.Context, chatID int64) tgbotapi.Mess
 	default: // KindTransport, KindUnknown
 		return tgbotapi.NewMessage(chatID, "Couldn't load your profile, try again in a moment.")
 	}
+}
+
+func formatStatistics(s *profile.Statistics) string {
+	if s == nil {
+		return "\n\n📊 Game statistics are temporarily unavailable. Try again shortly."
+	}
+	rank := "Unranked — complete your first game"
+	if s.Rank > 0 {
+		rank = fmt.Sprintf("#%d of %d players", s.Rank, s.RankedPlayers)
+	}
+	return fmt.Sprintf("\n\n📊 Game statistics\n🎮 Games played: %d\n🏆 Wins: %d | Losses: %d | Draws: %d\n📈 Win rate: %.1f%%\n⭐ Total points: %d\n🎯 Average score: %.1f | Best score: %d\n✅ Correct answers: %d/%d (%.1f%% accuracy)\n🥇 Global rank: %s\nRanked by lifetime points from completed games; equal points share a rank.",
+		s.GamesPlayed, s.Wins, s.Losses, s.Draws, s.WinRate, s.TotalPoints, s.AveragePoints, s.BestScore, s.CorrectAnswers, s.AnswersSubmitted, s.Accuracy, rank)
 }

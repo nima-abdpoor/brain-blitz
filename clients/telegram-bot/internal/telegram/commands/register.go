@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	promptRegisterEmail    = "Let's get you registered. What's your email address?"
-	promptRegisterPassword = "Thanks. Now send your password.\n\n" +
+	promptRegisterEmail    = "📝 Let's get you registered. What's your email address?"
+	promptRegisterPassword = "🔑 Thanks. Now send your password.\n\n" +
 		"⚠️ Telegram doesn't mask typed text or hide it from chat history, " +
 		"so avoid reusing a password you rely on elsewhere."
 )

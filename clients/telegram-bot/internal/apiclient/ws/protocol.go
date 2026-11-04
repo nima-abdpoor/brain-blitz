@@ -15,12 +15,13 @@ import (
 // docs/client/backend-api-analysis.md §4. Only the fields relevant to a
 // given Command value need to be populated; the server ignores the rest.
 type Command struct {
-	Command  string  `json:"command"`
-	GameID   string  `json:"gameId,omitempty"`
-	MatchID  string  `json:"matchId,omitempty"`
-	Category string  `json:"category,omitempty"`
-	Players  int     `json:"players,omitempty"`
-	Answer   *Answer `json:"answer,omitempty"`
+	Command     string  `json:"command"`
+	GameID      string  `json:"gameId,omitempty"`
+	MatchID     string  `json:"matchId,omitempty"`
+	Category    string  `json:"category,omitempty"`
+	DisplayName string  `json:"displayName,omitempty"`
+	Players     int     `json:"players,omitempty"`
+	Answer      *Answer `json:"answer,omitempty"`
 }
 
 // Answer carries an ANSWER command's payload (used starting Phase 5).
@@ -97,8 +98,10 @@ type Question struct {
 // QuestionsPublishedMetaData is Event.MetaData's shape when Event.Event ==
 // EventQuestionsPublished.
 type QuestionsPublishedMetaData struct {
-	GameID    string     `json:"gameId"`
-	Questions []Question `json:"questions"`
+	RoundNumber    int        `json:"roundNumber"`
+	TotalQuestions int        `json:"totalQuestions"`
+	GameID         string     `json:"gameId"`
+	Questions      []Question `json:"questions"`
 }
 
 // QuestionsPublished decodes e.MetaData as QuestionsPublishedMetaData. Only
@@ -124,9 +127,10 @@ type AnswerResult struct {
 // BrainBlitz user ID (see docs/client/backend-api-analysis.md, leaderboard
 // notes).
 type PlayerPoint struct {
-	PlayerID string         `json:"playerId"`
-	Point    int            `json:"point"`
-	Answers  []AnswerResult `json:"answers"`
+	DisplayName string         `json:"displayName"`
+	PlayerID    string         `json:"playerId"`
+	Point       int            `json:"point"`
+	Answers     []AnswerResult `json:"answers"`
 }
 
 // LeaderboardMetaData is the leaderBoard object nested in Event.MetaData

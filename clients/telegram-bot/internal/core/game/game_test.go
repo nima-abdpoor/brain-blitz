@@ -282,11 +282,12 @@ func TestSubmitAnswer_WrongQuestionIDIsRejected(t *testing.T) {
 	}
 }
 
-func TestAnswerAccepted_UpdatesLeaderboardAndAdvances(t *testing.T) {
+func TestAnswerAccepted_WaitsForNextAnswerWindow(t *testing.T) {
 	mgr, notifier, _ := newTestManager(t)
 	conn := newFakeConn()
 	onEvent := mgr.Attached(testChatID, "g1", conn)
-	onEvent(questionsPublishedEvent(time.Now().Add(time.Hour), time.Now().Add(2*time.Hour)))
+	nextOpensAt := time.Now().Add(200 * time.Millisecond)
+	onEvent(questionsPublishedEvent(nextOpensAt, time.Now().Add(2*time.Hour)))
 	mustRecvQuestion(t, notifier.questions)
 
 	if err := mgr.SubmitAnswer(testChatID, "q1", 0); err != nil {
@@ -307,9 +308,38 @@ func TestAnswerAccepted_UpdatesLeaderboardAndAdvances(t *testing.T) {
 		t.Fatal("timed out waiting for NotifyLeaderboard")
 	}
 
+	select {
+	case q := <-notifier.questions:
+		t.Fatalf("question %s appeared before its answer window opened", q.question.ID)
+	case <-time.After(30 * time.Millisecond):
+	}
+	if err := mgr.SubmitAnswer(testChatID, "q2", 0); !errors.Is(err, ErrNoActiveQuestion) {
+		t.Fatalf("early answer = %v, want ErrNoActiveQuestion", err)
+	}
 	next := mustRecvQuestion(t, notifier.questions)
+	if time.Now().Before(nextOpensAt) {
+		t.Fatal("next question appeared before the server would accept its answer")
+	}
 	if next.question.ID != "q2" {
 		t.Errorf("question after ANSWER_ACCEPTED = %s, want q2 (advance to next question)", next.question.ID)
+	}
+}
+
+func TestCompleted_CancelsPendingQuestionWindow(t *testing.T) {
+	mgr, notifier, _ := newTestManager(t)
+	conn := newFakeConn()
+	onEvent := mgr.Attached(testChatID, "g1", conn)
+	onEvent(questionsPublishedEvent(time.Now().Add(100*time.Millisecond), time.Now().Add(time.Hour)))
+	mustRecvQuestion(t, notifier.questions)
+	if err := mgr.SubmitAnswer(testChatID, "q1", 0); err != nil {
+		t.Fatal(err)
+	}
+	onEvent(ws.Event{Event: ws.EventAnswerAccepted, MetaData: []byte(`{"leaderBoard":{}}`)})
+	onEvent(ws.Event{Event: ws.EventCompleted, MetaData: []byte(`{"leaderBoard":{}}`)})
+	select {
+	case q := <-notifier.questions:
+		t.Fatalf("question %s appeared after game completion", q.question.ID)
+	case <-time.After(150 * time.Millisecond):
 	}
 }
 

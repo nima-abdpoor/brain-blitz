@@ -39,8 +39,8 @@ const (
 func Auth() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Register", CallbackRegister),
-			tgbotapi.NewInlineKeyboardButtonData("Login", CallbackLogin),
+			tgbotapi.NewInlineKeyboardButtonData("📝 Register", CallbackRegister),
+			tgbotapi.NewInlineKeyboardButtonData("🔐 Log in", CallbackLogin),
 		),
 	)
 }
@@ -50,7 +50,7 @@ func Auth() tgbotapi.InlineKeyboardMarkup {
 // registration).
 func Login() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Login", CallbackLogin)),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("🔐 Log in", CallbackLogin)),
 	)
 }
 
@@ -58,12 +58,12 @@ func Login() tgbotapi.InlineKeyboardMarkup {
 func MainMenu() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Play", CallbackPlay),
-			tgbotapi.NewInlineKeyboardButtonData("Profile", CallbackProfile),
+			tgbotapi.NewInlineKeyboardButtonData("🎮 Play", CallbackPlay),
+			tgbotapi.NewInlineKeyboardButtonData("👤 Profile", CallbackProfile),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Help", CallbackHelp),
-			tgbotapi.NewInlineKeyboardButtonData("Logout", CallbackLogout),
+			tgbotapi.NewInlineKeyboardButtonData("❓ Help", CallbackHelp),
+			tgbotapi.NewInlineKeyboardButtonData("🚪 Log out", CallbackLogout),
 		),
 	)
 }
@@ -78,20 +78,17 @@ func MainMenu() tgbotapi.InlineKeyboardMarkup {
 func Category() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Sport", CallbackCategoryPrefix+"SPORT"),
-			tgbotapi.NewInlineKeyboardButtonData("Music", CallbackCategoryPrefix+"MUSIC"),
-			tgbotapi.NewInlineKeyboardButtonData("Tech", CallbackCategoryPrefix+"TECH"),
+			tgbotapi.NewInlineKeyboardButtonData("⚽ Sport", CallbackCategoryPrefix+"SPORT"),
+			tgbotapi.NewInlineKeyboardButtonData("🎵 Music", CallbackCategoryPrefix+"MUSIC"),
+			tgbotapi.NewInlineKeyboardButtonData("💻 Tech", CallbackCategoryPrefix+"TECH"),
 		),
 	)
 }
 
-// Waiting offers only a Cancel button, shown while queued for a match.
-// There is no server-side "leave queue" (docs/client/gap-analysis.md
-// G-13) — Cancel only stops the bot from acting on this chat's queue
-// attempt locally; see internal/core/matchmaking.Manager.Cancel.
+// Waiting offers cancellation while queued. Closing the socket clears backend membership.
 func Waiting() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Cancel", CallbackCancel)),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("❌ Cancel", CallbackCancel)),
 	)
 }
 
@@ -102,10 +99,17 @@ func Waiting() tgbotapi.InlineKeyboardMarkup {
 // by internal/core/game.Manager.SubmitAnswer instead of being silently
 // misapplied to whatever question is active now.
 func Answer(questionID string, choices []string) tgbotapi.InlineKeyboardMarkup {
-	row := make([]tgbotapi.InlineKeyboardButton, len(choices))
+	rows := make([][]tgbotapi.InlineKeyboardButton, len(choices))
 	for i, choice := range choices {
 		data := fmt.Sprintf("%s%s|%d", CallbackAnswerPrefix, questionID, i)
-		row[i] = tgbotapi.NewInlineKeyboardButtonData(choice, data)
+		rows[i] = tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(choice, data))
 	}
-	return tgbotapi.NewInlineKeyboardMarkup(row)
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
+// Results offers a clear way to start another game after the final score.
+func Results() tgbotapi.InlineKeyboardMarkup {
+	kb := MainMenu()
+	kb.InlineKeyboard[0][0].Text = "🔄 Play again"
+	return kb
 }

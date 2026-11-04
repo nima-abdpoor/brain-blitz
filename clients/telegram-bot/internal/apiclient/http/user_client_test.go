@@ -140,7 +140,7 @@ func TestUserClient_Login_TransportFailure(t *testing.T) {
 }
 
 func TestUserClient_Profile_Success(t *testing.T) {
-	server := jsonServer(t, http.StatusOK, `{"id":"123","username":"alice@example.com","displayName":"alice","role":"user","createdAt":1719999999000,"updatedAt":1719999999000}`)
+	server := jsonServer(t, http.StatusOK, `{"id":"123","username":"alice@example.com","displayName":"alice","role":"user","createdAt":1719999999000,"updatedAt":1719999999000,"statistics":{"gamesPlayed":2,"totalPoints":94,"rank":1,"rankedPlayers":2}}`)
 	defer server.Close()
 
 	result, err := newUserClient(server.URL).Profile(context.Background(), "at")
@@ -149,6 +149,9 @@ func TestUserClient_Profile_Success(t *testing.T) {
 	}
 	if result.Username != "alice@example.com" || result.DisplayName != "alice" || result.Role != "user" {
 		t.Errorf("Profile result = %+v, want the server's fields", result)
+	}
+	if result.Statistics == nil || result.Statistics.GamesPlayed != 2 || result.Statistics.TotalPoints != 94 || result.Statistics.Rank != 1 {
+		t.Errorf("Profile statistics = %+v, want backend statistics", result.Statistics)
 	}
 	wantCreatedAt := time.UnixMilli(1719999999000).UTC()
 	if !result.CreatedAt.Equal(wantCreatedAt) {

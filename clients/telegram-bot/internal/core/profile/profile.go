@@ -27,7 +27,24 @@ type UserAPI interface {
 // §2). There is deliberately no field for anything editable — the backend
 // has no profile-edit endpoint (docs/client/gap-analysis.md G-19), so this
 // is read-only by construction, not just by convention.
+type Statistics struct {
+	GamesPlayed      int64   `json:"gamesPlayed"`
+	Wins             int64   `json:"wins"`
+	Losses           int64   `json:"losses"`
+	Draws            int64   `json:"draws"`
+	TotalPoints      int64   `json:"totalPoints"`
+	BestScore        int64   `json:"bestScore"`
+	AnswersSubmitted int64   `json:"answersSubmitted"`
+	CorrectAnswers   int64   `json:"correctAnswers"`
+	WinRate          float64 `json:"winRate"`
+	AveragePoints    float64 `json:"averagePoints"`
+	Accuracy         float64 `json:"accuracy"`
+	Rank             int64   `json:"rank"`
+	RankedPlayers    int64   `json:"rankedPlayers"`
+}
+
 type Profile struct {
+	Statistics  *Statistics
 	Username    string
 	DisplayName string
 	Role        string

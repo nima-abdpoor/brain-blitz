@@ -45,8 +45,9 @@ type Question struct {
 
 // PlayerScore is one player's standing on the leaderboard.
 type PlayerScore struct {
-	PlayerID string
-	Points   int
+	DisplayName string
+	PlayerID    string
+	Points      int
 }
 
 // Leaderboard is this package's domain view of a leaderboard push.
@@ -88,8 +89,11 @@ type chatGame struct {
 	gameID string
 	conn   matchmaking.Connection
 
-	questions    []Question
-	currentIndex int
+	serverPaced    bool
+	roundNumber    int
+	totalQuestions int
+	questions      []Question
+	currentIndex   int
 	// answeredQuestionID is the ID of the question this chat has already
 	// submitted an answer for — guards against a duplicate button tap
 	// re-submitting for the same question (see Manager.SubmitAnswer).
@@ -195,9 +199,9 @@ func (m *Manager) Disconnected(chatID int64) {
 		return
 	}
 	delete(m.chats, chatID)
+	cg.stopTimers()
 	m.mu.Unlock()
 
-	cg.stopTimers()
 	m.notifier.NotifyDisconnected(chatID)
 }
 
@@ -251,6 +255,25 @@ func (m *Manager) handleEvent(chatID int64, event ws.Event) {
 }
 
 func (m *Manager) handleQuestionsPublished(chatID int64, cg *chatGame, event ws.Event) {
+	meta, decodeErr := event.QuestionsPublished()
+	if decodeErr != nil {
+		return
+	}
+	if meta.RoundNumber > 0 {
+		m.mu.Lock()
+		if meta.RoundNumber <= cg.roundNumber {
+			m.mu.Unlock()
+			return
+		}
+		cg.serverPaced = true
+		cg.roundNumber = meta.RoundNumber
+		cg.totalQuestions = meta.TotalQuestions
+		if cg.state == StateAnswering {
+			cg.state = StateReadyPending
+			cg.stopTimers()
+		}
+		m.mu.Unlock()
+	}
 	if !m.apply(chatID, cg, EventQuestionsPublished) {
 		return
 	}
@@ -289,6 +312,10 @@ func (m *Manager) handleQuestionsPublished(chatID int64, cg *chatGame, event ws.
 // automatically instead of stalling the game client-side.
 func (m *Manager) presentCurrentQuestion(chatID int64, cg *chatGame) {
 	m.mu.Lock()
+	if m.chats[chatID] != cg || cg.state != StateAnswering {
+		m.mu.Unlock()
+		return
+	}
 	if cg.currentIndex >= len(cg.questions) {
 		m.mu.Unlock()
 		// Every question's window has passed with no COMPLETED yet — just
@@ -298,17 +325,33 @@ func (m *Manager) presentCurrentQuestion(chatID int64, cg *chatGame) {
 	}
 	q := cg.questions[cg.currentIndex]
 	idx := cg.currentIndex
+	// The backend opens each answer window at the previous question's
+	// deadline. An early answer does not open the next question early.
+	if idx > 0 {
+		if delay := time.Until(cg.questions[idx-1].Deadline); delay > 0 {
+			cg.questionTimer = time.AfterFunc(delay, func() { m.presentCurrentQuestion(chatID, cg) })
+			m.mu.Unlock()
+			return
+		}
+	}
 	total := len(cg.questions)
 	cg.answeredQuestionID = ""
 	cg.awaitingAccept = false
 	m.mu.Unlock()
 
-	timer := time.AfterFunc(time.Until(q.Deadline), func() { m.handleQuestionTimeout(chatID, cg, q.ID) })
-	m.mu.Lock()
-	cg.questionTimer = timer
-	m.mu.Unlock()
-
+	if cg.serverPaced {
+		idx = cg.roundNumber - 1
+		total = cg.totalQuestions
+	}
 	m.notifier.NotifyQuestion(chatID, q, idx+1, total)
+	if cg.serverPaced {
+		return
+	}
+	m.mu.Lock()
+	if m.chats[chatID] == cg && cg.state == StateAnswering && cg.currentIndex == idx {
+		cg.questionTimer = time.AfterFunc(time.Until(q.Deadline), func() { m.handleQuestionTimeout(chatID, cg, q.ID) })
+	}
+	m.mu.Unlock()
 }
 
 // handleQuestionTimeout advances past questionID's window if the chat is
@@ -344,7 +387,15 @@ func (m *Manager) SubmitAnswer(chatID int64, questionID string, choiceIndex int)
 		m.mu.Unlock()
 		return ErrNoActiveQuestion
 	}
+	if cg.currentIndex > 0 && time.Now().Before(cg.questions[cg.currentIndex-1].Deadline) {
+		m.mu.Unlock()
+		return ErrNoActiveQuestion
+	}
 	current := cg.questions[cg.currentIndex]
+	if !current.Deadline.IsZero() && !time.Now().Before(current.Deadline) {
+		m.mu.Unlock()
+		return ErrQuestionExpired
+	}
 	if current.ID != questionID {
 		m.mu.Unlock()
 		return ErrQuestionExpired
@@ -389,12 +440,18 @@ func (m *Manager) handleAnswerAccepted(chatID int64, cg *chatGame, event ws.Even
 		if cg.questionTimer != nil {
 			cg.questionTimer.Stop()
 		}
-		cg.currentIndex++
+		if !cg.serverPaced {
+			cg.currentIndex++
+		}
 	}
+	serverPaced := cg.serverPaced
 	m.mu.Unlock()
 
 	m.notifier.NotifyLeaderboard(chatID, board)
 
+	if serverPaced {
+		return
+	}
 	if !wasPending {
 		// A late or duplicate accept (e.g. the question already timed out
 		// and this package moved on before the response arrived) — the
@@ -431,16 +488,16 @@ func (m *Manager) finish(chatID int64, cg *chatGame) {
 	if current, ok := m.chats[chatID]; ok && current == cg {
 		delete(m.chats, chatID)
 	}
+	cg.stopTimers()
 	m.mu.Unlock()
 
-	cg.stopTimers()
 	m.detacher.Detach(chatID)
 }
 
 func toLeaderboard(meta ws.LeaderboardMetaData) Leaderboard {
 	scores := make([]PlayerScore, len(meta.PlayerPoint))
 	for i, p := range meta.PlayerPoint {
-		scores[i] = PlayerScore{PlayerID: p.PlayerID, Points: p.Point}
+		scores[i] = PlayerScore{PlayerID: p.PlayerID, Points: p.Point, DisplayName: p.DisplayName}
 	}
 	return Leaderboard{Scores: scores}
 }
