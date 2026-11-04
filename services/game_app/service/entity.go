@@ -78,6 +78,8 @@ func MapToGameStatus(status string) GameStatus {
 }
 
 type GameQuestions struct {
+	RoundBased           bool       `json:"roundBased"`
+	Completed            bool       `json:"completed"`
 	Questions            []Question `json:"questions"`
 	Players              []uint64   `json:"players"`
 	CurrentQuestionIndex int        `bson:"currentQuestionIndex"`

@@ -23,7 +23,8 @@ func NewTaskWorker(logger logger.Logger, service Service, processor taskqueue.Ta
 func (tw TaskWorker) Process() {
 	op := ""
 	err := tw.TaskProcessor.Process(context.Background(), map[string]taskqueue.HandlerFunc{
-		"game:completed": tw.service.ProcessGameCompletion,
+		"game:completed":     tw.service.ProcessGameCompletion,
+		"game:round-timeout": tw.service.ProcessRoundTimeout,
 	})
 	if err != nil {
 		tw.logger.Error(op, "error in processing the task", "error", err.Error())

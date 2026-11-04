@@ -48,7 +48,8 @@ func NewWorkerAsynq(logger logger.Logger, config WorkerConfig) AsynqTaskQueueWor
 	server := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: fmt.Sprintf("%s:%s", config.RedisConfig.Host, config.RedisConfig.Port)},
 		asynq.Config{
-			Concurrency: 10,
+			Concurrency:              10,
+			DelayedTaskCheckInterval: 500 * time.Millisecond,
 			Queues: map[string]int{
 				"default":  6,
 				"critical": 3,

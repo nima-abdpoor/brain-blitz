@@ -39,6 +39,7 @@ type ProcessGameMessageRequest struct {
 	GameId          string            `json:"gameId"`
 	Command         Command           `json:"command"`
 	Category        string            `json:"category"`
+	DisplayName     string            `json:"displayName,omitempty"`
 	NumberOfPlayers int               `json:"players"`
 	GameAnswer      ProcessGameAnswer `json:"answer"`
 }
@@ -57,9 +58,11 @@ type ProcessGameMessageResponse struct {
 }
 
 type ProcessGameMetaDataResponse struct {
-	GameId    string                 `json:"gameId"`
-	Questions []ProcessGameQuestion  `json:"questions"`
-	Answer    ProcessGameLeaderBoard `json:"leaderBoard"`
+	RoundNumber    int                    `json:"roundNumber,omitempty"`
+	TotalQuestions int                    `json:"totalQuestions,omitempty"`
+	GameId         string                 `json:"gameId"`
+	Questions      []ProcessGameQuestion  `json:"questions"`
+	Answer         ProcessGameLeaderBoard `json:"leaderBoard"`
 }
 
 type ProcessGameLeaderBoard struct {
@@ -68,9 +71,10 @@ type ProcessGameLeaderBoard struct {
 }
 
 type ProcessGamePlayerPoint struct {
-	PlayerId string                    `json:"playerId"`
-	Point    int                       `json:"point"`
-	Answers  []ProcessGameAnswerResult `json:"answers"`
+	DisplayName string                    `json:"displayName,omitempty"`
+	PlayerId    string                    `json:"playerId"`
+	Point       int                       `json:"point"`
+	Answers     []ProcessGameAnswerResult `json:"answers"`
 }
 
 type ProcessGameAnswerResult struct {
