@@ -87,7 +87,7 @@ func (repo UserRepository) GetUser(ctx context.Context, username string) (servic
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return result, fmt.Errorf("result with username %s not found", username)
+			return result, fmt.Errorf("result with username %s not found: %w", username, sql.ErrNoRows)
 		}
 		return result, fmt.Errorf("error retrieving user with username: %s, error: %v", username, err)
 	}

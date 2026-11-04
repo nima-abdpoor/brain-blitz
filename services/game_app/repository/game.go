@@ -13,6 +13,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc/codes"
 	"net/http"
 	"sort"
@@ -59,7 +60,7 @@ func (m GameRepository) CreateGame(ctx context.Context, game service.Game) (stri
 	const op = "game.CreateGame"
 	questions, err := m.GetQuestionsByMatchId(ctx, game.MatchId)
 	if err != nil {
-		m.Logger.Error(op, "failed to get questions by matchId", err.Error())
+		m.Logger.Debug(op, "questions not delivered yet", "error", err.Error())
 	} else {
 		game.Question = &questions.Questions
 	}
@@ -72,7 +73,14 @@ func (m GameRepository) CreateGame(ctx context.Context, game service.Game) (stri
 		}, m.Logger)
 	} else {
 		//todo check the possibility of conversion.
-		return result.InsertedID.(primitive.ObjectID).Hex(), nil
+		gameID := result.InsertedID.(primitive.ObjectID).Hex()
+		cached, cacheErr := m.GetQuestionsByMatchId(ctx, game.MatchId)
+		if cacheErr == nil && len(cached.Questions) > 0 {
+			if err := m.SaveQuestionsByMatchId(ctx, game.MatchId, cached.Questions); err != nil {
+				return "", err
+			}
+		}
+		return gameID, nil
 	}
 }
 
@@ -92,21 +100,6 @@ func (m GameRepository) GetGame(ctx context.Context, gameId string) (service.Gam
 		m.Logger.Error(op, fmt.Sprintf("error in getting game record of %s", filter), "error", err.Error())
 		return game, err
 	}
-
-	go func() {
-		cacheCtx, cancel := context.WithTimeout(context.Background(), m.Config.GameStatusTimeOut)
-		defer cancel()
-
-		gs := service.GameQuestions{
-			Questions:            *game.Question,
-			Players:              game.Players,
-			CurrentQuestionIndex: 0,
-		}
-		err := m.saveQuestionByGameId(cacheCtx, gameId, gs)
-		if err != nil {
-			m.Logger.Error(op, fmt.Sprintf("error in caching game questions %s", gameId), "error", err.Error())
-		}
-	}()
 
 	return game, nil
 }
@@ -141,7 +134,7 @@ func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId stri
 		}
 	} else {
 		if updateResult.MatchedCount == 0 {
-			m.Logger.Error(op, "message", fmt.Sprintf("no game found with matchId %s", matchId))
+			m.Logger.Debug(op, "questions arrived before game creation", "matchId", matchId)
 			redisErr := m.redisDB.Set(ctx, QuestionsPrefix+matchId, res, m.Config.QuestionsTimeOut)
 			if redisErr != nil {
 				m.Logger.Error(op, "save questions by matchId in redis", err.Error())
@@ -154,7 +147,10 @@ func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId stri
 		Players []uint64           `bson:"players"`
 	}
 	if err := coll.FindOne(ctx, filter).Decode(&selectResult); err != nil {
-		m.Logger.Error(op, fmt.Sprintf("error in getting game record of %s", filter), "error", err.Error())
+		if errors.Is(err, mongodriver.ErrNoDocuments) {
+			return nil
+		}
+		return err
 	}
 
 	gQ.Players = selectResult.Players
@@ -202,6 +198,9 @@ func (m GameRepository) UpsertUserStatus(ctx context.Context, userId uint64, sta
 
 func (m GameRepository) GetUserStatus(ctx context.Context, userId uint64) (service.GameStatus, error) {
 	value, err := m.redisDB.Get(ctx, GameUserStatusPrefix+strconv.FormatUint(userId, 10))
+	if errors.Is(err, goredis.Nil) {
+		return service.GameStatusUnknown, nil
+	}
 	if err != nil {
 		return service.GameStatusUnknown, err
 	}
@@ -325,6 +324,12 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 		return err
 	}
 
+	if gameQuestion.RoundBased && (gameQuestion.Completed || gameQuestion.CurrentQuestionIndex >= len(gameQuestion.Questions) || gameQuestion.Questions[gameQuestion.CurrentQuestionIndex].Id != playerAnswer.QuestionIDs) {
+		return fmt.Errorf("question is no longer active")
+	}
+	if gameQuestion.RoundBased && !time.Now().Before(gameQuestion.Questions[gameQuestion.CurrentQuestionIndex].ValidAnswerTime) {
+		return fmt.Errorf("question deadline has passed")
+	}
 	questionIdToTTL := make(map[string]time.Time)
 	questionIdFound := false
 	for _, question := range gameQuestion.Questions {
@@ -376,14 +381,9 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 	storedPlayerAnswerFilter := bson.M{"game_id": gameId, "player_id": playerAnswer.PlayerID, "question_id": playerAnswer.QuestionIDs}
 	var storedPlayerAnswer service.PlayerAnswer
 	err = coll.FindOne(context.Background(), storedPlayerAnswerFilter).Decode(&storedPlayerAnswer)
-	if err != nil {
-		m.Logger.Error(op, "get error finding playerId with questionId",
-			"gameId", gameId,
-			"playerId", playerAnswer.PlayerID,
-			"questionId", playerAnswer.QuestionIDs,
-			"error", err.Error())
+	if err != nil && !errors.Is(err, mongodriver.ErrNoDocuments) {
+		return fmt.Errorf("checking duplicate answer: %w", err)
 	}
-
 	if storedPlayerAnswer.PlayerID == playerAnswer.PlayerID &&
 		storedPlayerAnswer.GameId == playerAnswer.GameId &&
 		storedPlayerAnswer.QuestionIDs == playerAnswer.QuestionIDs {
@@ -447,6 +447,7 @@ func (m GameRepository) GetLeaderBoard(ctx context.Context, gameId string) (serv
 			player.Point += ans.Point
 
 			player.QuestionCorrectness = append(player.QuestionCorrectness, service.QuestionCorrectness{
+				QuestionId:    ans.QuestionIDs,
 				PlayerChoice:  ans.PlayerChoice,
 				CorrectChoice: ans.CorrectChoice,
 				IsCorrect:     isCorrect,
@@ -456,6 +457,7 @@ func (m GameRepository) GetLeaderBoard(ctx context.Context, gameId string) (serv
 				PlayerId: ans.PlayerID,
 				Point:    ans.Point,
 				QuestionCorrectness: []service.QuestionCorrectness{{
+					QuestionId:    ans.QuestionIDs,
 					PlayerChoice:  ans.PlayerChoice,
 					CorrectChoice: ans.CorrectChoice,
 					IsCorrect:     isCorrect,

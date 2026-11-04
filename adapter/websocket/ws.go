@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"time"
 )
 
 type Config struct{}
@@ -39,5 +40,9 @@ func (websocket WS) ReadClientData(rw io.ReadWriter) (string, OpCode, error) {
 }
 
 func (websocket WS) WriteServerData(rw io.Writer, code OpCode, message string) error {
+	if conn, ok := rw.(net.Conn); ok {
+		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		defer conn.SetWriteDeadline(time.Time{})
+	}
 	return wsutil.WriteServerMessage(rw, ws.OpCode(code), []byte(message))
 }

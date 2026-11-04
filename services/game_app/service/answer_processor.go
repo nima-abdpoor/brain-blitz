@@ -20,7 +20,11 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 
 	var questionsResponse []ProcessGameQuestion
 
-	for _, questions := range gameQuestions.Questions {
+	questionsToSend := gameQuestions.Questions
+	if gameQuestions.RoundBased {
+		questionsToSend = gameQuestions.Questions[gameQuestions.CurrentQuestionIndex : gameQuestions.CurrentQuestionIndex+1]
+	}
+	for _, questions := range questionsToSend {
 		questionsResponse = append(questionsResponse, ProcessGameQuestion{
 			Id:         questions.Id,
 			Content:    questions.Content,
@@ -35,8 +39,15 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 		Event:   NewQuestion,
 		Message: "new question",
 		MetaData: ProcessGameMetaDataResponse{
-			GameId:    gameId,
-			Questions: questionsResponse,
+			RoundNumber: func() int {
+				if gameQuestions.RoundBased {
+					return gameQuestions.CurrentQuestionIndex + 1
+				}
+				return 0
+			}(),
+			TotalQuestions: len(gameQuestions.Questions),
+			GameId:         gameId,
+			Questions:      questionsResponse,
 		},
 	}
 
@@ -48,6 +59,9 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 		svc.mu.RLock()
 		conn := svc.connections[playerId]
 		svc.mu.RUnlock()
+		if conn == nil {
+			continue
+		}
 		err = svc.webSocket.WriteServerData(conn, websocket.OpText, string(jsonQuestions))
 		if err != nil {
 			svc.logger.Error(

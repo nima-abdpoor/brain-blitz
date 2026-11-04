@@ -1,19 +1,21 @@
 package service
 
 import (
-	taskqueue "BrainBlitz.com/game/adapter/task-queue"
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/contract/event"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"google.golang.org/protobuf/proto"
+	"io"
 	"log/slog"
 	"net"
 	"strconv"
+	"strings"
 )
 
 func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (ProcessGameResponse, error) {
@@ -87,12 +89,16 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 		for {
 			msg, code, err := svc.webSocket.ReadClientData(rw)
 			if err != nil {
-				svc.logger.Error("read failed", "userID", userID, "error", err)
+				if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+					svc.logger.Warn("socket read failed", "userID", userID, "error", err)
+				}
 				break
 			}
 			err = svc.readMessage(ctx, id, conn, code, msg)
 			if err != nil {
-				svc.logger.Error("read failed", "userID", userID, "error", err)
+				if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+					svc.logger.Warn("socket read failed", "userID", userID, "error", err)
+				}
 			}
 		}
 	}(context.Background(), connection, rw, id)
@@ -129,6 +135,17 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				if err != nil {
 					return err
 				}
+				return nil
+			}
+			svc.mu.Lock()
+			name := strings.Join(strings.Fields(req.DisplayName), " ")
+			if len([]rune(name)) > 64 {
+				name = string([]rune(name)[:64])
+			}
+			svc.playerNames[id] = name
+			svc.mu.Unlock()
+			if err := svc.joinQueue(ctx, id, req.Category); err != nil {
+				return err
 			}
 			go svc.saveUsersGameStatus([]uint64{id}, GameStatusInitialized)
 
@@ -177,7 +194,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			// check user if their status is just initialized
 			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
 			if isGameReady {
-				finalTTL, err := svc.repository.SetValidAnswerTimeForQuestions(context.Background(), req.GameId)
+				err := svc.startRounds(ctx, req.GameId)
 				if err != nil {
 					response = ProcessGameMessageResponse{
 						Success: false,
@@ -192,20 +209,9 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 					if err != nil {
 						return err
 					}
+					return nil
 				}
 
-				err = svc.sendQuestionToPlayer(ctx, req.GameId)
-
-				taskId, err := svc.taskPublisher.Publish(context.Background(), "game:completed", struct {
-					GameId string `json:"gameId"`
-				}{
-					GameId: req.GameId,
-				}, taskqueue.MaxRetry(3), taskqueue.ProcessIn(finalTTL))
-				if err != nil {
-					svc.logger.Error(op, "error in publishing task", "error", err.Error())
-				}
-
-				svc.logger.Info(op, "game completion task published", "taskId", taskId, "gameId", req.GameId)
 			}
 		}
 	case CommandGetCategories:
@@ -214,7 +220,10 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 		}
 	case CommandAnswer:
 		{
-			playerResponse, err := svc.savePlayerAnswer(ctx, id, req.GameAnswer)
+			mu := svc.roundMutex(req.GameAnswer.GameId)
+			mu.Lock()
+			defer mu.Unlock()
+			playerResponse, allAnswered, err := svc.acceptRoundAnswer(ctx, id, req.GameAnswer)
 			if err != nil {
 				svc.logger.Error(op, "error in saving answer of a player", slog.String("error", err.Error()))
 				response = ProcessGameMessageResponse{
@@ -237,8 +246,8 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			response.Message = "answer accepted"
 			response.Success = true
 			response.MetaData = ProcessGameMetaDataResponse{
-				GameId: req.GameId,
-				Answer: playerResponse,
+				GameId: req.GameAnswer.GameId,
+				Answer: svc.addPlayerNames(playerResponse),
 			}
 			answerAcceptedJson, err := json.Marshal(response)
 			if err != nil {
@@ -248,6 +257,13 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			err = svc.webSocket.WriteServerData(*conn, code, string(answerAcceptedJson))
 			if err != nil {
 				return err
+			}
+			if allAnswered {
+				q, err := svc.repository.GetQuestionsByGameId(ctx, req.GameAnswer.GameId)
+				if err != nil {
+					return err
+				}
+				return svc.openRound(ctx, req.GameAnswer.GameId, q.CurrentQuestionIndex+1)
 			}
 		}
 	default:

@@ -69,8 +69,21 @@ gRPC after checking credentials. They are not exposed by the gateway.
 
 ## Telegram bot
 
-This repository contains the backend, not a Telegram bot implementation. Run
-your separate bot program as well and configure its backend base URL:
+The `telegram-client` branch includes a bot in `clients/telegram-bot/`. Add
+`BOT_TELEGRAM__BOT_TOKEN=<your BotFather token>` to the private `.env`, then run:
+
+```sh
+docker compose --profile telegram up -d --build bb-telegram-bot
+docker compose --profile tools run --rm --no-deps seed-demo
+docker compose logs --tail 30 bb-telegram-bot
+```
+
+Open the bot in Telegram and send `/start`. Register two players and select the
+same category to play. The bot uses long polling and Redis session storage; it
+does not require exposing the local backend to Telegram users. See
+`clients/telegram-bot/README.md` for the full-game integration test.
+
+If running the bot separately, use the appropriate backend base URL:
 
 - Bot running directly on the same computer: `http://127.0.0.1:8088`.
 - Bot running in a container on the same Compose network: `http://bb-traefik`.
@@ -88,10 +101,9 @@ database ports. Telegram Mini Apps are different: browser clients need a public
 HTTPS frontend and a reachable API. A local-only API will not work from users'
 phones.
 
-The game protocol also uses an authenticated WebSocket at
-`/game-service/api/v1/process-game`. The bot must implement the protocol or
-provide a compatible client; Telegram integration is not added automatically by
-starting the backend. Client verification requires the bot's source code.
+The bot also connects to the authenticated WebSocket at
+`/game-service/api/v1/process-game`. Starting only the default Compose services
+does not start the bot; enable the `telegram` profile as shown above.
 
 ## Run the checks
 

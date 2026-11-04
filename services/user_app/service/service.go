@@ -8,7 +8,10 @@ import (
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/pkg/playerstats"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"google.golang.org/grpc/codes"
 	"net/http"
@@ -23,6 +26,7 @@ type Repository interface {
 }
 
 type Service struct {
+	statistics   StatisticsProvider
 	repository   Repository
 	grpcClient   auth_adapter.TokenClient
 	CacheManager cachemanager.CacheManager
@@ -43,14 +47,14 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 	if !email.IsValid(request.Email) {
 		return SignUpResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidInput, map[string]string{
 			"message": "InvalidUserNameErrMsg",
-			"data":    fmt.Sprint(request),
+			"data":    "credentials omitted",
 		}, s.Logger)
 	}
 
 	if len(request.Password) == 0 {
 		return SignUpResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidLOGIN, map[string]string{
 			"message": "InvalidPasswordErrMsg",
-			"data":    fmt.Sprint(request),
+			"data":    "credentials omitted",
 		}, s.Logger)
 	}
 
@@ -60,7 +64,7 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 	if err != nil {
 		return SignUpResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"message": "BcryptErrorHashingPassword",
-			"data":    fmt.Sprint(request),
+			"data":    "credentials omitted",
 		}, s.Logger)
 	}
 
@@ -78,13 +82,13 @@ func (s Service) SignUp(ctx context.Context, request SignUpRequest) (SignUpRespo
 		if strings.Contains(err.Error(), "duplicate") {
 			return SignUpResponse{}, errApp.New(op, "DUPLICATE_USERNAME", errmsg.DuplicateUsername, http.StatusBadRequest, codes.InvalidArgument, map[string]string{
 				"message": "Error in inserting User",
-				"data":    fmt.Sprint(userDto),
+				"data":    "account details omitted",
 			}, s.Logger)
 		}
 		//todo add to metrics
 		return SignUpResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"message": "Error in inserting User",
-			"data":    fmt.Sprint(userDto),
+			"data":    "account details omitted",
 		}, s.Logger)
 	}
 
@@ -98,20 +102,23 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 	if !email.IsValid(request.Email) {
 		return LoginResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidLOGIN, map[string]string{
 			"message": "invalid Email",
-			"data":    fmt.Sprint(request),
+			"data":    "credentials omitted",
 		}, s.Logger)
 	}
 
 	if len(request.Password) == 0 {
 		return LoginResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidLOGIN, map[string]string{
 			"message": "invalid Password",
-			"data":    fmt.Sprint(request),
+			"data":    "credentials omitted",
 		}, s.Logger)
 	}
 
 	if user, err := s.repository.GetUser(ctx, request.Email); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return LoginResponse{}, errApp.Wrap(op, nil, errApp.ErrInvalidLOGIN, nil, s.Logger)
+		}
 		return LoginResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
-			"data": fmt.Sprint(request),
+			"data": "credentials omitted",
 		}, s.Logger)
 	} else {
 		result := utils.CheckPasswordHash(request.Password, user.HashedPassword)
@@ -152,7 +159,7 @@ func (s Service) Login(ctx context.Context, request LoginRequest) (LoginResponse
 			}, nil
 		} else {
 			return LoginResponse{}, errApp.Wrap(op, err, errApp.ErrInvalidLOGIN, map[string]string{
-				"request": fmt.Sprint(request),
+				"request": "credentials omitted",
 			}, s.Logger)
 		}
 	}
@@ -171,7 +178,17 @@ func (s Service) Profile(ctx context.Context, request ProfileRequest) (ProfileRe
 		}
 		return ProfileResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, nil, s.Logger)
 	} else {
+		var stats *playerstats.Statistics
+		if s.statistics != nil {
+			result, statsErr := s.statistics.PlayerStatistics(ctx, request.ID)
+			if statsErr != nil {
+				s.Logger.Warn("profile statistics unavailable", "error", statsErr.Error())
+			} else {
+				stats = &result
+			}
+		}
 		return ProfileResponse{
+			Statistics:  stats,
 			ID:          strconv.FormatInt(user.ID, 10),
 			Username:    user.Username,
 			DisplayName: user.DisplayName,

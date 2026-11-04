@@ -44,3 +44,5 @@ logger:
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
+
+game_service_url: http://127.0.0.1:5003

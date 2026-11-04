@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	GameServiceURL       string            `koanf:"game_service_url"`
 	HTTPServer           httpserver.Config `koanf:"http_server"`
 	GRPCServer           grpc.Config       `koanf:"grpc_server"`
 	GrpcClient           grpc.Client       `koanf:"grpc_client"`

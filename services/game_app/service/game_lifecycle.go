@@ -2,8 +2,39 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"time"
 )
+
+// Matching and question delivery arrive on separate Kafka consumers. A client
+// may send READY before the question consumer has populated the game cache.
+func (svc Service) prepareGameQuestions(ctx context.Context, gameID string) (time.Duration, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		if err := ctx.Err(); err != nil {
+			return 0, fmt.Errorf("waiting for game questions: %w", err)
+		}
+		questions, err := svc.repository.GetQuestionsByGameId(ctx, gameID)
+		if err == nil && len(questions.Questions) > 0 {
+			if questions.Completed {
+				return 0, fmt.Errorf("game already completed")
+			}
+			if questions.RoundBased {
+				return time.Until(questions.Questions[questions.CurrentQuestionIndex].ValidAnswerTime), nil
+			}
+			return svc.repository.SetValidAnswerTimeForQuestions(ctx, gameID)
+		}
+		select {
+		case <-ctx.Done():
+			return 0, fmt.Errorf("waiting for game questions: %w", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
 
 func (svc Service) saveUsersGameStatus(userId []uint64, status GameStatus) {
 	const op = "game.saveUsersGameStatus"

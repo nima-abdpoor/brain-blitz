@@ -242,23 +242,25 @@ func run() error {
 			return err
 		}
 	}
-	for _, p := range players {
-		msg, err := p.until("QUESTIONS_PUBLISHED")
-		if err != nil {
-			return err
-		}
-		if len(msg.MetaData.Questions) != 10 {
-			return fmt.Errorf("expected 10 seeded questions, got %d; run seed-demo first", len(msg.MetaData.Questions))
-		}
-		q := msg.MetaData.Questions[0]
-		if len(q.Choices) < 2 {
-			return fmt.Errorf("question has no choices")
-		}
-		if err := p.send(map[string]any{"command": "ANSWER", "gameId": gameID, "answer": map[string]string{"gameId": gameID, "questionId": q.ID, "choice": q.Choices[1]}}); err != nil {
-			return err
-		}
-		if _, err := p.until("ANSWER_ACCEPTED"); err != nil {
-			return err
+	for round := 0; round < 10; round++ {
+		for _, p := range players {
+			msg, err := p.until("QUESTIONS_PUBLISHED")
+			if err != nil {
+				return err
+			}
+			if len(msg.MetaData.Questions) != 1 {
+				return fmt.Errorf("expected one active question, got %d; run seed-demo first", len(msg.MetaData.Questions))
+			}
+			q := msg.MetaData.Questions[0]
+			if len(q.Choices) < 2 {
+				return fmt.Errorf("question has no choices")
+			}
+			if err := p.send(map[string]any{"command": "ANSWER", "gameId": gameID, "answer": map[string]string{"gameId": gameID, "questionId": q.ID, "choice": q.Choices[1]}}); err != nil {
+				return err
+			}
+			if _, err := p.until("ANSWER_ACCEPTED"); err != nil {
+				return err
+			}
 		}
 	}
 	fmt.Println("PASS: questions, readiness, and answer storage")

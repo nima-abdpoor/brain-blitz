@@ -16,6 +16,9 @@ func (svc Service) ProcessGameCompletion(ctx context.Context, payload map[string
 	if err != nil {
 		return err
 	}
+	if game.Status == GameStatusFinished {
+		return nil
+	}
 	leaderboard, err := svc.repository.GetLeaderBoard(ctx, gameID)
 	if err != nil {
 		return err
@@ -36,7 +39,7 @@ func (svc Service) ProcessGameCompletion(ctx context.Context, payload map[string
 		Success: true, Event: EventCompleted, Message: "game completed",
 		MetaData: ProcessGameMetaDataResponse{
 			GameId: gameID,
-			Answer: ProcessGameLeaderBoard{GameId: gameID, PlayerPoint: points},
+			Answer: svc.addPlayerNames(ProcessGameLeaderBoard{GameId: gameID, PlayerPoint: points}),
 		},
 	})
 	if err != nil {
@@ -63,5 +66,6 @@ func (svc Service) ProcessGameCompletion(ctx context.Context, payload map[string
 		}
 		svc.closeConnection(playerID, conn)
 	}
+	svc.logger.Info("game completed", "gameId", gameID, "players", len(game.Players))
 	return nil
 }

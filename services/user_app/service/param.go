@@ -1,5 +1,7 @@
 package service
 
+import "BrainBlitz.com/game/pkg/playerstats"
+
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
@@ -25,10 +27,11 @@ type ProfileRequest struct {
 }
 
 type ProfileResponse struct {
-	ID          string `json:"id"`
-	Username    string `json:"username"`
-	DisplayName string `json:"displayName"`
-	Role        string `json:"role"`
-	CreatedAt   uint64 `json:"createdAt"`
-	UpdatedAt   uint64 `json:"updatedAt"`
+	Statistics  *playerstats.Statistics `json:"statistics"`
+	ID          string                  `json:"id"`
+	Username    string                  `json:"username"`
+	DisplayName string                  `json:"displayName"`
+	Role        string                  `json:"role"`
+	CreatedAt   uint64                  `json:"createdAt"`
+	UpdatedAt   uint64                  `json:"updatedAt"`
 }
