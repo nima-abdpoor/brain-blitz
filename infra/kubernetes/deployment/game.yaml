@@ -29,6 +29,8 @@ spec:
           ports:
             - containerPort: 5003
           env:
+            - name: GAME_question_service_url
+              value: http://question-service:5004
             - name: GAME_mongo__host
               valueFrom:
                 configMapKeyRef:
