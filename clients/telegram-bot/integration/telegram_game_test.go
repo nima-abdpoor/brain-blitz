@@ -101,7 +101,7 @@ func TestIntegration_TelegramConversationAndFullGame(t *testing.T) {
 		t.Skip("set BOT_INTEGRATION_FULL_GAME=1 against an isolated backend with compose.smoke.yaml and seed-demo")
 	}
 	requireBackend(t, userServiceURL())
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 	defer cancel()
 
 	log := discardLogger()
@@ -115,6 +115,7 @@ func TestIntegration_TelegramConversationAndFullGame(t *testing.T) {
 	matchMgr := matchmaking.NewManager(dialer, telegram.NewMatchmakingNotifier(recorder, log), sessions, nil)
 	gameMgr := game.NewManager(telegram.NewGameNotifier(recorder, log, sessions), matchMgr, log)
 	matchMgr.SetGameHandler(gameMgr)
+	matchMgr.SetTimeOptionsAPI(apihttp.NewTimeOptionsClient(apihttp.NewClient(strings.TrimSuffix(userServiceURL(), "/user-service")+"/question-service", 10*time.Second, log)))
 	handlers := commands.NewHandlers(authSvc, profile.NewService(userClient, sessions), matchMgr, gameMgr, conversation.NewMemoryStore())
 	bot := telegram.New(recorder, log)
 	bot.RegisterCommand("start", handlers.Start)
@@ -129,6 +130,9 @@ func TestIntegration_TelegramConversationAndFullGame(t *testing.T) {
 	for _, category := range matchmaking.Categories {
 		bot.RegisterCallback(keyboards.CallbackCategoryPrefix+category, middleware.RequireAuthCallback(authSvc, handlers.CategoryCallback))
 	}
+	bot.RegisterCallbackPrefix(commands.CallbackTimePrefix, func(ctx context.Context, cb *tgbotapi.CallbackQuery, _ string) (tgbotapi.Chattable, error) {
+		return middleware.RequireAuthCallback(authSvc, handlers.TimeOptionCallback)(ctx, cb)
+	})
 	bot.RegisterCallbackPrefix(keyboards.CallbackAnswerPrefix, handlers.AnswerCallback)
 	bot.SetTextHandler(handlers.HandleText)
 	updates := make(chan tgbotapi.Update, 64)
@@ -185,10 +189,17 @@ func TestIntegration_TelegramConversationAndFullGame(t *testing.T) {
 	t.Log("PASS: Telegram registration, protected profile, logout, login, and play menu")
 	for _, chatID := range []int64{chatA, chatB} {
 		h.callback(chatID, keyboards.CallbackCategoryPrefix+"TECH")
+		h.expect(chatID, "How much time")
+		optionID := os.Getenv("BOT_INTEGRATION_TIME_OPTION")
+		if optionID == "" {
+			optionID = "10-seconds"
+		}
+		h.callback(chatID, commands.CallbackTimePrefix+"TECH|"+optionID)
 		h.expect(chatID, "Waiting for opponent")
 	}
 
 	gameplayStarted := time.Now()
+	recaps := map[int64]int{}
 	questions := map[int64]int{}
 	leaderboards := map[int64]int{}
 	completed := map[int64]bool{}
@@ -201,6 +212,17 @@ func TestIntegration_TelegramConversationAndFullGame(t *testing.T) {
 				t.Logf("chat %d matched", chatID)
 			case strings.HasPrefix(msg.Text, "❓ Question"):
 				questions[chatID]++
+				var number, total, seconds int
+				if _, err := fmt.Sscanf(msg.Text, "❓ Question %d/%d (%ds to answer):", &number, &total, &seconds); err != nil {
+					t.Fatalf("invalid question time: %q", msg.Text)
+				}
+				expected := 10
+				if os.Getenv("BOT_INTEGRATION_TIME_OPTION") == "1-minute" {
+					expected = 60
+				}
+				if seconds > expected || seconds < expected-2 {
+					t.Fatalf("question timer=%d want approximately %d", seconds, expected)
+				}
 				keyboard, ok := msg.ReplyMarkup.(tgbotapi.InlineKeyboardMarkup)
 				var buttons []tgbotapi.InlineKeyboardButton
 				for _, row := range keyboard.InlineKeyboard {
@@ -216,6 +238,14 @@ func TestIntegration_TelegramConversationAndFullGame(t *testing.T) {
 				}
 				if chatID != chatB || os.Getenv("BOT_INTEGRATION_SILENT_PLAYER") != "1" {
 					h.callback(chatID, *buttons[choice].CallbackData)
+				}
+			case strings.HasPrefix(msg.Text, "📝 Question"):
+				recaps[chatID]++
+				if recaps[chatID] != questions[chatID] || !strings.Contains(msg.Text, "Your answer:") || !strings.Contains(msg.Text, "Correct answer:") {
+					t.Fatalf("invalid recap: %q", msg.Text)
+				}
+				if chatID == chatB && os.Getenv("BOT_INTEGRATION_SILENT_PLAYER") == "1" && !strings.Contains(msg.Text, "No answer submitted") {
+					t.Fatalf("silent player recap: %q", msg.Text)
 				}
 			case strings.HasPrefix(msg.Text, "📊 Leaderboard"):
 				leaderboards[chatID]++
@@ -260,6 +290,9 @@ func TestIntegration_TelegramConversationAndFullGame(t *testing.T) {
 		wantUpdates := 10
 		if chatID == chatB && os.Getenv("BOT_INTEGRATION_SILENT_PLAYER") == "1" {
 			wantUpdates = 0
+		}
+		if recaps[chatID] != 10 {
+			t.Errorf("chat %d received %d recaps, want 10", chatID, recaps[chatID])
 		}
 		if questions[chatID] != 10 || leaderboards[chatID] != wantUpdates {
 			t.Errorf("chat %d received %d questions and %d score updates; want 10 each", chatID, questions[chatID], leaderboards[chatID])

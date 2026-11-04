@@ -153,3 +153,40 @@ All changes are local to telegram-client and have not been committed or pushed.
 - Telegram initially timed out during deployment. A subsequent one-shot log
   check confirmed successful authentication and update-loop startup at
   13:44:14 UTC. Continuous log monitoring remains stopped.
+
+## Configurable timers and round answer reveals — 2026-11-04
+
+- Implemented database-backed timer options, seeded as `10-seconds` (10 s)
+  and `1-minute` (60 s). Verified the actual migration in PostgreSQL and
+  reran the seed inside a rollback transaction after an admin-style label
+  edit: no duplicate rows and the edit was preserved.
+- Added authenticated option listing and admin-only list/upsert endpoints.
+  Gateway integration verified unauthenticated listing returns 401 and
+  ordinary users cannot list or update admin options (403).
+- Added category → timer → matchmaking bot setup. Queue presence, protobuf
+  events, Mongo game documents, and Redis rounds retain the selected option
+  and duration. Unit tests verify separate time pools, delayed stale joins,
+  disabled/unknown option rejection, and 10/60-second deadlines.
+- Added per-player `ROUND_CLOSED` recaps before the next question and final
+  results. Backend regression verifies acknowledgements contain no solutions,
+  recap ordering, correct/incorrect choices, and timeout recaps. Bot tests
+  cover rendering, duplicate/stale event rejection, and timer selection.
+- Race tests passed for affected backend packages and the full bot module;
+  backend and bot `go vet ./...` passed. Images built successfully.
+- Isolated real-backend integration results (Telegram transport simulated):
+  full integration suite with the 10-second option: 24.344 s; full game itself:
+  15.01 s. Each player received ten questions and ten recaps, with scoring,
+  personalized outcomes, and reconnect verified.
+- Full game with the 1-minute option: 20.08 s; combined with API authorization
+  verification: 23.005 s. Both-answer rounds still advanced immediately.
+- Silent-player full game using the actual 10-second option: 118.85 s
+  (119.866 s including test overhead). All ten deadlines advanced, the silent
+  player received ten “No answer submitted” recaps, and completion/reconnect
+  passed. No timer override was used for the selected option.
+- Isolated stack shut down after validation, retaining its test volumes.
+  New behavior still needs a real Telegram mobile playthrough.
+- Local deployment completed: question, match, and game services healthy;
+  main question database contains the enabled 10-second and 60-second seed
+  options. Deployed gateway timer/access-control integration passed (2.779 s).
+  Bot authenticated with Telegram and started listening at 14:24:55 UTC.
+  Continuous log following was not started.
