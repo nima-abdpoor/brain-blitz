@@ -215,6 +215,9 @@ services:
       traefik.enable: "true"
       traefik.http.routers.question-health.rule: Path(`/question-service/api/v1/question/health-check`)
       traefik.http.routers.question-health.middlewares: question-stripprefix
+      traefik.http.routers.question.rule: PathPrefix(`/question-service/api/v1/question/`)
+      traefik.http.routers.question.middlewares: question-stripprefix,auth
+      traefik.http.routers.question.service: question-health
       traefik.http.middlewares.question-stripprefix.stripprefix.prefixes: /question-service
       traefik.http.services.question-health.loadbalancer.server.port: "5004"
 
@@ -248,6 +251,7 @@ services:
       bb-question-service: {condition: service_healthy}
       bb-match-service: {condition: service_healthy}
     environment:
+      GAME_question_service_url: http://bb-question-service:5004
       GAME_redis__host: bb-redis
       GAME_task_publisher__redis_config__host: bb-redis
       GAME_task_worker__redis_config__host: bb-redis
@@ -281,6 +285,7 @@ services:
       BOT_TELEGRAM__BOT_TOKEN: ${BOT_TELEGRAM__BOT_TOKEN:-}
       HTTPS_PROXY: ${BOT_HTTPS_PROXY:-}
       NO_PROXY: bb-traefik,bb-redis,localhost,127.0.0.1
+      BOT_BACKEND__QUESTION_SERVICE_URL: http://bb-traefik/question-service
       BOT_BACKEND__USER_SERVICE_URL: http://bb-traefik/user-service
       BOT_BACKEND__MATCH_SERVICE_URL: http://bb-traefik/match-service
       BOT_BACKEND__GAME_SERVICE_WS_URL: ws://bb-traefik/game-service/api/v1/process-game

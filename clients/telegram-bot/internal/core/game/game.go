@@ -85,9 +85,10 @@ type Detacher interface {
 
 // chatGame is one chat's in-progress (post-match) game.
 type chatGame struct {
-	state  State
-	gameID string
-	conn   matchmaking.Connection
+	lastRecapRound int
+	state          State
+	gameID         string
+	conn           matchmaking.Connection
 
 	serverPaced    bool
 	roundNumber    int
@@ -243,6 +244,8 @@ func (m *Manager) handleEvent(chatID int64, event ws.Event) {
 	switch event.Event {
 	case ws.EventQuestionsPublished:
 		m.handleQuestionsPublished(chatID, cg, event)
+	case ws.EventRoundClosed:
+		m.handleRoundClosed(chatID, cg, event)
 	case ws.EventAnswerAccepted:
 		m.handleAnswerAccepted(chatID, cg, event)
 	case ws.EventCompleted:

@@ -23,6 +23,7 @@ const (
 const (
 	Error              Event = "ERROR"
 	EventMatchCreated  Event = "MATCH_CREATED"
+	EventRoundClosed   Event = "ROUND_CLOSED"
 	AnswerAccepted     Event = "ANSWER_ACCEPTED"
 	NewQuestion        Event = "QUESTIONS_PUBLISHED"
 	AddedToWaitingList Event = "ADDED_TO_WAITING_LIST"
@@ -35,6 +36,7 @@ type GameInitResponse struct {
 }
 
 type ProcessGameMessageRequest struct {
+	TimeOptionID    string            `json:"timeOptionId,omitempty"`
 	MatchId         string            `json:"matchId"`
 	GameId          string            `json:"gameId"`
 	Command         Command           `json:"command"`
@@ -58,6 +60,7 @@ type ProcessGameMessageResponse struct {
 }
 
 type ProcessGameMetaDataResponse struct {
+	Recap          *RoundRecap            `json:"recap,omitempty"`
 	RoundNumber    int                    `json:"roundNumber,omitempty"`
 	TotalQuestions int                    `json:"totalQuestions,omitempty"`
 	GameId         string                 `json:"gameId"`

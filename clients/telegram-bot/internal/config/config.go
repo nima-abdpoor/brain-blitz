@@ -35,10 +35,11 @@ type Telegram struct {
 // Backend holds the BrainBlitz gateway URLs and HTTP client tuning this
 // process needs to reach the user, match, and game services.
 type Backend struct {
-	UserServiceURL   string        `koanf:"user_service_url"`
-	MatchServiceURL  string        `koanf:"match_service_url"`
-	GameServiceWSURL string        `koanf:"game_service_ws_url"`
-	HTTPTimeout      time.Duration `koanf:"http_timeout"`
+	QuestionServiceURL string        `koanf:"question_service_url"`
+	UserServiceURL     string        `koanf:"user_service_url"`
+	MatchServiceURL    string        `koanf:"match_service_url"`
+	GameServiceWSURL   string        `koanf:"game_service_ws_url"`
+	HTTPTimeout        time.Duration `koanf:"http_timeout"`
 }
 
 // SessionStore selects and configures where per-chat sessions are

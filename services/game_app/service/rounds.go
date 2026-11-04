@@ -25,10 +25,24 @@ func (svc Service) startRounds(ctx context.Context, gameID string) error {
 }
 
 func (svc Service) openRound(ctx context.Context, gameID string, index int) error {
+	var recaps map[uint64]RoundRecap
+	if index > 0 {
+		previous, err := svc.repository.GetQuestionsByGameId(ctx, gameID)
+		if err != nil {
+			return err
+		}
+		if !previous.Completed && previous.CurrentQuestionIndex == index-1 {
+			recaps, err = svc.roundRecaps(ctx, gameID, previous)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	q, err := svc.repository.OpenRound(ctx, gameID, index)
 	if err != nil {
 		return err
 	}
+	svc.sendRoundRecaps(gameID, index, recaps)
 	if q.Completed {
 		return svc.ProcessGameCompletion(ctx, map[string]interface{}{"gameId": gameID})
 	}

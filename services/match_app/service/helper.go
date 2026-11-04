@@ -10,7 +10,8 @@ func MapFromEntityToProtoMessage(matchedUsers []MatchedUsers) *golang.AllMatched
 			categories = append(categories, string(category))
 		}
 		finalUsers = append(finalUsers, &golang.MatchedUsers{
-			MatchId:  user.Id,
+			MatchId:         user.Id,
+			QuestionSeconds: int32(user.QuestionSeconds), TimeOptionId: user.TimeOptionID,
 			UserId:   user.UserId,
 			Category: categories,
 		})

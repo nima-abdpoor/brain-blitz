@@ -141,6 +141,7 @@ type chatSession struct {
 // join-queue state machine documented in
 // docs/client/phase4-matchmaking-plan.md.
 type Manager struct {
+	timeOptions TimeOptionsAPI
 	dial        Dialer
 	notifier    Notifier
 	sessions    session.Store
@@ -214,7 +215,7 @@ func (m *Manager) StateFor(chatID int64) State {
 // sent (Queued) or the attempt failed to even get that far; MATCH_CREATED
 // (or a latched join error) arrives later via Notifier, from the read loop
 // started here on its own goroutine.
-func (m *Manager) JoinQueue(ctx context.Context, chatID int64, category string) error {
+func (m *Manager) JoinQueue(ctx context.Context, chatID int64, category string, timeOptionIDs ...string) error {
 	m.mu.Lock()
 	if cs, ok := m.chats[chatID]; ok && cs.state != Idle {
 		m.mu.Unlock()
@@ -241,7 +242,11 @@ func (m *Manager) JoinQueue(ctx context.Context, chatID int64, category string) 
 	}
 	m.getMetrics().WSConnectionOpened()
 
-	if err := conn.Send(ws.Command{Command: ws.CommandAddToWaitingList, Category: category, DisplayName: sess.DisplayName}); err != nil {
+	var timeOptionID string
+	if len(timeOptionIDs) > 0 {
+		timeOptionID = timeOptionIDs[0]
+	}
+	if err := conn.Send(ws.Command{Command: ws.CommandAddToWaitingList, Category: category, DisplayName: sess.DisplayName, TimeOptionID: timeOptionID}); err != nil {
 		_ = conn.Close()
 		m.getMetrics().WSConnectionClosed()
 		m.abandon(chatID, cs)
@@ -334,8 +339,8 @@ func (m *Manager) handleEvent(chatID int64, event ws.Event, source ...Connection
 
 	switch event.Event {
 	case ws.EventError:
-		cs.pendingJoinError = event.Message
 		m.mu.Unlock()
+		m.failQueue(chatID, cs, event.Message)
 
 	case ws.EventAddedToWaitingList:
 		joinErr := cs.pendingJoinError

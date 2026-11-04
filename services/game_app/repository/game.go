@@ -143,8 +143,9 @@ func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId stri
 	}
 
 	var selectResult struct {
-		ID      primitive.ObjectID `bson:"_id"`
-		Players []uint64           `bson:"players"`
+		ID              primitive.ObjectID `bson:"_id"`
+		QuestionSeconds int                `bson:"question_seconds"`
+		Players         []uint64           `bson:"players"`
 	}
 	if err := coll.FindOne(ctx, filter).Decode(&selectResult); err != nil {
 		if errors.Is(err, mongodriver.ErrNoDocuments) {
@@ -154,6 +155,7 @@ func (m GameRepository) SaveQuestionsByMatchId(ctx context.Context, matchId stri
 	}
 
 	gQ.Players = selectResult.Players
+	gQ.QuestionSeconds = selectResult.QuestionSeconds
 	gqJson, err := json.Marshal(gQ)
 	if err != nil {
 		return err
@@ -292,7 +294,7 @@ func (m GameRepository) SetValidAnswerTimeForQuestions(ctx context.Context, game
 
 	startedAt := time.Now().UTC()
 	for i := range gameQuestions.Questions {
-		ttl := m.Config.ValidAnswerTimeOut * time.Duration(i+1)
+		ttl := m.answerWindow(gameQuestions) * time.Duration(i+1)
 		finalTTL = ttl
 		gameQuestions.Questions[i].ValidAnswerTime = startedAt.Add(ttl)
 	}
@@ -339,7 +341,7 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 			playerAnswer.Category = question.Category
 			playerAnswer.ValidTimeToAnswer = question.ValidAnswerTime
 			timeDiff := time.Duration(question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Seconds())
-			if question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Milliseconds() > m.Config.ValidAnswerTimeOut.Milliseconds() {
+			if question.ValidAnswerTime.Sub(playerAnswer.AnswerTime).Milliseconds() > m.answerWindow(gameQuestion).Milliseconds() {
 				m.Logger.Info(op,
 					"message", "subtract of player answerTime and the validAnswerTime is greater than allowable Question ttl",
 					"validTimeAnswer", playerAnswer.ValidTimeToAnswer,
@@ -358,7 +360,7 @@ func (m GameRepository) SavePlayerAnswer(ctx context.Context, gameId string, pla
 				)
 			}
 			isCorrect := playerAnswer.PlayerChoice == question.CorrectAnswer
-			score := m.CalculateScore(isCorrect, playerAnswer.AnswerTime, question.ValidAnswerTime)
+			score := m.calculateRoundScore(isCorrect, playerAnswer.AnswerTime, question.ValidAnswerTime, m.answerWindow(gameQuestion))
 			playerAnswer.TimeDiff = timeDiff
 			playerAnswer.Point = score
 			questionIdFound = true

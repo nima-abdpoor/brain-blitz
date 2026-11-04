@@ -5,14 +5,16 @@ import (
 )
 
 type Game struct {
-	Id        *string     `bson:"id"`
-	Players   []uint64    `bson:"players"`
-	MatchId   string      `bson:"match_id"`
-	Category  []Category  `bson:"category"`
-	Status    GameStatus  `bson:"status"`
-	Question  *[]Question `bson:"questions"`
-	CreatedAt time.Time   `bson:"created_at"`
-	UpdatedAt time.Time   `bson:"updated_at"`
+	QuestionSeconds int         `bson:"question_seconds"`
+	TimeOptionID    string      `bson:"time_option_id"`
+	Id              *string     `bson:"id"`
+	Players         []uint64    `bson:"players"`
+	MatchId         string      `bson:"match_id"`
+	Category        []Category  `bson:"category"`
+	Status          GameStatus  `bson:"status"`
+	Question        *[]Question `bson:"questions"`
+	CreatedAt       time.Time   `bson:"created_at"`
+	UpdatedAt       time.Time   `bson:"updated_at"`
 }
 
 type PlayerAnswer struct {
@@ -78,6 +80,7 @@ func MapToGameStatus(status string) GameStatus {
 }
 
 type GameQuestions struct {
+	QuestionSeconds      int        `json:"questionSeconds,omitempty"`
 	RoundBased           bool       `json:"roundBased"`
 	Completed            bool       `json:"completed"`
 	Questions            []Question `json:"questions"`
@@ -177,8 +180,10 @@ type GameQuestion struct {
 }
 
 type MatchedUsers struct {
-	MatchId  string
-	GameId   string
-	Category []Category
-	UserId   []uint64
+	QuestionSeconds int
+	TimeOptionID    string
+	MatchId         string
+	GameId          string
+	Category        []Category
+	UserId          []uint64
 }

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"BrainBlitz.com/game/pkg/matchqueue"
 	"BrainBlitz.com/game/services/match_app/service"
 	"bytes"
 	"context"
@@ -32,7 +33,7 @@ func (m *mockRepo) RemoveWaitingMember(ctx context.Context, members []service.Wa
 	return nil
 }
 
-func (m *mockRepo) AddToWaitingList(ctx context.Context, category service.Category, userId string) error {
+func (m *mockRepo) AddToWaitingList(ctx context.Context, category service.Category, userId string, choices ...matchqueue.Choice) error {
 	if m.waitingList == nil {
 		m.waitingList = make(map[service.Category][]string)
 	}

@@ -6,6 +6,7 @@ import (
 	"BrainBlitz.com/game/contract/match/golang"
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/pkg/matchqueue"
 	"context"
 	"fmt"
 	"github.com/oklog/ulid/v2"
@@ -24,7 +25,7 @@ type Config struct {
 }
 
 type Repository interface {
-	AddToWaitingList(ctx context.Context, category Category, userId string) error
+	AddToWaitingList(ctx context.Context, category Category, userId string, choices ...matchqueue.Choice) error
 	GetWaitingListByCategory(ctx context.Context, category Category) ([]WaitingMember, error)
 	RemoveWaitingMember(ctx context.Context, members []WaitingMember) error
 }
@@ -80,9 +81,10 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 		result, err := svc.repository.GetWaitingListByCategory(ctx, category)
 		for _, res := range result {
 			waitingMembers = append(waitingMembers, WaitingMember{
-				UserId:    res.UserId,
-				TimeStamp: res.TimeStamp,
-				Category:  category,
+				UserId:          res.UserId,
+				TimeStamp:       res.TimeStamp,
+				QuestionSeconds: res.QuestionSeconds, TimeOptionID: res.TimeOptionID,
+				Category: category,
 			})
 		}
 		if err != nil {
@@ -98,7 +100,7 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 	for _, member := range waitingMembers {
 		index := funk.IndexOf(readyUsers, func(users MatchedUsers) bool {
 			for _, category := range users.Category {
-				if string(category) == string(member.Category) {
+				if string(category) == string(member.Category) && users.QuestionSeconds == member.QuestionSeconds && users.TimeOptionID == member.TimeOptionID {
 					return true
 				}
 			}
@@ -108,8 +110,9 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 			readyUsers[index].UserId = append(readyUsers[index].UserId, uint64(member.UserId))
 		} else {
 			readyUsers = append(readyUsers, MatchedUsers{
-				Category: []Category{member.Category},
-				UserId:   []uint64{uint64(member.UserId)},
+				Category:        []Category{member.Category},
+				QuestionSeconds: member.QuestionSeconds, TimeOptionID: member.TimeOptionID,
+				UserId: []uint64{uint64(member.UserId)},
 			})
 		}
 	}
@@ -124,9 +127,10 @@ func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersReque
 		entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
 		id := ulid.MustNew(ulid.Timestamp(time.Now()), entropy)
 		finalUsers = append(finalUsers, MatchedUsers{
-			Id:       id.String(),
-			Category: readyUser.Category,
-			UserId:   readyUser.UserId[:r],
+			Id:              id.String(),
+			Category:        readyUser.Category,
+			QuestionSeconds: readyUser.QuestionSeconds, TimeOptionID: readyUser.TimeOptionID,
+			UserId: readyUser.UserId[:r],
 		})
 		svc.logger.Info(op, "message", "readyUsers for category", "readyUsers", fmt.Sprintf("%v", readyUser))
 	}
@@ -186,7 +190,7 @@ func (svc Service) ConsumeJoinMatchQueueRequest(message []byte, ctx context.Cont
 		svc.logger.Error(op, "unknown category received by consumer")
 		return err
 	}
-	err = svc.repository.AddToWaitingList(ctx, category, strconv.FormatUint(userId, 10))
+	err = svc.repository.AddToWaitingList(ctx, category, strconv.FormatUint(userId, 10), matchqueue.Choice{Seconds: int(addToWaitingListRequestProto.GetQuestionSeconds()), OptionID: addToWaitingListRequestProto.GetTimeOptionId()})
 	if err != nil {
 		svc.logger.Error(op, "error in storing add to waiting list request message", slog.String("error", err.Error()))
 		return err

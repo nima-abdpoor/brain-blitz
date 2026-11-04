@@ -3,6 +3,7 @@ package service
 import (
 	"BrainBlitz.com/game/contract/event"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
+	"BrainBlitz.com/game/pkg/matchqueue"
 	"BrainBlitz.com/game/services/game_app/service"
 	"context"
 	"errors"
@@ -29,7 +30,7 @@ func (m *MockRepo) RemoveWaitingMember(ctx context.Context, members []WaitingMem
 	return args.Error(0)
 }
 
-func (m *MockRepo) AddToWaitingList(ctx context.Context, category Category, userId string) error {
+func (m *MockRepo) AddToWaitingList(ctx context.Context, category Category, userId string, choices ...matchqueue.Choice) error {
 	args := m.Called(ctx, category, userId)
 	return args.Error(0)
 }

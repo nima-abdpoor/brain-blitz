@@ -4,14 +4,16 @@ import (
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	errmsg "BrainBlitz.com/game/pkg/err_msg"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/pkg/timeoptions"
 	"BrainBlitz.com/game/services/question_app/service"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
 
 type Handler struct {
-	Service service.Service
-	Logger  logger.Logger
+	timeOptions *timeoptions.Store
+	Service     service.Service
+	Logger      logger.Logger
 }
 
 func NewHandler(service service.Service, logger logger.Logger) Handler {

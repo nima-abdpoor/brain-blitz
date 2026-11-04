@@ -309,3 +309,78 @@ stopped by ending log collection.
 
 New findings 12–13 and the obsolete Help message were addressed after collection.
 Verification and deployment results are in `local-e2e-validation.md`.
+
+## 14. Reveal the player's answer and correct answer after each round — implemented
+
+**User request:** Once all players have submitted their answers, show each
+player their own answer and the correct answer when sending the next question.
+
+**Tasks and acceptance criteria:**
+
+- Close the round on the server when all players answer, or when the deadline
+  expires for a silent player. Reveal answers only after that round closes;
+  an early submission must not reveal the solution to players still answering.
+- Send each player a recap containing the previous question, their submitted
+  answer, the correct answer, and whether their answer was correct. Show
+  “No answer submitted” for a timeout.
+- Deliver the recap before or together with the next question, preserving
+  immediate round advancement. Include the final question's recap before the
+  final results even though there is no next question.
+- Use authoritative server answer data and authenticated player identity.
+  Prevent duplicate or out-of-order reveals when submissions race or events
+  are repeated.
+- Verify correct/incorrect answers, silent players, simultaneous submissions,
+  final-round recap, and absence of early answer disclosure.
+
+## 15. Choose a backoffice-configured question time limit — implemented
+
+**User request:** During new-game setup, ask the user how much time each
+question should allow. Available choices must be defined in the backoffice
+and stored in the database. Seed the initial options as **10 seconds** and
+**1 minute (60 seconds)**. This configures each question, not total game length.
+
+**Tasks and acceptance criteria:**
+
+- Add a database-backed time-option model with stable IDs, duration in seconds,
+  display labels, ordering, and availability. Provide backoffice management
+  and an API for clients to retrieve enabled options.
+- Add an idempotent database seed/migration inserting the initial 10-second
+  and 60-second options. Rerunning the seed must not create duplicates or
+  overwrite later backoffice edits.
+- Prompt for the question time limit during game setup, before joining the
+  matchmaking queue; render the available options from the backend.
+- Carry the selected option through matchmaking and game creation. Match
+  players with compatible category and duration selections so both players
+  share the same question time limit.
+- Validate the selection server-side. Snapshot the selected duration into the
+  game so later backoffice edits do not change an active game's rules.
+- Apply the chosen duration to authoritative round deadlines, timeout jobs,
+  and the bot's local countdown. Early advancement after all answers remains
+  unchanged. Review time-based score bonuses for both supported durations.
+- Handle unavailable/removed options and older clients explicitly. The user
+  has specified the initial options, but has not specified a preselected
+  choice or fallback for clients that do not send a selection.
+- Verify seed reruns, backoffice changes, option validation, matchmaking
+  separation, both durations, countdowns, timeout advancement, and active-game
+  stability after configuration changes.
+
+## Implementation update for features 14–15
+
+Both features are implemented. New bot games now use category → time option →
+matchmaking. PostgreSQL migration `1793790000-question_time_options.sql` seeds
+`10-seconds` (10) and `1-minute` (60); the seed preserves existing admin edits.
+The question service exposes enabled options and admin-only list/upsert APIs.
+There is no separate backoffice UI in this repository.
+
+Matchmaking groups by category, option ID, and the selected duration snapshot.
+The selected duration is persisted with the game and cached rounds, and governs
+round deadlines, timeout jobs, and the bot countdown. Existing clients that
+omit an option remain in a separate legacy pool using the configured legacy
+question timeout; the updated bot always asks the user to choose.
+
+A `ROUND_CLOSED` event supplies each player with their own answer, correct
+answer, and result after everyone answers or the deadline expires. Recaps
+precede the next question and the final results; silent players see “No answer
+submitted”. The bot ignores duplicate/stale recap events. Answer acknowledgements
+omit solution details until closure. Time-based bonus scoring scales with the
+selected question window, preserving its configured proportion.

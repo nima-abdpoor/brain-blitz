@@ -182,3 +182,37 @@ Set `USER_game_service_url` to the internal game-service HTTP base URL;
 Compose and Kubernetes manifests provide it. Development defaults to
 `http://127.0.0.1:5003`. Service ports must remain internal, as with existing
 routes that consume the gateway's `X-User-ID` header.
+
+### Question timers and round recaps
+
+New-game flow: choose a category, then choose a question time limit, then wait
+for an opponent with the same category and timer selection. The bot loads the
+choices from the backend; PostgreSQL initially seeds **10 seconds** and
+**1 minute**. Configure `BOT_BACKEND__QUESTION_SERVICE_URL` for the gateway's
+question-service base URL (provided in Compose/development configuration).
+The game service uses `GAME_question_service_url` for its internal validation.
+
+Once everyone answers or the question expires, each player receives their own
+answer and the correct answer before the next question. A missed answer is
+shown explicitly. The final question also gets a recap before game results.
+Solutions are not included in early answer acknowledgements.
+
+Admin/backoffice API (all paths are relative to `/question-service`):
+
+- `GET /api/v1/question/time-options`: enabled options, authenticated players.
+- `GET /api/v1/question/admin/time-options`: all options, admin role required.
+- `PUT /api/v1/question/admin/time-options/{id}`: create/update an option,
+  admin role required. Body example:
+  `{"label":"10 seconds","seconds":10,"enabled":true,"sortOrder":10}`.
+
+IDs use 1–32 letters, numbers, underscores, or hyphens; durations allow 5–3600
+seconds. Disable an option with `enabled:false`. Edits apply to future queue
+joins; an existing queued selection or active game keeps its duration snapshot.
+The migration's seed uses `ON CONFLICT DO NOTHING`, preserving later edits.
+No standalone backoffice UI exists in this repository. Management APIs require
+an admin token at the gateway; service ports remain internal.
+
+Older clients that omit `timeOptionId` retain the configured legacy timeout
+and match only other legacy clients. The updated bot has no preselected timer
+and requires an explicit choice. A configuration outage or empty option list
+shows a retry message instead of silently choosing a duration.

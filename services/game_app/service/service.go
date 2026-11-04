@@ -6,6 +6,7 @@ import (
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/playerstats"
+	"BrainBlitz.com/game/pkg/timeoptions"
 	"context"
 	"hash/fnv"
 	"net"
@@ -46,6 +47,7 @@ type Repository interface {
 }
 
 type Service struct {
+	timeOptions   timeoptions.Provider
 	config        Config
 	repository    Repository
 	webSocket     websocket.WebSocket

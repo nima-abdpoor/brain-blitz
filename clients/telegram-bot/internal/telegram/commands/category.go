@@ -23,20 +23,25 @@ func (h *Handlers) CategoryCallback(ctx context.Context, cb *tgbotapi.CallbackQu
 	if cb.From != nil {
 		h.matchmaking.SetDisplayName(ctx, chatID, strings.TrimSpace(cb.From.FirstName+" "+cb.From.LastName))
 	}
-	err := h.matchmaking.JoinQueue(ctx, chatID, category)
+	return h.timeOptionsReply(ctx, chatID, category), nil
+}
+
+func (h *Handlers) joinCategory(ctx context.Context, cb *tgbotapi.CallbackQuery, category, optionID string) tgbotapi.Chattable {
+	chatID := cb.Message.Chat.ID
+	err := h.matchmaking.JoinQueue(ctx, chatID, category, optionID)
 	switch {
 	case err == nil:
 		reply := tgbotapi.NewMessage(chatID, "🔎 Waiting for opponent…")
 		reply.ReplyMarkup = keyboards.Waiting()
-		return reply, nil
+		return reply
 	case errors.Is(err, matchmaking.ErrAlreadyInProgress):
-		return tgbotapi.NewMessage(chatID, "You're already looking for a match."), nil
+		return tgbotapi.NewMessage(chatID, "You're already looking for a match.")
 	case errors.Is(err, matchmaking.ErrSessionExpired):
 		reply := tgbotapi.NewMessage(chatID, "Your session has expired. Send /start to log in again.")
 		reply.ReplyMarkup = keyboards.Auth()
-		return reply, nil
+		return reply
 	default:
-		return tgbotapi.NewMessage(chatID, "Couldn't connect to the game right now. Please try /play again shortly."), nil
+		return tgbotapi.NewMessage(chatID, "Couldn't connect to the game right now. Please try /play again shortly.")
 	}
 }
 
