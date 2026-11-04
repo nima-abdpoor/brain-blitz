@@ -15,13 +15,14 @@ import (
 // docs/client/backend-api-analysis.md §4. Only the fields relevant to a
 // given Command value need to be populated; the server ignores the rest.
 type Command struct {
-	Command     string  `json:"command"`
-	GameID      string  `json:"gameId,omitempty"`
-	MatchID     string  `json:"matchId,omitempty"`
-	Category    string  `json:"category,omitempty"`
-	DisplayName string  `json:"displayName,omitempty"`
-	Players     int     `json:"players,omitempty"`
-	Answer      *Answer `json:"answer,omitempty"`
+	TimeOptionID string  `json:"timeOptionId,omitempty"`
+	Command      string  `json:"command"`
+	GameID       string  `json:"gameId,omitempty"`
+	MatchID      string  `json:"matchId,omitempty"`
+	Category     string  `json:"category,omitempty"`
+	DisplayName  string  `json:"displayName,omitempty"`
+	Players      int     `json:"players,omitempty"`
+	Answer       *Answer `json:"answer,omitempty"`
 }
 
 // Answer carries an ANSWER command's payload (used starting Phase 5).
@@ -58,6 +59,7 @@ type Event struct {
 const (
 	EventAddedToWaitingList = "ADDED_TO_WAITING_LIST"
 	EventMatchCreated       = "MATCH_CREATED"
+	EventRoundClosed        = "ROUND_CLOSED"
 	EventQuestionsPublished = "QUESTIONS_PUBLISHED"
 	EventAnswerAccepted     = "ANSWER_ACCEPTED"
 	EventCompleted          = "COMPLETED"
