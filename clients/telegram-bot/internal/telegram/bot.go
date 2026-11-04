@@ -11,6 +11,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -135,6 +136,10 @@ func (b *Bot) SetTextHandler(handler TextHandler) {
 // Run consumes updates until ctx is cancelled or the channel is closed,
 // dispatching each update to its registered handler.
 func (b *Bot) Run(ctx context.Context, updates tgbotapi.UpdatesChannel) {
+	ctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	defer func() { cancel(); wg.Wait() }()
+	chats := map[int64]chan tgbotapi.Update{}
 	for {
 		select {
 		case <-ctx.Done():
@@ -143,7 +148,38 @@ func (b *Bot) Run(ctx context.Context, updates tgbotapi.UpdatesChannel) {
 			if !ok {
 				return
 			}
-			b.handleUpdate(ctx, update)
+			var id int64
+			if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
+				id = update.CallbackQuery.Message.Chat.ID
+			} else if update.Message != nil && update.Message.Chat != nil {
+				id = update.Message.Chat.ID
+			} else {
+				continue
+			}
+			queue, ok := chats[id]
+			if !ok {
+				queue = make(chan tgbotapi.Update, 32)
+				chats[id] = queue
+				wg.Add(1)
+				go func(q <-chan tgbotapi.Update) {
+					defer wg.Done()
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case u := <-q:
+							b.handleUpdate(ctx, u)
+						}
+					}
+				}(queue)
+			}
+			select {
+			case queue <- update:
+			case <-ctx.Done():
+				return
+			default:
+				b.logger.Warn("chat update queue full", "chat_id", id)
+			}
 		}
 	}
 }
