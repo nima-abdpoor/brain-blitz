@@ -8,6 +8,7 @@ import (
 	httpserver "BrainBlitz.com/game/pkg/http_server"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/mongo"
+	"BrainBlitz.com/game/pkg/timeoptions"
 	"BrainBlitz.com/game/services/game_app/delivery/http"
 	"BrainBlitz.com/game/services/game_app/repository"
 	"BrainBlitz.com/game/services/game_app/service"
@@ -46,7 +47,7 @@ func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Applica
 	taskPublisher := taskqueue.NewPublisherAsynq(logger, config.TaskPublisher)
 	tw := taskqueue.NewWorkerAsynq(logger, config.TaskWorker)
 
-	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker, &taskPublisher, logger)
+	gameService := service.NewService(config.Service, gameRepository, ws, kafkaBroker, &taskPublisher, logger).WithTimeOptions(timeoptions.NewClient(config.QuestionServiceURL))
 	taskWorker := service.NewTaskWorker(logger, gameService, &tw)
 
 	consumer := service.NewConsumer(kafkaBroker, gameService, logger)

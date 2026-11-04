@@ -11,9 +11,13 @@ message MatchedUsers {
   repeated uint64 user_id = 1;
   repeated string category = 2;
   string match_id = 3;
+  int32 question_seconds = 4;
+  string time_option_id = 5;
 }
 
 message AddToWaitingList {
   uint64 user_id = 1;
   string category = 2;
+  int32 question_seconds = 3;
+  string time_option_id = 4;
 }

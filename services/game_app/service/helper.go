@@ -3,6 +3,7 @@ package service
 import (
 	matchProto "BrainBlitz.com/game/contract/match/golang"
 	questionProto "BrainBlitz.com/game/contract/question/golang"
+	"BrainBlitz.com/game/pkg/matchqueue"
 )
 
 func MapFromProtoMessageToEntity(users *matchProto.AllMatchedUsers) []MatchedUsers {
@@ -13,7 +14,8 @@ func MapFromProtoMessageToEntity(users *matchProto.AllMatchedUsers) []MatchedUse
 			categories = append(categories, MapToCategory(category))
 		}
 		finalUsers = append(finalUsers, MatchedUsers{
-			MatchId:  user.GetMatchId(),
+			MatchId:         user.GetMatchId(),
+			QuestionSeconds: int(user.GetQuestionSeconds()), TimeOptionID: user.GetTimeOptionId(),
 			UserId:   user.GetUserId(),
 			Category: categories,
 		})
@@ -38,8 +40,13 @@ func MapFromProtoMessageToQuestionsEntity(questions *questionProto.Questions) ([
 	return finalQuestions, questions.GetMatchId()
 }
 
-func MapWaitingListRequestToProtoMessage(userId uint64, category string) *matchProto.AddToWaitingList {
+func MapWaitingListRequestToProtoMessage(userId uint64, category string, choices ...matchqueue.Choice) *matchProto.AddToWaitingList {
+	var choice matchqueue.Choice
+	if len(choices) > 0 {
+		choice = choices[0]
+	}
 	return &matchProto.AddToWaitingList{
+		QuestionSeconds: int32(choice.Seconds), TimeOptionId: choice.OptionID,
 		UserId:   userId,
 		Category: category,
 	}

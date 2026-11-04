@@ -3,6 +3,7 @@ package service
 import (
 	"BrainBlitz.com/game/contract/event"
 	"BrainBlitz.com/game/contract/match/golang"
+	"BrainBlitz.com/game/pkg/matchqueue"
 	"context"
 	"fmt"
 	"google.golang.org/protobuf/proto"
@@ -28,15 +29,15 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 				svc.mu.RLock()
 				connected := svc.connections[id] != nil
 				svc.mu.RUnlock()
-				valid = valid && connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]))
+				valid = valid && connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID})
 			}
 			if !valid {
 				for _, id := range matchedUser.UserId {
 					svc.mu.RLock()
 					connected := svc.connections[id] != nil
 					svc.mu.RUnlock()
-					if connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0])) {
-						msg, _ := proto.Marshal(MapWaitingListRequestToProtoMessage(id, string(matchedUser.Category[0])))
+					if connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID}) {
+						msg, _ := proto.Marshal(MapWaitingListRequestToProtoMessage(id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID}))
 						if err := svc.broker.Publish(ctx, event.GAME_V1_JOIN_MATCH_QUEUE_REQUESTED, msg); err != nil {
 							return err
 						}
@@ -48,7 +49,8 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 		}
 
 		result, err := svc.repository.CreateGame(ctx, Game{
-			Id:        nil,
+			Id:              nil,
+			QuestionSeconds: matchedUser.QuestionSeconds, TimeOptionID: matchedUser.TimeOptionID,
 			Players:   matchedUser.UserId,
 			MatchId:   matchedUser.MatchId,
 			Category:  matchedUser.Category,

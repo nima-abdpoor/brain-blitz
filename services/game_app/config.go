@@ -14,6 +14,7 @@ import (
 )
 
 type Config struct {
+	QuestionServiceURL   string                    `koanf:"question_service_url"`
 	HTTPServer           httpserver.Config         `koanf:"http_server"`
 	Service              service.Config            `koanf:"service"`
 	Broker               broker.Config             `koanf:"broker"`

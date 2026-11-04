@@ -44,7 +44,7 @@ func (r *roundRepository) SavePlayerAnswer(_ context.Context, _ string, a Player
 			return fmt.Errorf("duplicate")
 		}
 	}
-	r.answers[a.PlayerID] = append(r.answers[a.PlayerID], QuestionCorrectness{QuestionId: a.QuestionIDs})
+	r.answers[a.PlayerID] = append(r.answers[a.PlayerID], QuestionCorrectness{QuestionId: a.QuestionIDs, PlayerChoice: a.PlayerChoice})
 	return nil
 }
 func (r *roundRepository) GetLeaderBoard(context.Context, string) (LeaderBoard, error) {

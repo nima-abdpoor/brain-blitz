@@ -31,9 +31,11 @@ func MapToCategory(category string) Category {
 }
 
 type WaitingMember struct {
-	UserId    uint
-	TimeStamp int64
-	Category  Category
+	QuestionSeconds int
+	TimeOptionID    string
+	UserId          uint
+	TimeStamp       int64
+	Category        Category
 }
 
 func (wm WaitingMember) String() string {
@@ -41,9 +43,11 @@ func (wm WaitingMember) String() string {
 }
 
 type MatchedUsers struct {
-	Id       string
-	Category []Category
-	UserId   []uint64
+	QuestionSeconds int
+	TimeOptionID    string
+	Id              string
+	Category        []Category
+	UserId          []uint64
 }
 
 func (m MatchedUsers) String() string {

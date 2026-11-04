@@ -30,8 +30,8 @@ func NewRepository(config Config, logger logger.SlogAdapter, redis *redis.Adapte
 	}
 }
 
-func (m MatchMakingRepository) AddToWaitingList(ctx context.Context, category service.Category, userId string) error {
-	return matchqueue.Enqueue(ctx, m.db.Client(), m.Config.WaitingListPrefix, userId, string(category))
+func (m MatchMakingRepository) AddToWaitingList(ctx context.Context, category service.Category, userId string, choices ...matchqueue.Choice) error {
+	return matchqueue.Enqueue(ctx, m.db.Client(), m.Config.WaitingListPrefix, userId, string(category), choices...)
 }
 
 func (m MatchMakingRepository) GetWaitingListByCategory(ctx context.Context, category service.Category) ([]service.WaitingMember, error) {
@@ -49,11 +49,16 @@ func (m MatchMakingRepository) GetWaitingListByCategory(ctx context.Context, cat
 			if !matchqueue.Active(ctx, m.db.Client(), z.Member.(string), string(category)) {
 				continue
 			}
+			choice, err := matchqueue.ChoiceFor(ctx, m.db.Client(), z.Member.(string))
+			if err != nil {
+				continue
+			}
 			userId, _ := strconv.Atoi(z.Member.(string))
 			result = append(result, service.WaitingMember{
-				UserId:    uint(userId),
-				TimeStamp: int64(z.Score),
-				Category:  category,
+				UserId:          uint(userId),
+				TimeStamp:       int64(z.Score),
+				Category:        category,
+				QuestionSeconds: choice.Seconds, TimeOptionID: choice.OptionID,
 			})
 		}
 		return result, nil

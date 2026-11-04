@@ -137,6 +137,11 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				}
 				return nil
 			}
+			choice, choiceErr := svc.resolveTimeOption(ctx, req.TimeOptionID)
+			if choiceErr != nil {
+				data, _ := json.Marshal(ProcessGameMessageResponse{Event: Error, Message: choiceErr.Error()})
+				return svc.webSocket.WriteServerData(*conn, code, string(data))
+			}
 			svc.mu.Lock()
 			name := strings.Join(strings.Fields(req.DisplayName), " ")
 			if len([]rune(name)) > 64 {
@@ -144,14 +149,14 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			}
 			svc.playerNames[id] = name
 			svc.mu.Unlock()
-			if err := svc.joinQueue(ctx, id, req.Category); err != nil {
+			if err := svc.joinQueue(ctx, id, req.Category, choice); err != nil {
 				return err
 			}
 			go svc.saveUsersGameStatus([]uint64{id}, GameStatusInitialized)
 
 			brokerCtx, cancel := context.WithTimeout(context.Background(), svc.config.PublishUserToWaitingListTimeOut)
 			defer cancel()
-			buff, err := proto.Marshal(MapWaitingListRequestToProtoMessage(id, req.Category))
+			buff, err := proto.Marshal(MapWaitingListRequestToProtoMessage(id, req.Category, choice))
 			if err != nil {
 				//todo update metrics
 				svc.logger.Error(op, "message", "error in marshaling waiting list request message", err.Error())
@@ -242,6 +247,9 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				return nil
 			}
 
+			for i := range playerResponse.PlayerPoint {
+				playerResponse.PlayerPoint[i].Answers = nil
+			}
 			response.Event = AnswerAccepted
 			response.Message = "answer accepted"
 			response.Success = true
