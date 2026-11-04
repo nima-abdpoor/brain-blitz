@@ -51,6 +51,9 @@ func TestIntegration_RegisterLoginProfile(t *testing.T) {
 	if prof.DisplayName == "" {
 		t.Error("Profile.DisplayName is empty")
 	}
+	if prof.Statistics == nil || prof.Statistics.GamesPlayed != 0 || prof.Statistics.Rank != 0 {
+		t.Errorf("new account statistics = %+v, want zero games and unranked", prof.Statistics)
+	}
 	if prof.CreatedAt.IsZero() {
 		t.Error("Profile.CreatedAt is zero")
 	}

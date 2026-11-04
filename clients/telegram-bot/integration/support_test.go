@@ -32,8 +32,8 @@ import (
 // configs/development/config.yaml — this module's own documented default
 // for a docker-compose-backed local backend.
 const (
-	defaultUserServiceURL   = "http://localhost/user-service"
-	defaultGameServiceWSURL = "ws://localhost/game-service/api/v1/process-game"
+	defaultUserServiceURL   = "http://127.0.0.1:8088/user-service"
+	defaultGameServiceWSURL = "ws://127.0.0.1:8088/game-service/api/v1/process-game"
 )
 
 // userServiceURL returns BOT_INTEGRATION_USER_SERVICE_URL, or the default.
