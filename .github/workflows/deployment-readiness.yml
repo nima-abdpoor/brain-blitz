@@ -17,6 +17,10 @@ jobs:
       COMPOSE_FILE: docker-compose.yml:compose.smoke.yaml
     steps:
       - uses: actions/checkout@v4
+      - name: Configure Linux host for Redis persistence
+        run: |
+          sudo install -m 0644 infra/sysctl/99-brain-blitz-redis.conf /etc/sysctl.d/99-brain-blitz-redis.conf
+          sudo sysctl -p /etc/sysctl.d/99-brain-blitz-redis.conf
       - name: Generate test-only secrets and validate configuration
         run: |
           python3 scripts/init-env.py
@@ -26,7 +30,9 @@ jobs:
       - name: Tests, vet, and both Linux architectures
         run: docker compose --profile tools run --rm checks
       - name: Start infrastructure and applications
-        run: docker compose up -d --wait --wait-timeout 300
+        run: |
+          docker compose up -d --wait --wait-timeout 300
+          test "$(docker compose exec -T bb-redis cat /proc/sys/vm/overcommit_memory)" = 1
       - name: Seed questions and play a two-player game
         run: |
           docker compose --profile tools run --rm seed-demo

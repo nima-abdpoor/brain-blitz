@@ -170,6 +170,8 @@ service:
 ## Running Locally
 
 Docker Compose v2 and Python 3 are required; Go runs in the build container.
+Before starting Redis, follow [Redis host setup](docs/redis-host-setup.md) to
+check and configure `vm.overcommit_memory = 1` on the Linux kernel running Docker.
 From the project directory:
 
 ```sh
