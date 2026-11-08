@@ -1,3 +1,11 @@
+## Redis host setup
+
+Before deploying Redis, configure `vm.overcommit_memory = 1` on every Linux
+node eligible to run the Redis pod, including newly provisioned nodes. See
+[Redis host setup](redis-host-setup.md) for the persistent sysctl configuration
+and verification commands. This is a node-level setting and cannot be applied
+through a pod's `securityContext.sysctls`.
+
 ## Kafka on Kubernetes
 This guide covers how to deploy Kafka on Kubernetes using Helm and test it with kcat (a non-JVM Kafka producer and consumer).
 

@@ -28,6 +28,11 @@ databases separately and retain their original database credentials.
 
 ## First start
 
+Before starting Redis, follow [Redis host setup](redis-host-setup.md) to check
+`vm.overcommit_memory = 1` on the Linux Docker host or Docker Desktop VM. On a
+Linux host, install the provided sysctl configuration so it persists across
+reboots.
+
 From the extracted project directory:
 
 ```sh
@@ -158,6 +163,9 @@ copy database volumes.
   and upstream-source fallback instead.
 - **Container is unhealthy:** inspect `docker compose ps -a` and that service's
   logs. Initializer jobs should exit with code 0; they do not run continuously.
+- **Redis warns that memory overcommit must be enabled:** follow
+  [Redis host setup](redis-host-setup.md). Configure the kernel running Docker;
+  this is a host requirement, not a Redis environment variable.
 - **No matchmaking:** use two distinct accounts in the same category. The
   scheduler runs every 15 seconds by default.
 - **No questions:** run the demo import or load EASY questions for the selected
