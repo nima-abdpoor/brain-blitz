@@ -11,6 +11,9 @@ repository:
   min_time_list_selection: "-20m"
 
 service:
+  players:
+    min: 2
+    max: 15
   waiting_timeout: "20m"
   least_presence: "-20m"
 

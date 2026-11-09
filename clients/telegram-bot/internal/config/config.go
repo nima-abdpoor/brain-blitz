@@ -35,6 +35,7 @@ type Telegram struct {
 // Backend holds the BrainBlitz gateway URLs and HTTP client tuning this
 // process needs to reach the user, match, and game services.
 type Backend struct {
+	GameServiceURL     string        `koanf:"game_service_url"`
 	QuestionServiceURL string        `koanf:"question_service_url"`
 	UserServiceURL     string        `koanf:"user_service_url"`
 	MatchServiceURL    string        `koanf:"match_service_url"`

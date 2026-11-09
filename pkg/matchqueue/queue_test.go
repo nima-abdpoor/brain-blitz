@@ -32,8 +32,8 @@ func TestTimeSelectionRejectsStaleJoin(t *testing.T) {
 	c := redis.NewClient(&redis.Options{Addr: m.Addr()})
 	defer c.Close()
 	ctx := context.Background()
-	fast := Choice{10, "10-seconds"}
-	slow := Choice{60, "1-minute"}
+	fast := Choice{Seconds: 10, OptionID: "10-seconds", Players: 2}
+	slow := Choice{Seconds: 60, OptionID: "1-minute", Players: 2}
 	require.NoError(t, Join(ctx, c, "1", "SPORT", fast))
 	require.NoError(t, Join(ctx, c, "1", "SPORT", slow))
 	require.NoError(t, Enqueue(ctx, c, "waiting_users", "1", "SPORT", fast))
@@ -47,4 +47,26 @@ func TestTimeSelectionRejectsStaleJoin(t *testing.T) {
 	require.Equal(t, slow, choice)
 	require.NoError(t, Leave(ctx, c, "waiting_users", "1"))
 	require.False(t, Active(ctx, c, "1", "SPORT"))
+}
+
+func TestPlayerCountSelectionRejectsDelayedJoinAndCancellation(t *testing.T) {
+	m := miniredis.RunT(t)
+	c := redis.NewClient(&redis.Options{Addr: m.Addr()})
+	defer c.Close()
+	ctx := context.Background()
+	old := Choice{Seconds: 10, OptionID: "fast", Players: 3}
+	selected := Choice{Seconds: 10, OptionID: "fast", Players: 15}
+	require.NoError(t, Join(ctx, c, "1", "TECH", old))
+	require.NoError(t, Join(ctx, c, "1", "TECH", selected))
+	require.NoError(t, Enqueue(ctx, c, "waiting_users", "1", "TECH", old))
+	require.Zero(t, c.ZCard(ctx, "waiting_users:TECH").Val())
+	require.False(t, Active(ctx, c, "1", "TECH", old))
+	require.True(t, Active(ctx, c, "1", "TECH", selected))
+	require.NoError(t, Enqueue(ctx, c, "waiting_users", "1", "TECH", selected))
+	got, err := ChoiceFor(ctx, c, "1")
+	require.NoError(t, err)
+	require.Equal(t, selected, got)
+	require.NoError(t, Leave(ctx, c, "waiting_users", "1"))
+	require.NoError(t, Enqueue(ctx, c, "waiting_users", "1", "TECH", selected))
+	require.Zero(t, c.ZCard(ctx, "waiting_users:TECH").Val())
 }

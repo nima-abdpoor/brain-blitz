@@ -44,6 +44,9 @@ task_worker:
     port: 6379
 
 service:
+  players:
+    min: 2
+    max: 15
   store_game_status_time_out: 1m
   publish_user_to_waiting_list_time_out: 1m
   question_interval: 15s

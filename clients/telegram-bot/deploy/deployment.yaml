@@ -49,6 +49,11 @@ spec:
                 configMapKeyRef:
                   name: telegram-bot-configmap
                   key: match-service-url
+            - name: BOT_BACKEND__GAME_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: telegram-bot-configmap
+                  key: game-service-url
             - name: BOT_BACKEND__GAME_SERVICE_WS_URL
               valueFrom:
                 configMapKeyRef:

@@ -44,7 +44,7 @@ func NewMatchmakingNotifier(api Sender, logger *slog.Logger) *MatchmakingNotifie
 // first question (GameNotifier.NotifyQuestion) or, if the opponent never
 // readies up, GameNotifier.NotifyReadyTimeout.
 func (n *MatchmakingNotifier) NotifyMatchCreated(chatID int64, gameID string) {
-	n.send(chatID, tgbotapi.NewMessage(chatID, "🎮 Opponent found! Getting ready…"))
+	n.send(chatID, tgbotapi.NewMessage(chatID, "🎮 Players found! Getting ready…"))
 }
 
 // NotifyQueueFailed tells chatID its join attempt was rejected (e.g. the
@@ -57,7 +57,7 @@ func (n *MatchmakingNotifier) NotifyQueueFailed(chatID int64, reason string) {
 
 // NotifyDisconnected tells chatID its connection dropped while waiting.
 func (n *MatchmakingNotifier) NotifyDisconnected(chatID int64) {
-	reply := tgbotapi.NewMessage(chatID, "⚠️ Lost connection while waiting for an opponent. Send /play to try again.")
+	reply := tgbotapi.NewMessage(chatID, "⚠️ Lost connection while waiting for players. Send /play to try again.")
 	reply.ReplyMarkup = keyboards.MainMenu()
 	n.send(chatID, reply)
 }
@@ -127,7 +127,7 @@ func (n *GameNotifier) NotifyLeaderboard(chatID int64, board game.Leaderboard) {
 // NotifyReadyTimeout tells chatID its opponent never became ready.
 func (n *GameNotifier) NotifyReadyTimeout(chatID int64) {
 	n.stopCountdown(chatID)
-	reply := tgbotapi.NewMessage(chatID, "⏳ Your opponent never became ready. Send /play to look for a new match.")
+	reply := tgbotapi.NewMessage(chatID, "⏳ Not all players became ready. Send /play to look for a new match.")
 	reply.ReplyMarkup = keyboards.MainMenu()
 	n.send(chatID, reply)
 }

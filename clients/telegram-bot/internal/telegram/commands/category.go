@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -26,12 +27,12 @@ func (h *Handlers) CategoryCallback(ctx context.Context, cb *tgbotapi.CallbackQu
 	return h.timeOptionsReply(ctx, chatID, category), nil
 }
 
-func (h *Handlers) joinCategory(ctx context.Context, cb *tgbotapi.CallbackQuery, category, optionID string) tgbotapi.Chattable {
+func (h *Handlers) joinCategory(ctx context.Context, cb *tgbotapi.CallbackQuery, category, optionID string, players int) tgbotapi.Chattable {
 	chatID := cb.Message.Chat.ID
-	err := h.matchmaking.JoinQueue(ctx, chatID, category, optionID)
+	err := h.matchmaking.JoinQueueForPlayers(ctx, chatID, category, optionID, players)
 	switch {
 	case err == nil:
-		reply := tgbotapi.NewMessage(chatID, "🔎 Waiting for opponent…")
+		reply := tgbotapi.NewMessage(chatID, fmt.Sprintf("🔎 Waiting for opponents for a %d-player game…", players))
 		reply.ReplyMarkup = keyboards.Waiting()
 		return reply
 	case errors.Is(err, matchmaking.ErrAlreadyInProgress):

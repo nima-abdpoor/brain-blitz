@@ -7,10 +7,10 @@ import (
 	errApp "BrainBlitz.com/game/pkg/err_app"
 	"BrainBlitz.com/game/pkg/logger"
 	"BrainBlitz.com/game/pkg/matchqueue"
+	"BrainBlitz.com/game/pkg/playercount"
 	"context"
 	"fmt"
 	"github.com/oklog/ulid/v2"
-	"github.com/thoas/go-funk"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"math/rand"
@@ -20,8 +20,9 @@ import (
 )
 
 type Config struct {
-	WaitingTimeout time.Duration `koanf:"waiting_timeout"`
-	LeastPresence  time.Duration `koanf:"least_presence"`
+	Players        playercount.Limits `koanf:"players"`
+	WaitingTimeout time.Duration      `koanf:"waiting_timeout"`
+	LeastPresence  time.Duration      `koanf:"least_presence"`
 }
 
 type Repository interface {
@@ -38,6 +39,10 @@ type Service struct {
 }
 
 func NewService(repository Repository, config Config, broker broker.Broker, logger logger.Logger) Service {
+	config.Players = config.Players.WithDefaults()
+	if err := config.Players.Validate(); err != nil {
+		panic(err)
+	}
 	return Service{
 		config:     config,
 		repository: repository,
@@ -57,7 +62,11 @@ func (svc Service) AddToWaitingList(ctx context.Context, request AddToWaitingLis
 		}, svc.logger)
 	}
 
-	err = svc.repository.AddToWaitingList(ctx, MapToCategory(request.Category), request.UserId)
+	players, err := svc.config.Players.Resolve(request.Players)
+	if err != nil {
+		return AddToWaitingListResponse{}, errApp.Wrap(op, err, errApp.ErrInvalidInput, nil, svc.logger)
+	}
+	err = svc.repository.AddToWaitingList(ctx, MapToCategory(request.Category), request.UserId, matchqueue.Choice{Players: players})
 	if err != nil {
 		return AddToWaitingListResponse{}, errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
 			"message": " failed to add into waiting list",
@@ -74,65 +83,49 @@ func (svc Service) AddToWaitingList(ctx context.Context, request AddToWaitingLis
 func (svc Service) MatchWaitUsers(ctx context.Context, req MatchWaitedUsersRequest) (MatchWaitedUsersResponse, error) {
 	const op = "matchMakingHandler.MatchWaitUsers"
 	var rErr error = nil
-	var readyUsers []MatchedUsers
 	var finalUsers []MatchedUsers
 	var waitingMembers []WaitingMember
 	for _, category := range GetCategories() {
 		result, err := svc.repository.GetWaitingListByCategory(ctx, category)
-		for _, res := range result {
-			waitingMembers = append(waitingMembers, WaitingMember{
-				UserId:          res.UserId,
-				TimeStamp:       res.TimeStamp,
-				QuestionSeconds: res.QuestionSeconds, TimeOptionID: res.TimeOptionID,
-				Category: category,
-			})
-		}
 		if err != nil {
-			rErr = errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{
-				"message": " failed to GetWaitingListByCategory",
-				"data":    fmt.Sprint(category),
-			}, svc.logger)
-		}
-	}
-	sort.Slice(waitingMembers, func(i, j int) bool {
-		return waitingMembers[i].TimeStamp < waitingMembers[j].TimeStamp
-	})
-	for _, member := range waitingMembers {
-		index := funk.IndexOf(readyUsers, func(users MatchedUsers) bool {
-			for _, category := range users.Category {
-				if string(category) == string(member.Category) && users.QuestionSeconds == member.QuestionSeconds && users.TimeOptionID == member.TimeOptionID {
-					return true
-				}
-			}
-			return false
-		})
-		if index != -1 {
-			readyUsers[index].UserId = append(readyUsers[index].UserId, uint64(member.UserId))
-		} else {
-			readyUsers = append(readyUsers, MatchedUsers{
-				Category:        []Category{member.Category},
-				QuestionSeconds: member.QuestionSeconds, TimeOptionID: member.TimeOptionID,
-				UserId: []uint64{uint64(member.UserId)},
-			})
-		}
-	}
-	for _, readyUser := range readyUsers {
-		r := len(readyUser.UserId)
-		if r < 2 {
+			rErr = errApp.Wrap(op, err, errApp.ErrInternal, map[string]string{"message": "failed to get waiting list"}, svc.logger)
 			continue
 		}
-		if r%2 != 0 {
-			r--
+		for _, member := range result {
+			member.Category = category
+			waitingMembers = append(waitingMembers, member)
+		}
+	}
+	sort.SliceStable(waitingMembers, func(i, j int) bool { return waitingMembers[i].TimeStamp < waitingMembers[j].TimeStamp })
+	type pool struct {
+		category Category
+		seconds  int
+		option   string
+		players  int
+	}
+	pools := map[pool][]uint64{}
+	seen := map[uint]bool{}
+	for _, member := range waitingMembers {
+		players := member.Players
+		if players == 0 {
+			players = 2
+		} // Existing Redis entries predate player selection.
+		if _, err := svc.config.Players.Resolve(players); err != nil || seen[member.UserId] {
+			continue
+		}
+		seen[member.UserId] = true
+		key := pool{member.Category, member.QuestionSeconds, member.TimeOptionID, players}
+		pools[key] = append(pools[key], uint64(member.UserId))
+		if len(pools[key]) < players {
+			continue
 		}
 		entropy := ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
 		id := ulid.MustNew(ulid.Timestamp(time.Now()), entropy)
 		finalUsers = append(finalUsers, MatchedUsers{
-			Id:              id.String(),
-			Category:        readyUser.Category,
-			QuestionSeconds: readyUser.QuestionSeconds, TimeOptionID: readyUser.TimeOptionID,
-			UserId: readyUser.UserId[:r],
+			Id: id.String(), Category: []Category{member.Category}, QuestionSeconds: member.QuestionSeconds,
+			TimeOptionID: member.TimeOptionID, UserId: pools[key],
 		})
-		svc.logger.Info(op, "message", "readyUsers for category", "readyUsers", fmt.Sprintf("%v", readyUser))
+		delete(pools, key) // A new roster and match ID for each exact-size group.
 	}
 
 	if len(finalUsers) > 0 {
@@ -156,6 +149,7 @@ func (svc Service) publishFinalUsers(users []MatchedUsers) {
 	err = svc.broker.Publish(ctx, matchMakingTopic, buff)
 	if err != nil {
 		svc.logger.Error("error in producing message.", "topic", matchMakingTopic, "error", err)
+		return
 	}
 
 	var waitingMembers []WaitingMember
@@ -188,9 +182,13 @@ func (svc Service) ConsumeJoinMatchQueueRequest(message []byte, ctx context.Cont
 	userId, category := MapFromAddToWaitingListProtoToEntity(addToWaitingListRequestProto)
 	if category == CategoryTypeUnknown {
 		svc.logger.Error(op, "unknown category received by consumer")
+		return fmt.Errorf("unknown category")
+	}
+	players, err := svc.config.Players.Resolve(int(addToWaitingListRequestProto.GetPlayers()))
+	if err != nil {
 		return err
 	}
-	err = svc.repository.AddToWaitingList(ctx, category, strconv.FormatUint(userId, 10), matchqueue.Choice{Seconds: int(addToWaitingListRequestProto.GetQuestionSeconds()), OptionID: addToWaitingListRequestProto.GetTimeOptionId()})
+	err = svc.repository.AddToWaitingList(ctx, category, strconv.FormatUint(userId, 10), matchqueue.Choice{Seconds: int(addToWaitingListRequestProto.GetQuestionSeconds()), OptionID: addToWaitingListRequestProto.GetTimeOptionId(), Players: players})
 	if err != nil {
 		svc.logger.Error(op, "error in storing add to waiting list request message", slog.String("error", err.Error()))
 		return err

@@ -137,11 +137,17 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				}
 				return nil
 			}
+			players, playersErr := svc.config.Players.Resolve(req.NumberOfPlayers)
+			if playersErr != nil {
+				data, _ := json.Marshal(ProcessGameMessageResponse{Event: Error, Message: playersErr.Error()})
+				return svc.webSocket.WriteServerData(*conn, code, string(data))
+			}
 			choice, choiceErr := svc.resolveTimeOption(ctx, req.TimeOptionID)
 			if choiceErr != nil {
 				data, _ := json.Marshal(ProcessGameMessageResponse{Event: Error, Message: choiceErr.Error()})
 				return svc.webSocket.WriteServerData(*conn, code, string(data))
 			}
+			choice.Players = players
 			svc.mu.Lock()
 			name := strings.Join(strings.Fields(req.DisplayName), " ")
 			if len([]rune(name)) > 64 {
@@ -197,7 +203,11 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 	case CommandReady:
 		{
 			// check user if their status is just initialized
-			isGameReady := svc.saveGameStatus(req.GameId, &id, nil)
+			isGameReady, readyErr := svc.markReady(ctx, req.GameId, id)
+			if readyErr != nil {
+				data, _ := json.Marshal(ProcessGameMessageResponse{Event: Error, Message: readyErr.Error()})
+				return svc.webSocket.WriteServerData(*conn, code, string(data))
+			}
 			if isGameReady {
 				err := svc.startRounds(ctx, req.GameId)
 				if err != nil {
@@ -297,24 +307,27 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 
 func (svc Service) writeMessage(ids []uint64, msg ProcessGameMessageResponse) error {
 	const op = "game.service.writeMessage"
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	var deliveryErr error
 
 	for _, id := range ids {
 		svc.mu.RLock()
 		connection, exists := svc.connections[id]
 		svc.mu.RUnlock()
 		if !exists {
-			return fmt.Errorf("id: %d not found", id)
-		}
-		jsonMsg, err := json.Marshal(msg)
-		if err != nil {
-			svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
+			deliveryErr = errors.Join(deliveryErr, fmt.Errorf("id: %d not found", id))
+			continue
 		}
 		err = svc.webSocket.WriteServerData(connection, websocket.OpText, string(jsonMsg))
 		if err != nil {
+			deliveryErr = errors.Join(deliveryErr, err)
 			svc.logger.Error(op, "message", "error writing message", slog.String("error", err.Error()))
 		}
 	}
-	return nil
+	return deliveryErr
 }
 
 func (svc Service) getCategories() GameInitResponse {
@@ -324,7 +337,7 @@ func (svc Service) getCategories() GameInitResponse {
 		categories = append(categories, string(category))
 	}
 
-	users := []int{2}
+	users := svc.config.Players.Options()
 
 	result := GameInitResponse{
 		Categories:      categories,

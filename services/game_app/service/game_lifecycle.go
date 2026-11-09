@@ -70,6 +70,20 @@ func (svc Service) saveGameStatus(gameId string, userId *uint64, numberOfPlayers
 	return isGameReady
 }
 
+func (svc Service) markReady(ctx context.Context, gameID string, playerID uint64) (bool, error) {
+	game, err := svc.repository.GetGame(ctx, gameID)
+	if err != nil {
+		return false, err
+	}
+	for _, member := range game.Players {
+		if member == playerID {
+			id := int(playerID)
+			return svc.repository.UpsertReadyPlayer(ctx, gameID, &id, nil)
+		}
+	}
+	return false, fmt.Errorf("player is not in this game")
+}
+
 func (svc Service) getUsersGameStatus(userId uint64) GameStatus {
 	const op = "game.getUsersGameStatus"
 	ctx, cancel := context.WithTimeout(context.Background(), svc.config.StoreGameStatusTimeOut)

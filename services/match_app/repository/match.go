@@ -58,7 +58,7 @@ func (m MatchMakingRepository) GetWaitingListByCategory(ctx context.Context, cat
 				UserId:          uint(userId),
 				TimeStamp:       int64(z.Score),
 				Category:        category,
-				QuestionSeconds: choice.Seconds, TimeOptionID: choice.OptionID,
+				QuestionSeconds: choice.Seconds, TimeOptionID: choice.OptionID, Players: choice.Players,
 			})
 		}
 		return result, nil

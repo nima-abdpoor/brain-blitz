@@ -147,6 +147,7 @@ type AddToWaitingList struct {
 	Category        string                 `protobuf:"bytes,2,opt,name=category,proto3" json:"category,omitempty"`
 	QuestionSeconds int32                  `protobuf:"varint,3,opt,name=question_seconds,json=questionSeconds,proto3" json:"question_seconds,omitempty"`
 	TimeOptionId    string                 `protobuf:"bytes,4,opt,name=time_option_id,json=timeOptionId,proto3" json:"time_option_id,omitempty"`
+	Players         int32                  `protobuf:"varint,5,opt,name=players,proto3" json:"players,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -209,6 +210,13 @@ func (x *AddToWaitingList) GetTimeOptionId() string {
 	return ""
 }
 
+func (x *AddToWaitingList) GetPlayers() int32 {
+	if x != nil {
+		return x.Players
+	}
+	return 0
+}
+
 var File_contract_match_proto_match_proto protoreflect.FileDescriptor
 
 const file_contract_match_proto_match_proto_rawDesc = "" +
@@ -221,12 +229,13 @@ const file_contract_match_proto_match_proto_rawDesc = "" +
 	"\bcategory\x18\x02 \x03(\tR\bcategory\x12\x19\n" +
 	"\bmatch_id\x18\x03 \x01(\tR\amatchId\x12)\n" +
 	"\x10question_seconds\x18\x04 \x01(\x05R\x0fquestionSeconds\x12$\n" +
-	"\x0etime_option_id\x18\x05 \x01(\tR\ftimeOptionId\"\x98\x01\n" +
+	"\x0etime_option_id\x18\x05 \x01(\tR\ftimeOptionId\"\xb2\x01\n" +
 	"\x10AddToWaitingList\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12\x1a\n" +
 	"\bcategory\x18\x02 \x01(\tR\bcategory\x12)\n" +
 	"\x10question_seconds\x18\x03 \x01(\x05R\x0fquestionSeconds\x12$\n" +
-	"\x0etime_option_id\x18\x04 \x01(\tR\ftimeOptionIdB\x17Z\x15contract/match/golangb\x06proto3"
+	"\x0etime_option_id\x18\x04 \x01(\tR\ftimeOptionId\x12\x18\n" +
+	"\aplayers\x18\x05 \x01(\x05R\aplayersB\x17Z\x15contract/match/golangb\x06proto3"
 
 var (
 	file_contract_match_proto_match_proto_rawDescOnce sync.Once

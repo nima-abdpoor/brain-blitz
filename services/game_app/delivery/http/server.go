@@ -37,4 +37,5 @@ func (s Server) RegisterRoutes() {
 	v1.GET("/health-check", s.healthCheck)
 	v1.GET("/process-game", s.Handler.ProcessGame)
 	v1.GET("/statistics", s.Handler.Statistics)
+	v1.GET("/game-options", s.Handler.GameOptions)
 }

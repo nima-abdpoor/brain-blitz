@@ -196,6 +196,33 @@ not be committed. Monitoring is not part of the default single-computer stack.
 See [the deployment guide](docs/run-on-another-computer.md) for resource
 requirements, bot connectivity, an end-to-end smoke test, and data backups.
 
+## Multiplayer game sizes
+
+The Play flow asks for category, question timer, then the total number of players
+(including the current player). Games start only when exactly that many players
+choose the same category, timer, and game size. Separate full rosters create
+separate games; remaining players keep waiting and can cancel.
+
+The default inclusive range is **2–15 players**. Set `MIN_PLAYERS` and
+`MAX_PLAYERS` in the private `.env`, then recreate the services:
+
+```sh
+docker compose --profile telegram up -d --build --wait
+```
+
+The minimum must be at least 2 and no greater than the maximum. Compose passes
+these shared settings to both game and matchmaking services. For deployments
+outside Compose, set `service.players.min` and `service.players.max` (or
+`GAME_service__players__min/max` and `MATCH_service__players__min/max`) identically
+on both services. Invalid ranges fail startup.
+
+Authenticated clients can fetch `GET /game-service/api/v1/game-options` for
+`minPlayers`, `maxPlayers`, and the inclusive `numberOfPlayers` list. Send the
+selected count as `players` with `ADD_TO_WAITING_LIST`; the server validates it.
+Older clients that omit `players` use the configured minimum. Existing legacy
+queue entries remain two-player entries. Invalid or unavailable selections do
+not enter the queue.
+
 ## Docker
 
 Each service has a multi-stage Dockerfile at `infra/deploy/<service>/development/Dockerfile`.
@@ -361,7 +388,7 @@ option go_package = "contract/<service>/golang";
 | MongoDB writes fail | Replica set not initialized | Run `bb-mongo-init` container or manually call `rs.initiate()` |
 | `AUTH_service__secret_key` not set | JWT signing will use `SECRET_KEY` default | Set the env var in docker-compose or K8s secret |
 | `X-User-ID` header missing | Traefik ForwardAuth not configured, or request sent to public route | Ensure protected routes go through `auth` middleware |
-| Matchmaking never fires | Match scheduler interval | Default is every 15 seconds; at least 2 players in same category required |
+| Matchmaking never fires | Match scheduler interval | Default is every 15 seconds; the selected number of players must share category, timer, and game size |
 
 ## Contribution Guide
 

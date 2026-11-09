@@ -47,9 +47,9 @@ docker compose --profile tools run --rm --no-deps seed-demo
 docker compose logs --tail 30 bb-telegram-bot
 ```
 
-Open the bot in Telegram and send `/start`. Two registered players selecting
-the same category are required to play a match. The Compose bot uses the
-internal gateway and persists authentication sessions in Redis. Keep one bot
+Open the bot in Telegram and send `/start`. Players choose a category, timer,
+and game size (2–15 by default). A match starts when the selected number of
+registered players choose the same settings. The Compose bot uses the internal gateway and persists authentication sessions in Redis. Keep one bot
 instance running per token. Stop it with `docker compose stop bb-telegram-bot`.
 
 If Telegram is unreachable from Docker, connect the computer through a network
@@ -113,7 +113,7 @@ go test -tags=integration ./integration/...   # exercises real signup/login/prof
 
 Integration tests each perform their own reachability check and call `t.Skip` (not fail) if the backend they need isn't up, so `-tags=integration` is safe to run even without `docker-compose up`.
 
-The full-game test drives two simulated Telegram chats through the real
+The full-game test drives 2, 3, 4, and 15 simulated Telegram chats through the real
 dispatcher, registration/login conversations, answer keyboards, backend
 services, and final leaderboard. Only Telegram's transport is replaced; this
 test does not verify delivery through Telegram's servers or send real messages.
@@ -123,7 +123,7 @@ Run it against an isolated deployment with short timers, from the repo root:
 HTTP_PORT=8089 docker compose -p brainblitz-telegram-e2e -f docker-compose.yml -f compose.smoke.yaml up -d --build --wait --wait-timeout 300
 docker compose -p brainblitz-telegram-e2e --profile tools run --rm --no-deps seed-demo
 docker compose -p brainblitz-telegram-e2e --profile tools run --rm --no-deps -e BOT_INTEGRATION_FULL_GAME=1 telegram-tests
-docker compose -p brainblitz-telegram-e2e --profile tools run --rm --no-deps -e BOT_INTEGRATION_FULL_GAME=1 -e BOT_INTEGRATION_SILENT_PLAYER=1 telegram-tests go test -race -v -tags=integration -count=1 -timeout=3m -run TestIntegration_TelegramConversationAndFullGame ./integration/...
+docker compose -p brainblitz-telegram-e2e --profile tools run --rm --no-deps -e BOT_INTEGRATION_FULL_GAME=1 -e BOT_INTEGRATION_SILENT_PLAYER=1 telegram-tests go test -race -v -tags=integration -count=1 -timeout=12m -run TestIntegration_TelegramConversationAndFullGame ./integration/...
 docker compose -p brainblitz-telegram-e2e down
 ```
 
@@ -144,7 +144,7 @@ See `docs/client/client-roadmap.md` and `docs/client/gap-analysis.md` in the rep
 The backend publishes one active question at a time, with `roundNumber`,
 `totalQuestions`, and an absolute deadline in `QUESTIONS_PUBLISHED`. Each
 accepted answer counts once, including incorrect answers. The server advances
-both players together after all answers arrive or the deadline expires, and
+all players together after all answers arrive or the deadline expires, and
 finishes after the final round. The bot continues to understand the older
 all-questions-at-once response for compatibility with older backends.
 
@@ -185,8 +185,12 @@ routes that consume the gateway's `X-User-ID` header.
 
 ### Question timers and round recaps
 
-New-game flow: choose a category, then choose a question time limit, then wait
-for an opponent with the same category and timer selection. The bot loads the
+New-game flow: choose a category, question time limit, and total player count,
+then wait for players with the same category, timer, and game size. Player counts come from
+`GET /game-service/api/v1/game-options`; configure the backend with `MIN_PLAYERS`
+and `MAX_PLAYERS` in Compose (defaults 2 and 15), and set
+`BOT_BACKEND__GAME_SERVICE_URL` to the HTTP game-service base URL when deploying
+the bot separately. The bot loads timer
 choices from the backend; PostgreSQL initially seeds **10 seconds** and
 **1 minute**. Configure `BOT_BACKEND__QUESTION_SERVICE_URL` for the gateway's
 question-service base URL (provided in Compose/development configuration).
