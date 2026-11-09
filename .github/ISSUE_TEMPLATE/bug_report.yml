@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a reproducible problem in BrainBlitz.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For suspected security vulnerabilities, follow the [security policy](https://github.com/nima-abdpoor/brain-blitz/security/policy) instead of posting details here.
+        Read the [contributor guidelines](https://github.com/nima-abdpoor/brain-blitz/blob/main/CONTRIBUTING.md) and search existing issues first.
+        Remove credentials, tokens, private configuration, and personal data from examples and logs.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      options:
+        - Backend / API
+        - Telegram bot
+        - Matchmaking / gameplay
+        - Deployment / Docker / CI
+        - Documentation
+        - Other / unsure
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Version or commit
+      description: Include the release tag or commit SHA, if known.
+      placeholder: "Output of git rev-parse --short HEAD"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest repeatable example. For games, include category, timer, player count, and relevant commands or bot actions.
+      placeholder: |
+        1. Start the local stack with ...
+        2. Choose ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS/architecture, Docker and Compose versions, native Go version if used, and relevant non-secret settings.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted logs or screenshots
+      description: Include relevant errors, service health, or screenshots. Do not attach your private .env file.

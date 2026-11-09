@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose an improvement to BrainBlitz.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the [contributor guidelines](https://github.com/nima-abdpoor/brain-blitz/blob/main/CONTRIBUTING.md) and search existing issues before proposing a change.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Who needs this, and what are they trying to accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the user or operator experience and how success could be verified.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include existing workarounds or other approaches, if any.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Compatibility and scope
+      description: Mention affected services, clients, configuration, or deployment workflows, if known.
