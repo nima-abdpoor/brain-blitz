@@ -390,11 +390,13 @@ option go_package = "contract/<service>/golang";
 | `X-User-ID` header missing | Traefik ForwardAuth not configured, or request sent to public route | Ensure protected routes go through `auth` middleware |
 | Matchmaking never fires | Match scheduler interval | Default is every 15 seconds; the selected number of players must share category, timer, and game size |
 
-## Contribution Guide
+## Security
 
-1. Fork the repository and create a feature branch from `develop`.
-2. Follow the existing package structure: `delivery/` → `service/` → `repository/`.
-3. Add or update unit tests for any business logic change.
-4. If adding a new Kafka topic, add the topic constant to `contract/event/events.go`.
-5. If changing a Protobuf contract, regenerate the Go code and commit it.
-6. Open a PR targeting `develop` — CI must pass before merge.
+For supported versions and private vulnerability reporting, read
+[the security policy](SECURITY.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, package conventions,
+backend and Telegram client tests, and the pull request process. Bug reports
+and feature requests can use the repository's GitHub issue templates.

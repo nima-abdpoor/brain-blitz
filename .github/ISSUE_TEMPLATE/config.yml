@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/nima-abdpoor/brain-blitz/security/policy
+    about: Follow the private reporting instructions; do not post vulnerability details in a public issue.
+  - name: Contributor guidelines
+    url: https://github.com/nima-abdpoor/brain-blitz/blob/main/CONTRIBUTING.md
+    about: Set up the project, run checks, and prepare a contribution.
