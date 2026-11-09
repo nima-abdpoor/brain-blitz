@@ -20,4 +20,5 @@ message AddToWaitingList {
   string category = 2;
   int32 question_seconds = 3;
   string time_option_id = 4;
+  int32 players = 5;
 }

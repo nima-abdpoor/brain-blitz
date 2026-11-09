@@ -29,15 +29,15 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 				svc.mu.RLock()
 				connected := svc.connections[id] != nil
 				svc.mu.RUnlock()
-				valid = valid && connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID})
+				valid = valid && connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID, Players: len(matchedUser.UserId)})
 			}
 			if !valid {
 				for _, id := range matchedUser.UserId {
 					svc.mu.RLock()
 					connected := svc.connections[id] != nil
 					svc.mu.RUnlock()
-					if connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID}) {
-						msg, _ := proto.Marshal(MapWaitingListRequestToProtoMessage(id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID}))
+					if connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID, Players: len(matchedUser.UserId)}) {
+						msg, _ := proto.Marshal(MapWaitingListRequestToProtoMessage(id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID, Players: len(matchedUser.UserId)}))
 						if err := svc.broker.Publish(ctx, event.GAME_V1_JOIN_MATCH_QUEUE_REQUESTED, msg); err != nil {
 							return err
 						}
@@ -73,7 +73,7 @@ func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) erro
 		go svc.saveUsersGameStatus(createdMatch.UserId, GameStatusPending)
 
 		numberOfPlayers := len(createdMatch.UserId)
-		go svc.saveGameStatus(createdMatch.GameId, nil, &numberOfPlayers)
+		svc.saveGameStatus(createdMatch.GameId, nil, &numberOfPlayers)
 
 		msg := ProcessGameMessageResponse{
 			Success: true,

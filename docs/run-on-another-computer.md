@@ -83,9 +83,9 @@ docker compose --profile tools run --rm --no-deps seed-demo
 docker compose logs --tail 30 bb-telegram-bot
 ```
 
-Open the bot in Telegram and send `/start`. Register two players and select the
-same category to play. The bot uses long polling and Redis session storage; it
-does not require exposing the local backend to Telegram users. See
+Open the bot in Telegram and send `/start`. Register enough players for the
+selected game size and choose the same category and timer to play. The bot uses
+long polling and Redis session storage; it does not require exposing the local backend to Telegram users. See
 `clients/telegram-bot/README.md` for the full-game integration test.
 
 If running the bot separately, use the appropriate backend base URL:
@@ -109,6 +109,33 @@ phones.
 The bot also connects to the authenticated WebSocket at
 `/game-service/api/v1/process-game`. Starting only the default Compose services
 does not start the bot; enable the `telegram` profile as shown above.
+
+## Multiplayer game sizes
+
+The Play flow asks for category, question timer, then the total number of players
+(including the current player). Games start only when exactly that many players
+choose the same category, timer, and game size. Separate full rosters create
+separate games; remaining players keep waiting and can cancel.
+
+The default inclusive range is **2–15 players**. Set `MIN_PLAYERS` and
+`MAX_PLAYERS` in the private `.env`, then recreate the services:
+
+```sh
+docker compose --profile telegram up -d --build --wait
+```
+
+The minimum must be at least 2 and no greater than the maximum. Compose passes
+these shared settings to both game and matchmaking services. For deployments
+outside Compose, set `service.players.min` and `service.players.max` (or
+`GAME_service__players__min/max` and `MATCH_service__players__min/max`) identically
+on both services. Invalid ranges fail startup.
+
+Authenticated clients can fetch `GET /game-service/api/v1/game-options` for
+`minPlayers`, `maxPlayers`, and the inclusive `numberOfPlayers` list. Send the
+selected count as `players` with `ADD_TO_WAITING_LIST`; the server validates it.
+Older clients that omit `players` use the configured minimum. Existing legacy
+queue entries remain two-player entries. Invalid or unavailable selections do
+not enter the queue.
 
 ## Run the checks
 
@@ -166,8 +193,8 @@ copy database volumes.
 - **Redis warns that memory overcommit must be enabled:** follow
   [Redis host setup](redis-host-setup.md). Configure the kernel running Docker;
   this is a host requirement, not a Redis environment variable.
-- **No matchmaking:** use two distinct accounts in the same category. The
-  scheduler runs every 15 seconds by default.
+- **No matchmaking:** use the selected number of distinct accounts with the
+  same category, timer, and game size. The scheduler runs every 15 seconds by default.
 - **No questions:** run the demo import or load EASY questions for the selected
   category in `question_db`.
 - **Bot cannot reach Telegram:** check `https://api.telegram.org` from the target

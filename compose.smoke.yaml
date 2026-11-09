@@ -1,5 +1,8 @@
 # Only use with an isolated test deployment: it shortens game timers.
 services:
+  bb-match-service:
+    environment:
+      MATCH_scheduler__interval: 1
   bb-game-service:
     environment:
       GAME_repository__valid_answer_timeout: 2s

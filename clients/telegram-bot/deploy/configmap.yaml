@@ -5,6 +5,7 @@ metadata:
 data:
   user-service-url: "http://traefik-service/user-service"
   match-service-url: "http://traefik-service/match-service"
+  game-service-url: "http://traefik-service/game-service"
   game-service-ws-url: "ws://traefik-service/game-service/api/v1/process-game"
   session-store-type: "redis"
   session-store-redis-addr: "redis-service:6379"

@@ -228,6 +228,8 @@ services:
       bb-redis: {condition: service_healthy}
       kafka-init: {condition: service_completed_successfully}
     environment:
+      MATCH_service__players__min: ${MIN_PLAYERS:-2}
+      MATCH_service__players__max: ${MAX_PLAYERS:-15}
       MATCH_redis__host: bb-redis
     healthcheck:
       <<: *app-health
@@ -251,6 +253,8 @@ services:
       bb-question-service: {condition: service_healthy}
       bb-match-service: {condition: service_healthy}
     environment:
+      GAME_service__players__min: ${MIN_PLAYERS:-2}
+      GAME_service__players__max: ${MAX_PLAYERS:-15}
       GAME_question_service_url: http://bb-question-service:5004
       GAME_redis__host: bb-redis
       GAME_task_publisher__redis_config__host: bb-redis
@@ -288,6 +292,7 @@ services:
       BOT_BACKEND__QUESTION_SERVICE_URL: http://bb-traefik/question-service
       BOT_BACKEND__USER_SERVICE_URL: http://bb-traefik/user-service
       BOT_BACKEND__MATCH_SERVICE_URL: http://bb-traefik/match-service
+      BOT_BACKEND__GAME_SERVICE_URL: http://bb-traefik/game-service
       BOT_BACKEND__GAME_SERVICE_WS_URL: ws://bb-traefik/game-service/api/v1/process-game
       BOT_SESSION_STORE__TYPE: redis
       BOT_SESSION_STORE__REDIS_ADDR: bb-redis:6379
@@ -311,7 +316,7 @@ services:
       - .:/src
       - go-module-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
-    command: [go, test, -race, -v, -tags=integration, -count=1, -timeout=3m, ./integration/...]
+    command: [go, test, -race, -v, -tags=integration, -count=1, -timeout=12m, ./integration/...]
     networks: [bb-network]
 
   seed-demo:

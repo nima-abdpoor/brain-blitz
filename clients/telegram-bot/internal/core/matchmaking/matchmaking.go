@@ -141,12 +141,13 @@ type chatSession struct {
 // join-queue state machine documented in
 // docs/client/phase4-matchmaking-plan.md.
 type Manager struct {
-	timeOptions TimeOptionsAPI
-	dial        Dialer
-	notifier    Notifier
-	sessions    session.Store
-	gameHandler GameHandler
-	metrics     Metrics
+	playerCounts PlayerCountsAPI
+	timeOptions  TimeOptionsAPI
+	dial         Dialer
+	notifier     Notifier
+	sessions     session.Store
+	gameHandler  GameHandler
+	metrics      Metrics
 
 	mu    sync.Mutex
 	chats map[int64]*chatSession
@@ -216,6 +217,14 @@ func (m *Manager) StateFor(chatID int64) State {
 // (or a latched join error) arrives later via Notifier, from the read loop
 // started here on its own goroutine.
 func (m *Manager) JoinQueue(ctx context.Context, chatID int64, category string, timeOptionIDs ...string) error {
+	var optionID string
+	if len(timeOptionIDs) > 0 {
+		optionID = timeOptionIDs[0]
+	}
+	return m.joinQueue(ctx, chatID, category, optionID, 0)
+}
+
+func (m *Manager) joinQueue(ctx context.Context, chatID int64, category, timeOptionID string, players int) error {
 	m.mu.Lock()
 	if cs, ok := m.chats[chatID]; ok && cs.state != Idle {
 		m.mu.Unlock()
@@ -242,11 +251,7 @@ func (m *Manager) JoinQueue(ctx context.Context, chatID int64, category string, 
 	}
 	m.getMetrics().WSConnectionOpened()
 
-	var timeOptionID string
-	if len(timeOptionIDs) > 0 {
-		timeOptionID = timeOptionIDs[0]
-	}
-	if err := conn.Send(ws.Command{Command: ws.CommandAddToWaitingList, Category: category, DisplayName: sess.DisplayName, TimeOptionID: timeOptionID}); err != nil {
+	if err := conn.Send(ws.Command{Command: ws.CommandAddToWaitingList, Category: category, DisplayName: sess.DisplayName, TimeOptionID: timeOptionID, Players: players}); err != nil {
 		_ = conn.Close()
 		m.getMetrics().WSConnectionClosed()
 		m.abandon(chatID, cs)

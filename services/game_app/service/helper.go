@@ -46,7 +46,7 @@ func MapWaitingListRequestToProtoMessage(userId uint64, category string, choices
 		choice = choices[0]
 	}
 	return &matchProto.AddToWaitingList{
-		QuestionSeconds: int32(choice.Seconds), TimeOptionId: choice.OptionID,
+		QuestionSeconds: int32(choice.Seconds), TimeOptionId: choice.OptionID, Players: int32(choice.Players),
 		UserId:   userId,
 		Category: category,
 	}

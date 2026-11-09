@@ -5,6 +5,7 @@ import (
 	"BrainBlitz.com/game/adapter/task-queue"
 	"BrainBlitz.com/game/adapter/websocket"
 	"BrainBlitz.com/game/pkg/logger"
+	"BrainBlitz.com/game/pkg/playercount"
 	"BrainBlitz.com/game/pkg/playerstats"
 	"BrainBlitz.com/game/pkg/timeoptions"
 	"context"
@@ -17,9 +18,10 @@ import (
 type IdToConnection map[uint64]net.Conn
 
 type Config struct {
-	StoreGameStatusTimeOut          time.Duration `koanf:"store_game_status_time_out"`
-	PublishUserToWaitingListTimeOut time.Duration `koanf:"publish_user_to_waiting_list_time_out"`
-	QuestionInterval                time.Duration `koanf:"question_interval"`
+	Players                         playercount.Limits `koanf:"players"`
+	StoreGameStatusTimeOut          time.Duration      `koanf:"store_game_status_time_out"`
+	PublishUserToWaitingListTimeOut time.Duration      `koanf:"publish_user_to_waiting_list_time_out"`
+	QuestionInterval                time.Duration      `koanf:"question_interval"`
 }
 
 const saveUserGameStatusTimeOut = 2 * time.Second
@@ -68,6 +70,10 @@ func NewService(
 	taskPublisher taskqueue.TaskPublisher,
 	logger logger.SlogAdapter,
 ) Service {
+	config.Players = config.Players.WithDefaults()
+	if err := config.Players.Validate(); err != nil {
+		panic(err)
+	}
 	return Service{
 		config:        config,
 		repository:    repo,

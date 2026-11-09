@@ -37,6 +37,10 @@ jobs:
         run: |
           docker compose --profile tools run --rm seed-demo
           docker compose --profile tools run --rm smoke
+      - name: Telegram games with 2, 3, 4, and 15 players
+        run: docker compose --profile tools run --rm --no-deps -e BOT_INTEGRATION_FULL_GAME=1 telegram-tests go test -race -v -tags=integration -count=1 -timeout=12m -run TestIntegration_TelegramConversationAndFullGame ./integration/...
+      - name: Fifteen-player game with an unanswered player
+        run: docker compose --profile tools run --rm --no-deps -e BOT_INTEGRATION_FULL_GAME=1 -e BOT_INTEGRATION_SILENT_PLAYER=1 telegram-tests go test -race -v -tags=integration -count=1 -timeout=6m -run 'TestIntegration_TelegramConversationAndFullGame/15_players$' ./integration/...
       - name: Show failure diagnostics
         if: failure()
         run: |

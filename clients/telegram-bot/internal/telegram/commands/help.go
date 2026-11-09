@@ -11,7 +11,7 @@ import (
 // listed since they don't exist yet (see docs/client/client-roadmap.md,
 // Phases 4-5).
 const helpText = "🧠 BrainBlitz Help\n\n" +
-	"🎮 /play — choose a category and find an opponent\n" +
+	"🎮 /play — choose a category, timer, and number of players\n" +
 	"👤 /profile — account details, game statistics, and global rank\n" +
 	"🔐 /start — register, log in, or open your menu\n" +
 	"❓ /help — show this message\n\n" +

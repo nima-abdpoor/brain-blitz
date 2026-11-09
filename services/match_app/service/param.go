@@ -7,6 +7,7 @@ type AddToWaitingListResponse struct {
 }
 
 type AddToWaitingListRequest struct {
+	Players  int    `json:"players"`
 	Category string `json:"category" binding:"required"`
 	UserId   string
 }

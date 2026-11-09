@@ -22,6 +22,10 @@ type startingRepository struct {
 	startErr error
 }
 
+func (r *startingRepository) GetGame(context.Context, string) (Game, error) {
+	return Game{Players: []uint64{1, 2}}, nil
+}
+
 func (r *startingRepository) GetQuestionsByGameId(context.Context, string) (GameQuestions, error) {
 	r.reads++
 	if r.reads < r.readyAt {

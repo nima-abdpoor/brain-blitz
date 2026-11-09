@@ -31,6 +31,7 @@ func MapToCategory(category string) Category {
 }
 
 type WaitingMember struct {
+	Players         int
 	QuestionSeconds int
 	TimeOptionID    string
 	UserId          uint

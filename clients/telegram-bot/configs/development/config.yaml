@@ -9,6 +9,7 @@ telegram:
   bot_token: ""
 
 backend:
+  game_service_url: "http://127.0.0.1:8088/game-service"
   question_service_url: "http://127.0.0.1:8088/question-service"
   user_service_url: "http://127.0.0.1:8088/user-service"
   match_service_url: "http://127.0.0.1:8088/match-service"

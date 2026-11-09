@@ -168,35 +168,41 @@ func TestQuestionDeadlinesAndCompletionTimerAgree(t *testing.T) {
 func TestConcurrentReadyPlayersAreNotLost(t *testing.T) {
 	repo := newTestRepo(t)
 	ctx := context.Background()
-	for round := 0; round < 10; round++ {
-		gameID := fmt.Sprintf("concurrent-%d", round)
-		count := 2
-		_, err := repo.UpsertReadyPlayer(ctx, gameID, nil, &count)
-		require.NoError(t, err)
-		start := make(chan struct{})
-		results := make(chan error, 2)
-		var wg sync.WaitGroup
-		for id := 1; id <= 2; id++ {
-			wg.Add(1)
-			go func(player int) {
-				defer wg.Done()
-				<-start
-				_, err := repo.UpsertReadyPlayer(ctx, gameID, &player, nil)
-				results <- err
-			}(id)
-		}
-		close(start)
-		wg.Wait()
-		close(results)
-		for err := range results {
+	for _, count := range []int{2, 3, 4, 15} {
+		for round := 0; round < 3; round++ {
+			gameID := fmt.Sprintf("concurrent-%d-%d", count, round)
+			_, err := repo.UpsertReadyPlayer(ctx, gameID, nil, &count)
 			require.NoError(t, err)
+			start := make(chan struct{})
+			results := make(chan error, count)
+			var wg sync.WaitGroup
+			for id := 1; id <= count; id++ {
+				wg.Add(1)
+				go func(player int) {
+					defer wg.Done()
+					<-start
+					_, err := repo.UpsertReadyPlayer(ctx, gameID, &player, nil)
+					results <- err
+				}(id)
+			}
+			close(start)
+			wg.Wait()
+			close(results)
+			for err := range results {
+				require.NoError(t, err)
+			}
+			value, err := repo.redisDB.Get(ctx, GameStatusPrefix+gameID)
+			require.NoError(t, err)
+			var stored gameStatus
+			require.NoError(t, json.Unmarshal([]byte(value), &stored))
+			want := make([]int, count)
+			for i := range want {
+				want[i] = i + 1
+			}
+			assert.ElementsMatch(t, want, stored.Players)
 		}
-		value, err := repo.redisDB.Get(ctx, GameStatusPrefix+gameID)
-		require.NoError(t, err)
-		var stored gameStatus
-		require.NoError(t, json.Unmarshal([]byte(value), &stored))
-		assert.ElementsMatch(t, []int{1, 2}, stored.Players)
 	}
+
 }
 
 func TestReadyBeforeRosterInitializationIsRetained(t *testing.T) {
@@ -213,4 +219,23 @@ func TestReadyBeforeRosterInitializationIsRetained(t *testing.T) {
 	ready, err = repo.UpsertReadyPlayer(ctx, "early-ready", &player, nil)
 	require.NoError(t, err)
 	assert.True(t, ready)
+}
+
+func TestEarlyReadyDoesNotAssumeTwoPlayers(t *testing.T) {
+	repo := newTestRepo(t)
+	ctx := context.Background()
+	for id := 1; id <= 2; id++ {
+		ready, err := repo.UpsertReadyPlayer(ctx, "early-fifteen", &id, nil)
+		require.NoError(t, err)
+		require.False(t, ready, "unknown roster must never start at two READYs")
+	}
+	count := 15
+	ready, err := repo.UpsertReadyPlayer(ctx, "early-fifteen", nil, &count)
+	require.NoError(t, err)
+	require.False(t, ready)
+	for id := 3; id <= count; id++ {
+		ready, err := repo.UpsertReadyPlayer(ctx, "early-fifteen", &id, nil)
+		require.NoError(t, err)
+		require.Equal(t, id == count, ready)
+	}
 }

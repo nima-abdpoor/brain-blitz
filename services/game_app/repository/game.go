@@ -212,10 +212,10 @@ func (m GameRepository) GetUserStatus(ctx context.Context, userId uint64) (servi
 func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error) {
 	key := GameStatusPrefix + gameId
 	client := m.redisDB.Client()
-	for attempt := 0; attempt < 8; attempt++ {
+	for attempt := 0; attempt < 64; attempt++ {
 		ready := false
 		err := client.Watch(ctx, func(tx *goredis.Tx) error {
-			gs := gameStatus{ExpectedNumberOfPlayers: 2, Players: []int{}}
+			gs := gameStatus{Players: []int{}}
 			value, err := tx.Get(ctx, key).Result()
 			if err == nil {
 				if err := json.Unmarshal([]byte(value), &gs); err != nil {
@@ -227,7 +227,7 @@ func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, pl
 			if numberOfPlayers != nil {
 				gs.ExpectedNumberOfPlayers = *numberOfPlayers
 			}
-			if len(gs.Players) == gs.ExpectedNumberOfPlayers {
+			if gs.ExpectedNumberOfPlayers > 0 && len(gs.Players) == gs.ExpectedNumberOfPlayers {
 				ready = true
 				return nil
 			}
@@ -247,7 +247,7 @@ func (m GameRepository) UpsertReadyPlayer(ctx context.Context, gameId string, pl
 				pipe.Set(ctx, key, data, m.Config.GameStatusTimeOut)
 				return nil
 			})
-			ready = len(gs.Players) == gs.ExpectedNumberOfPlayers
+			ready = gs.ExpectedNumberOfPlayers > 0 && len(gs.Players) == gs.ExpectedNumberOfPlayers
 			return err
 		}, key)
 		if errors.Is(err, goredis.TxFailedErr) {

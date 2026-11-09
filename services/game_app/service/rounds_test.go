@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -49,13 +50,14 @@ func (r *roundRepository) SavePlayerAnswer(_ context.Context, _ string, a Player
 }
 func (r *roundRepository) GetLeaderBoard(context.Context, string) (LeaderBoard, error) {
 	b := LeaderBoard{}
-	for _, id := range []string{"1", "2"} {
+	for _, playerID := range r.q.Players {
+		id := strconv.FormatUint(playerID, 10)
 		b.PlayersPoint = append(b.PlayersPoint, PlayerPoint{PlayerId: id, QuestionCorrectness: r.answers[id]})
 	}
 	return b, nil
 }
 func (r *roundRepository) GetGame(context.Context, string) (Game, error) {
-	return Game{Players: []uint64{1, 2}, Status: r.status}, nil
+	return Game{Players: r.q.Players, Status: r.status}, nil
 }
 func (r *roundRepository) FinishGame(context.Context, string) error {
 	r.status = GameStatusFinished
@@ -74,7 +76,16 @@ func (roundPublisher) Publish(context.Context, string, any, ...taskqueue.Option)
 }
 
 func TestConcurrentAnswersAdvanceOnceAndTimeoutDoesNotSkip(t *testing.T) {
-	r := &roundRepository{q: GameQuestions{Players: []uint64{1, 2}, Questions: []Question{{Id: "q1"}, {Id: "q2"}}}, answers: map[string][]QuestionCorrectness{}}
+	for _, count := range []int{2, 3, 4, 15} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) { testConcurrentAnswers(t, count) })
+	}
+}
+func testConcurrentAnswers(t *testing.T, count int) {
+	players := make([]uint64, count)
+	for i := range players {
+		players[i] = uint64(i + 1)
+	}
+	r := &roundRepository{q: GameQuestions{Players: players, Questions: []Question{{Id: "q1"}, {Id: "q2"}}}, answers: map[string][]QuestionCorrectness{}}
 	sock := &completionSocket{}
 	svc := NewService(Config{}, r, sock, nil, roundPublisher{}, logger.SlogAdapter{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	ctx := context.Background()
@@ -84,7 +95,7 @@ func TestConcurrentAnswersAdvanceOnceAndTimeoutDoesNotSkip(t *testing.T) {
 	require.Equal(t, 1, r.opens)
 	require.Equal(t, deadline, r.q.Questions[0].ValidAnswerTime)
 	var wg sync.WaitGroup
-	for _, id := range []uint64{1, 2, 1, 2} {
+	for _, id := range append(append([]uint64{}, players...), players...) {
 		wg.Add(1)
 		go func(id uint64) {
 			defer wg.Done()
@@ -103,4 +114,28 @@ func TestConcurrentAnswersAdvanceOnceAndTimeoutDoesNotSkip(t *testing.T) {
 	require.Equal(t, GameStatusFinished, r.status)
 	require.NoError(t, svc.ProcessRoundTimeout(ctx, map[string]interface{}{"gameId": "g", "round": float64(1)}))
 	require.Equal(t, 3, r.opens)
+}
+
+func TestRoundWaitsForEntireRoster(t *testing.T) {
+	for _, count := range []int{3, 4, 15} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			players := make([]uint64, count)
+			for i := range players {
+				players[i] = uint64(i + 1)
+			}
+			repo := &roundRepository{q: GameQuestions{Players: players, Questions: []Question{{Id: "q1"}, {Id: "q2"}}}, answers: map[string][]QuestionCorrectness{}}
+			svc := NewService(Config{}, repo, &completionSocket{}, nil, roundPublisher{}, logger.SlogAdapter{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+			require.NoError(t, svc.startRounds(context.Background(), "g"))
+			for i, id := range players {
+				var conn net.Conn
+				data, err := json.Marshal(ProcessGameMessageRequest{Command: CommandAnswer, GameAnswer: ProcessGameAnswer{GameId: "g", QuestionId: "q1", Answer: "wrong"}})
+				require.NoError(t, err)
+				require.NoError(t, svc.readMessage(context.Background(), id, &conn, websocket.OpText, string(data)))
+				if i < count-1 {
+					require.Zero(t, repo.q.CurrentQuestionIndex, "must wait for every player")
+				}
+			}
+			require.Equal(t, 1, repo.q.CurrentQuestionIndex)
+		})
+	}
 }

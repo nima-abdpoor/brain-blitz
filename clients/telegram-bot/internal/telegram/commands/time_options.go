@@ -38,6 +38,6 @@ func (h *Handlers) TimeOptionCallback(ctx context.Context, cb *tgbotapi.Callback
 	if !found {
 		return h.timeOptionsReply(ctx, cb.Message.Chat.ID, category), nil
 	}
-	reply := h.joinCategory(ctx, cb, category, id)
+	reply := h.playerCountsReply(ctx, cb.Message.Chat.ID, category, id)
 	return reply, nil
 }

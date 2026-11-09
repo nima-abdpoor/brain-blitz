@@ -26,13 +26,24 @@ func keys(prefix, id string) []string {
 type Choice struct {
 	Seconds  int
 	OptionID string
+	Players  int
 }
 
 func presence(category string, choices []Choice) string {
-	if len(choices) == 0 || choices[0].Seconds == 0 {
+	if len(choices) == 0 {
 		return category
 	}
-	return fmt.Sprintf("%s|%d|%s", category, choices[0].Seconds, choices[0].OptionID)
+	c := choices[0]
+	if c.Players == 0 {
+		c.Players = 2
+	}
+	if c.Players == 2 {
+		if c.Seconds == 0 {
+			return category
+		}
+		return fmt.Sprintf("%s|%d|%s", category, c.Seconds, c.OptionID)
+	}
+	return fmt.Sprintf("%s|%d|%s|%d", category, c.Seconds, c.OptionID, c.Players)
 }
 func ChoiceFor(ctx context.Context, client *redis.Client, id string) (Choice, error) {
 	value, err := client.Get(ctx, presencePrefix+id).Result()
@@ -41,13 +52,23 @@ func ChoiceFor(ctx context.Context, client *redis.Client, id string) (Choice, er
 	}
 	fields := strings.Split(value, "|")
 	if len(fields) == 1 {
-		return Choice{}, nil
+		return Choice{Players: 2}, nil
 	}
-	if len(fields) != 3 {
+	if len(fields) != 3 && len(fields) != 4 {
 		return Choice{}, fmt.Errorf("invalid queue settings")
 	}
 	seconds, err := strconv.Atoi(fields[1])
-	return Choice{seconds, fields[2]}, err
+	if err != nil {
+		return Choice{}, err
+	}
+	players := 2
+	if len(fields) == 4 {
+		players, err = strconv.Atoi(fields[3])
+		if err != nil || players < 2 {
+			return Choice{}, fmt.Errorf("invalid queue player count")
+		}
+	}
+	return Choice{Seconds: seconds, OptionID: fields[2], Players: players}, nil
 }
 func Join(ctx context.Context, client *redis.Client, id, category string, choices ...Choice) error {
 	return client.Set(ctx, presencePrefix+id, presence(category, choices), 20*time.Minute).Err()

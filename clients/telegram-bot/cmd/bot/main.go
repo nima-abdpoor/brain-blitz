@@ -141,6 +141,7 @@ func run() error {
 	// comment).
 	matchmakingMgr := matchmaking.NewManager(dialer, matchmakingNotifier, sessionStore, nil)
 	matchmakingMgr.SetMetrics(recorder)
+	matchmakingMgr.SetPlayerCountsAPI(apihttp.NewPlayerCountsClient(apihttp.NewClient(cfg.Backend.GameServiceURL, cfg.Backend.HTTPTimeout, log, httpOpts...)))
 	matchmakingMgr.SetTimeOptionsAPI(apihttp.NewTimeOptionsClient(apihttp.NewClient(cfg.Backend.QuestionServiceURL, cfg.Backend.HTTPTimeout, log, httpOpts...)))
 
 	gameNotifier := telegram.NewGameNotifier(sender, log, sessionStore)
@@ -167,6 +168,9 @@ func run() error {
 	}
 	bot.RegisterCallbackPrefix(commands.CallbackTimePrefix, func(ctx context.Context, cb *tgbotapi.CallbackQuery, _ string) (tgbotapi.Chattable, error) {
 		return middleware.RequireAuthCallback(authSvc, handlers.TimeOptionCallback)(ctx, cb)
+	})
+	bot.RegisterCallbackPrefix(commands.CallbackPlayersPrefix, func(ctx context.Context, cb *tgbotapi.CallbackQuery, _ string) (tgbotapi.Chattable, error) {
+		return middleware.RequireAuthCallback(authSvc, handlers.PlayerCountCallback)(ctx, cb)
 	})
 	bot.RegisterCallbackPrefix(keyboards.CallbackAnswerPrefix, handlers.AnswerCallback)
 	bot.SetTextHandler(handlers.HandleText)
