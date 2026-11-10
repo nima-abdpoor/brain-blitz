@@ -148,6 +148,13 @@ all players together after all answers arrive or the deadline expires, and
 finishes after the final round. The bot continues to understand the older
 all-questions-at-once response for compatibility with older backends.
 
+`ANSWER_ACCEPTED` immediately includes `metaData.answerFeedback` with the
+submitted `questionId` and `isCorrect`. The bot shows “✅ Correct!” or
+“❌ Incorrect.” alongside the updated score as soon as the server accepts the
+answer, without waiting for other players. The verdict compares answer text,
+independently of points earned. Older backends that omit this field continue
+to show the answer-recorded acknowledgement without a correctness verdict.
+
 The bot uses a player's Telegram first/last name in standings; account emails
 are not used as a name fallback. The countdown runs locally and edits only the
 Telegram message every five seconds. It does not poll the backend. A slow

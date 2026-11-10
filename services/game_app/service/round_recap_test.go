@@ -31,11 +31,14 @@ func TestRecapOnlyAfterRoundClosureAndBeforeNextQuestion(t *testing.T) {
 	send(1, "wrong")
 	require.Len(t, sock.messages, 1)
 	require.Equal(t, AnswerAccepted, sock.messages[0].Event)
+	require.Equal(t, &ProcessGameAnswerFeedback{QuestionId: "q1", IsCorrect: false}, sock.messages[0].MetaData.AnswerFeedback)
 	for _, p := range sock.messages[0].MetaData.Answer.PlayerPoint {
 		require.Empty(t, p.Answers, "ack must not disclose current answers")
 	}
 	send(2, "right")
 	require.Len(t, sock.messages, 6)
+	require.Equal(t, AnswerAccepted, sock.messages[1].Event)
+	require.Equal(t, &ProcessGameAnswerFeedback{QuestionId: "q1", IsCorrect: true}, sock.messages[1].MetaData.AnswerFeedback)
 	correctRecaps := 0
 	for _, message := range sock.messages[2:4] {
 		require.Equal(t, EventRoundClosed, message.Event)

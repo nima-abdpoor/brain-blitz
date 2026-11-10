@@ -119,11 +119,11 @@ Back to Main Menu
 ### Callback: `answer:<questionId>:<choice>`
 - **Conversation flow**: Send the answer, disable further taps for that question, show a brief "Submitted!" then update with the result once `ANSWER_ACCEPTED` arrives.
 - **API calls**: WS send `{command: "ANSWER", answer: {gameId, questionId, choice}}`
-- **Expected responses**: `ANSWER_ACCEPTED` with the full leaderboard (render as "You: X pts | Opponent: Y pts").
+- **Expected responses**: `ANSWER_ACCEPTED` with updated standings and `answerFeedback: {questionId, isCorrect}`. Show “Correct!” or “Incorrect” immediately upon acceptance, before other players finish. The full correct answer is revealed in the round-end recap.
 - **Error handling**:
   - `"answered to question quickly"` → indicates the bot's own pacing logic let the user answer before the window opened — treat as a bot bug to fix, not a user-facing error to show verbatim; if it happens, a generic "please wait a moment" is friendlier.
   - `"already answered this question"` → bot should have disabled the button; if seen, just ignore (no user-facing message needed).
-- **Missing backend support**: No structured error codes (must string-match); no per-answer correctness flag independent of points (the `isCorrect` field on the backend is derived from `Point > 0`, so a "correct but too late" answer reports as incorrect — bot should present it as "no points earned" rather than "wrong answer" to avoid misleading the user).
+- **Missing backend support**: No structured error codes (must string-match). Immediate correctness uses `answerFeedback.isCorrect`, which compares answers independently of points; older backends without this field show only an answer-recorded acknowledgement.
 
 ### (Automatic) `COMPLETED` event
 - **Conversation flow**: Show final leaderboard, congratulate the winner, offer `[Play Again]` which restarts the `/play` flow (a **new** WS connection, since the server closes the old one).

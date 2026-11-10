@@ -27,7 +27,7 @@ func (h *Handlers) AnswerCallback(ctx context.Context, cb *tgbotapi.CallbackQuer
 	err := h.game.SubmitAnswer(chatID, questionID, index)
 	switch {
 	case err == nil:
-		return tgbotapi.NewMessage(chatID, "Answer submitted! Waiting for the result…"), nil
+		return tgbotapi.NewMessage(chatID, "Answer submitted!"), nil
 	case errors.Is(err, game.ErrAlreadyAnswered):
 		// A duplicate tap on the same question — nothing new to tell the
 		// user, and re-sending the same confirmation would be confusing.

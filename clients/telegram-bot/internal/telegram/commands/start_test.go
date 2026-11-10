@@ -42,11 +42,12 @@ func newTestMatchmakingManager(sessions *session.MemoryStore) *matchmaking.Manag
 // valid (if unused) game.Manager.
 type noopGameNotifier struct{}
 
-func (noopGameNotifier) NotifyQuestion(int64, game.Question, int, int) {}
-func (noopGameNotifier) NotifyLeaderboard(int64, game.Leaderboard)     {}
-func (noopGameNotifier) NotifyReadyTimeout(int64)                      {}
-func (noopGameNotifier) NotifyCompleted(int64, game.Leaderboard)       {}
-func (noopGameNotifier) NotifyDisconnected(int64)                      {}
+func (noopGameNotifier) NotifyQuestion(int64, game.Question, int, int)      {}
+func (noopGameNotifier) NotifyLeaderboard(int64, game.Leaderboard)          {}
+func (noopGameNotifier) NotifyAnswerAccepted(int64, bool, game.Leaderboard) {}
+func (noopGameNotifier) NotifyReadyTimeout(int64)                           {}
+func (noopGameNotifier) NotifyCompleted(int64, game.Leaderboard)            {}
+func (noopGameNotifier) NotifyDisconnected(int64)                           {}
 
 // noopDetacher is a game.Detacher that does nothing.
 type noopDetacher struct{}

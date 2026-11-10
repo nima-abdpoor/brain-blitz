@@ -115,26 +115,40 @@ func (svc Service) ProcessRoundTimeout(ctx context.Context, payload map[string]i
 	return svc.openRound(ctx, gameID, q.CurrentQuestionIndex+1)
 }
 
-func (svc Service) acceptRoundAnswer(ctx context.Context, playerID uint64, answer ProcessGameAnswer) (ProcessGameLeaderBoard, bool, error) {
+type acceptedAnswer struct {
+	leaderBoard ProcessGameLeaderBoard
+	feedback    *ProcessGameAnswerFeedback
+	allAnswered bool
+}
+
+func (svc Service) acceptRoundAnswer(ctx context.Context, playerID uint64, answer ProcessGameAnswer) (acceptedAnswer, error) {
 	q, err := svc.repository.GetQuestionsByGameId(ctx, answer.GameId)
 	if err != nil {
-		return ProcessGameLeaderBoard{}, false, err
+		return acceptedAnswer{}, err
 	}
 	if q.RoundBased {
 		if q.Completed || q.CurrentQuestionIndex >= len(q.Questions) || q.Questions[q.CurrentQuestionIndex].Id != answer.QuestionId {
-			return ProcessGameLeaderBoard{}, false, fmt.Errorf("question is no longer active")
+			return acceptedAnswer{}, fmt.Errorf("question is no longer active")
 		}
 		member := false
 		for _, id := range q.Players {
 			member = member || id == playerID
 		}
 		if !member {
-			return ProcessGameLeaderBoard{}, false, fmt.Errorf("player is not in this game")
+			return acceptedAnswer{}, fmt.Errorf("player is not in this game")
 		}
 	}
 	board, err := svc.savePlayerAnswer(ctx, playerID, answer)
 	if err != nil {
-		return board, false, err
+		return acceptedAnswer{}, err
+	}
+	var feedback *ProcessGameAnswerFeedback
+	for _, question := range q.Questions {
+		if question.Id == answer.QuestionId {
+			// Correctness is independent of points earned near the deadline.
+			feedback = &ProcessGameAnswerFeedback{QuestionId: answer.QuestionId, IsCorrect: answer.Answer == question.CorrectAnswer}
+			break
+		}
 	}
 	answered := map[string]bool{}
 	for _, player := range board.PlayerPoint {
@@ -149,7 +163,7 @@ func (svc Service) acceptRoundAnswer(ctx context.Context, playerID uint64, answe
 		all = all && answered[strconv.FormatUint(id, 10)]
 	}
 	svc.logger.Info("answer accepted", "gameId", answer.GameId, "questionId", answer.QuestionId, "allAnswered", all)
-	return board, all, nil
+	return acceptedAnswer{leaderBoard: board, feedback: feedback, allAnswered: all}, nil
 }
 
 func (svc Service) addPlayerNames(board ProcessGameLeaderBoard) ProcessGameLeaderBoard {

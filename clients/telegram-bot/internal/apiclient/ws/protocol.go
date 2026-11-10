@@ -84,8 +84,7 @@ func (e Event) MatchCreated() (MatchCreatedMetaData, error) {
 
 // Question is one question in a QUESTIONS_PUBLISHED push, mirroring
 // game-service's ProcessGameQuestion (services/game_app/service/param.go).
-// There is deliberately no correct-answer field here — the server never
-// sends one to clients.
+// Correct answers are only revealed in ROUND_CLOSED recaps.
 type Question struct {
 	ID         string   `json:"id"`
 	Content    string   `json:"content"`
@@ -141,6 +140,27 @@ type PlayerPoint struct {
 type LeaderboardMetaData struct {
 	GameID      string        `json:"gameId"`
 	PlayerPoint []PlayerPoint `json:"playerPoint"`
+}
+
+// AnswerFeedback contains the submitting player's verdict without revealing
+// the correct answer or any other player's answer.
+type AnswerFeedback struct {
+	QuestionID string `json:"questionId"`
+	IsCorrect  bool   `json:"isCorrect"`
+}
+
+type AnswerAcceptedMetaData struct {
+	GameID         string              `json:"gameId"`
+	AnswerFeedback *AnswerFeedback     `json:"answerFeedback"`
+	LeaderBoard    LeaderboardMetaData `json:"leaderBoard"`
+}
+
+func (e Event) AnswerAccepted() (AnswerAcceptedMetaData, error) {
+	var m AnswerAcceptedMetaData
+	if err := json.Unmarshal(e.MetaData, &m); err != nil {
+		return AnswerAcceptedMetaData{}, fmt.Errorf("decoding %s metadata: %w", EventAnswerAccepted, err)
+	}
+	return m, nil
 }
 
 // Leaderboard decodes e.MetaData's nested "leaderBoard" object. Only

@@ -238,7 +238,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			mu := svc.roundMutex(req.GameAnswer.GameId)
 			mu.Lock()
 			defer mu.Unlock()
-			playerResponse, allAnswered, err := svc.acceptRoundAnswer(ctx, id, req.GameAnswer)
+			accepted, err := svc.acceptRoundAnswer(ctx, id, req.GameAnswer)
 			if err != nil {
 				svc.logger.Error(op, "error in saving answer of a player", slog.String("error", err.Error()))
 				response = ProcessGameMessageResponse{
@@ -257,6 +257,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				return nil
 			}
 
+			playerResponse := accepted.leaderBoard
 			for i := range playerResponse.PlayerPoint {
 				playerResponse.PlayerPoint[i].Answers = nil
 			}
@@ -264,8 +265,9 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			response.Message = "answer accepted"
 			response.Success = true
 			response.MetaData = ProcessGameMetaDataResponse{
-				GameId: req.GameAnswer.GameId,
-				Answer: svc.addPlayerNames(playerResponse),
+				GameId:         req.GameAnswer.GameId,
+				Answer:         svc.addPlayerNames(playerResponse),
+				AnswerFeedback: accepted.feedback,
 			}
 			answerAcceptedJson, err := json.Marshal(response)
 			if err != nil {
@@ -276,7 +278,7 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			if err != nil {
 				return err
 			}
-			if allAnswered {
+			if accepted.allAnswered {
 				q, err := svc.repository.GetQuestionsByGameId(ctx, req.GameAnswer.GameId)
 				if err != nil {
 					return err
