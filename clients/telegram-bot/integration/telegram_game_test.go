@@ -266,8 +266,18 @@ func testTelegramFullGame(t *testing.T, playerCount int) {
 				if chatID == chatB && os.Getenv("BOT_INTEGRATION_SILENT_PLAYER") == "1" && !strings.Contains(msg.Text, "No answer submitted") {
 					t.Fatalf("silent player recap: %q", msg.Text)
 				}
+				if (chatID != chatB || os.Getenv("BOT_INTEGRATION_SILENT_PLAYER") != "1") && leaderboards[chatID] != recaps[chatID] {
+					t.Fatalf("round recap arrived before immediate answer feedback for chat %d", chatID)
+				}
 			case strings.HasPrefix(msg.Text, "📊 Leaderboard"):
 				leaderboards[chatID]++
+				verdict := "❌ Incorrect."
+				if chatID == chatA {
+					verdict = "✅ Correct!"
+				}
+				if !strings.Contains(msg.Text, verdict) || strings.Contains(msg.Text, "Correct answer:") {
+					t.Fatalf("invalid immediate answer feedback: %q", msg.Text)
+				}
 			case strings.Contains(msg.Text, "Answer submitted"):
 			case strings.HasPrefix(msg.Text, "🏆 Game over! Final results"):
 				for _, playerChat := range chats {

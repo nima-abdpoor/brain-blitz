@@ -67,6 +67,8 @@ type Notifier interface {
 	// NotifyLeaderboard reports an updated leaderboard after an accepted
 	// answer, with the game still in progress.
 	NotifyLeaderboard(chatID int64, board Leaderboard)
+	// NotifyAnswerAccepted reports the server's verdict for the pending answer.
+	NotifyAnswerAccepted(chatID int64, isCorrect bool, board Leaderboard)
 	// NotifyReadyTimeout reports that the opponent never became ready.
 	NotifyReadyTimeout(chatID int64)
 	// NotifyCompleted reports the final leaderboard; the game is over.
@@ -429,15 +431,23 @@ func (m *Manager) handleAnswerAccepted(chatID int64, cg *chatGame, event ws.Even
 		return
 	}
 
-	meta, err := event.Leaderboard()
+	meta, err := event.AnswerAccepted()
 	if err != nil {
 		m.logger.Error("failed to decode ANSWER_ACCEPTED", "chat_id", chatID, "error", err)
 		return
 	}
-	board := toLeaderboard(meta)
+	board := toLeaderboard(meta.LeaderBoard)
 
 	m.mu.Lock()
+	if m.chats[chatID] != cg || (meta.GameID != "" && meta.GameID != cg.gameID) || (meta.LeaderBoard.GameID != "" && meta.LeaderBoard.GameID != cg.gameID) {
+		m.mu.Unlock()
+		return
+	}
 	wasPending := cg.awaitingAccept
+	if meta.AnswerFeedback != nil && (!wasPending || meta.GameID != cg.gameID || meta.AnswerFeedback.QuestionID != cg.answeredQuestionID) {
+		m.mu.Unlock()
+		return
+	}
 	if wasPending {
 		cg.awaitingAccept = false
 		if cg.questionTimer != nil {
@@ -450,7 +460,12 @@ func (m *Manager) handleAnswerAccepted(chatID int64, cg *chatGame, event ws.Even
 	serverPaced := cg.serverPaced
 	m.mu.Unlock()
 
-	m.notifier.NotifyLeaderboard(chatID, board)
+	if meta.AnswerFeedback != nil {
+		m.notifier.NotifyAnswerAccepted(chatID, meta.AnswerFeedback.IsCorrect, board)
+	} else {
+		// Older backends acknowledge receipt without a correctness verdict.
+		m.notifier.NotifyLeaderboard(chatID, board)
+	}
 
 	if serverPaced {
 		return

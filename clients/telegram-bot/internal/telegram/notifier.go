@@ -124,6 +124,15 @@ func (n *GameNotifier) NotifyLeaderboard(chatID int64, board game.Leaderboard) {
 	n.send(chatID, tgbotapi.NewMessage(chatID, formatLeaderboard("📊 Leaderboard", board)+"\n📩 Answer recorded. The next round starts when everyone answers or time expires."))
 }
 
+func (n *GameNotifier) NotifyAnswerAccepted(chatID int64, isCorrect bool, board game.Leaderboard) {
+	n.stopCountdown(chatID)
+	result := "❌ Incorrect."
+	if isCorrect {
+		result = "✅ Correct!"
+	}
+	n.send(chatID, tgbotapi.NewMessage(chatID, formatLeaderboard("📊 Leaderboard", board)+"\n"+result+"\nThe next round starts when everyone answers or time expires."))
+}
+
 // NotifyReadyTimeout tells chatID its opponent never became ready.
 func (n *GameNotifier) NotifyReadyTimeout(chatID int64) {
 	n.stopCountdown(chatID)

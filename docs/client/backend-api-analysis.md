@@ -178,9 +178,33 @@ Envelope: `{ "success": bool, "event": "...", "message": "...", "metaData": {...
 | `ADDED_TO_WAITING_LIST` | Reply to `ADD_TO_WAITING_LIST` | empty |
 | `MATCH_CREATED` | Broadcast when matchmaking pairs this player | `gameId` |
 | `QUESTIONS_PUBLISHED` | Broadcast once **all** expected players send `READY` | `gameId`, `questions[]` (full set, each with its own `ttl` deadline, delivered all at once) |
-| `ANSWER_ACCEPTED` | Reply to a valid `ANSWER` | `leaderBoard` (full recomputed leaderboard, not a delta) |
+| `ANSWER_ACCEPTED` | Reply to a valid `ANSWER`, sent only to the submitter | `gameId`, `answerFeedback` (`questionId`, `isCorrect`), `leaderBoard` (recomputed standings with answer details omitted) |
 | `COMPLETED` | Server-scheduled task fires after all question deadlines pass | `leaderBoard` (final) — **connection is closed by the server immediately after sending this** |
 | `ERROR` | Various failure conditions (see below) | usually empty |
+
+`ANSWER_ACCEPTED` supplies an immediate verdict for the accepted submission,
+before other players answer or the round expires. For example:
+
+```json
+{
+  "success": true,
+  "event": "ANSWER_ACCEPTED",
+  "message": "answer accepted",
+  "metaData": {
+    "gameId": "g1",
+    "answerFeedback": {"questionId": "q1", "isCorrect": false},
+    "leaderBoard": {"gameId": "g1", "playerPoint": []}
+  }
+}
+```
+
+`isCorrect` compares the submitted answer with the question's correct answer;
+it is independent of the points awarded. A false verdict is sent explicitly.
+The feedback contains no solution or other players' answers. The full correct
+answer remains in the player-specific `ROUND_CLOSED` recap after everyone has
+answered or the deadline expires. Rejected submissions receive `ERROR` with no
+feedback. Older servers may omit `answerFeedback`; clients must treat its
+absence as an acknowledgement without a correctness verdict.
 
 #### Documented WebSocket quirks a client MUST handle defensively (verified in code, not hypothetical)
 1. **Invalid category on `ADD_TO_WAITING_LIST` sends BOTH an `ERROR` and a subsequent `ADDED_TO_WAITING_LIST`.** A client must not treat receipt of a success event as proof the preceding error didn't happen — check the error first.
@@ -239,7 +263,7 @@ A client never touches Kafka directly; it's documented here only so a client dev
 ### Difficult for client integration (design smells to work around, not fix)
 - Inconsistent error envelopes: most endpoints return `{"message":"...","error":"..."}`, but `user-service` profile and `match-service` X-User-ID/category errors return **bare JSON strings**, not objects. A client's HTTP layer needs to defensively parse both shapes.
 - `match-service`'s `timeout` field is nanoseconds as a raw number, inconsistent with human-readable durations elsewhere.
-- WebSocket has no correlation ID between a command and its response — a client sending multiple `ANSWER`s in flight cannot definitively match a given `ANSWER_ACCEPTED` back to the triggering command except by `questionId` inference from the leaderboard payload (which doesn't even echo `questionId` back at top level).
+- `ANSWER_ACCEPTED` echoes `metaData.gameId` and `metaData.answerFeedback.questionId` so the client can match a verdict to its pending submission and ignore stale or duplicate verdicts. Older servers that omit feedback still lack this question correlation.
 - No structured/machine-readable error codes over WebSocket (see §4, point 10) — client must pattern-match on message strings, which is brittle.
 
 ---

@@ -60,12 +60,20 @@ type ProcessGameMessageResponse struct {
 }
 
 type ProcessGameMetaDataResponse struct {
-	Recap          *RoundRecap            `json:"recap,omitempty"`
-	RoundNumber    int                    `json:"roundNumber,omitempty"`
-	TotalQuestions int                    `json:"totalQuestions,omitempty"`
-	GameId         string                 `json:"gameId"`
-	Questions      []ProcessGameQuestion  `json:"questions"`
-	Answer         ProcessGameLeaderBoard `json:"leaderBoard"`
+	Recap          *RoundRecap                `json:"recap,omitempty"`
+	AnswerFeedback *ProcessGameAnswerFeedback `json:"answerFeedback,omitempty"`
+	RoundNumber    int                        `json:"roundNumber,omitempty"`
+	TotalQuestions int                        `json:"totalQuestions,omitempty"`
+	GameId         string                     `json:"gameId"`
+	Questions      []ProcessGameQuestion      `json:"questions"`
+	Answer         ProcessGameLeaderBoard     `json:"leaderBoard"`
+}
+
+// ProcessGameAnswerFeedback reports only the submitting player's verdict.
+// The correct answer is revealed separately when the round closes.
+type ProcessGameAnswerFeedback struct {
+	QuestionId string `json:"questionId"`
+	IsCorrect  bool   `json:"isCorrect"`
 }
 
 type ProcessGameLeaderBoard struct {

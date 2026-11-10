@@ -48,20 +48,22 @@ type questionCall struct {
 // fakeNotifier records Notifier calls on buffered channels so tests can
 // assert on them without a sleep-based race.
 type fakeNotifier struct {
-	questions    chan questionCall
-	leaderboards chan Leaderboard
-	readyTimeout chan int64
-	completed    chan Leaderboard
-	disconnected chan int64
+	questions     chan questionCall
+	leaderboards  chan Leaderboard
+	answerResults chan bool
+	readyTimeout  chan int64
+	completed     chan Leaderboard
+	disconnected  chan int64
 }
 
 func newFakeNotifier() *fakeNotifier {
 	return &fakeNotifier{
-		questions:    make(chan questionCall, 10),
-		leaderboards: make(chan Leaderboard, 10),
-		readyTimeout: make(chan int64, 10),
-		completed:    make(chan Leaderboard, 10),
-		disconnected: make(chan int64, 10),
+		questions:     make(chan questionCall, 10),
+		leaderboards:  make(chan Leaderboard, 10),
+		answerResults: make(chan bool, 10),
+		readyTimeout:  make(chan int64, 10),
+		completed:     make(chan Leaderboard, 10),
+		disconnected:  make(chan int64, 10),
 	}
 }
 
@@ -69,9 +71,13 @@ func (n *fakeNotifier) NotifyQuestion(_ int64, q Question, questionNumber, total
 	n.questions <- questionCall{q, questionNumber, total}
 }
 func (n *fakeNotifier) NotifyLeaderboard(_ int64, board Leaderboard) { n.leaderboards <- board }
-func (n *fakeNotifier) NotifyReadyTimeout(chatID int64)              { n.readyTimeout <- chatID }
-func (n *fakeNotifier) NotifyCompleted(_ int64, board Leaderboard)   { n.completed <- board }
-func (n *fakeNotifier) NotifyDisconnected(chatID int64)              { n.disconnected <- chatID }
+func (n *fakeNotifier) NotifyAnswerAccepted(chatID int64, isCorrect bool, board Leaderboard) {
+	n.answerResults <- isCorrect
+	n.NotifyLeaderboard(chatID, board)
+}
+func (n *fakeNotifier) NotifyReadyTimeout(chatID int64)            { n.readyTimeout <- chatID }
+func (n *fakeNotifier) NotifyCompleted(_ int64, board Leaderboard) { n.completed <- board }
+func (n *fakeNotifier) NotifyDisconnected(chatID int64)            { n.disconnected <- chatID }
 
 // fakeDetacher records Detach calls.
 type fakeDetacher struct {
@@ -306,6 +312,11 @@ func TestAnswerAccepted_WaitsForNextAnswerWindow(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for NotifyLeaderboard")
+	}
+	select {
+	case <-notifier.answerResults:
+		t.Fatal("older backends without feedback must not imply correctness")
+	default:
 	}
 
 	select {

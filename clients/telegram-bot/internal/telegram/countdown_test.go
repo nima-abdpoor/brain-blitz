@@ -30,7 +30,7 @@ func TestCountdownEditsQuestionAndStopsAfterAnswer(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("no countdown edit")
 	}
-	n.NotifyLeaderboard(42, game.Leaderboard{})
+	n.NotifyAnswerAccepted(42, true, game.Leaderboard{})
 	time.Sleep(30 * time.Millisecond)
 	for len(s.events) > 0 {
 		<-s.events
