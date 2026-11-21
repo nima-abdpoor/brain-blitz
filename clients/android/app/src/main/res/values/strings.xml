@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">BrainBlitz</string>
+    <string name="connection_title">Connect to BrainBlitz</string>
+    <string name="connection_description">Sign in to check that this build can reach your BrainBlitz server.</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="check_connection">Check connection</string>
+    <string name="checking_connection">Checking connection…</string>
+    <string name="missing_gateway">This build needs a BrainBlitz gateway URL.</string>
+    <string name="invalid_login">Check your email and password and try again.</string>
+    <string name="sign_in_rejected">The server rejected this session. Try signing in again.</string>
+    <string name="gateway_error">The server could not complete the connection check.</string>
+    <string name="connection_error">Could not reach the server or open a game connection. Try again.</string>
+    <string name="invalid_response">The server returned an unexpected response.</string>
+    <string name="connected_title">Connected to BrainBlitz</string>
+    <string name="signed_in_as">Signed in as %1$s</string>
+    <string name="categories">Categories</string>
+    <string name="player_counts">Player counts</string>
+    <string name="question_timers">Question timers</string>
+    <string name="question_timer">%1$s (%2$ds)</string>
+    <string name="empty_options">None available</string>
+    <string name="check_again">Check another connection</string>
+</resources>
