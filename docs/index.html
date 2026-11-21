@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BrainBlitz is an open-source, real-time multiplayer trivia game for Telegram. Try a sample question and learn how to host your own game.">
+  <meta name="theme-color" content="#111410">
+  <title>BrainBlitz | Real-time multiplayer trivia on Telegram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./site.css">
+  <script src="./quiz-preview.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>BrainBlitz</a>
+      <nav aria-label="Main navigation">
+        <a href="#how-to-play">How to play</a>
+        <a href="#architecture">Architecture</a>
+      </nav>
+      <a class="button button-small button-outline" href="https://github.com/nima-abdpoor/brain-blitz">GitHub</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> Multiplayer trivia on Telegram</p>
+          <h1 id="hero-title">Trivia at<br><em>full speed.</em></h1>
+          <p class="intro">Match up with other players, answer timed questions, and climb the leaderboard. Fast, correct answers earn bonus points.</p>
+          <div class="actions">
+            <a class="button button-primary" href="#get-started">Run locally</a>
+            <a class="button button-outline" href="https://github.com/nima-abdpoor/brain-blitz">View source</a>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="preview" aria-labelledby="preview-title">
+            <div class="preview-header">
+              <h2 id="preview-title">Sample round</h2>
+              <span class="preview-counter" id="quiz-counter">01 / 03</span>
+            </div>
+            <div class="preview-progress" aria-hidden="true">
+              <span class="is-current"></span><span></span><span></span>
+            </div>
+            <div class="preview-main">
+              <p class="eyebrow preview-category" id="quiz-category">Technology</p>
+              <h3 id="quiz-question" tabindex="-1">Which protocol carries live game updates in BrainBlitz?</h3>
+              <div class="quiz-options" id="quiz-options" role="group" aria-labelledby="quiz-question" hidden></div>
+              <noscript><p class="quiz-fallback">WebSocket carries updates between the game service and the Telegram bot.</p></noscript>
+            </div>
+            <div class="preview-footer" id="quiz-controls" hidden>
+              <p id="quiz-feedback" role="status">Pick an answer to try it.</p>
+              <button class="quiz-next" id="quiz-next" type="button" disabled>Next question</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="facts" aria-label="BrainBlitz at a glance">
+      <dl class="wrap facts-inner">
+        <div><dt>2–15</dt><dd>Players per match by default</dd></div>
+        <div><dt>3</dt><dd>Sports, Music, and Technology</dd></div>
+        <div><dt>MIT</dt><dd>Open-source license</dd></div>
+      </dl>
+    </div>
+
+    <section class="wrap section" id="how-to-play" aria-labelledby="play-title">
+      <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> Gameplay</p>
+      <h2 id="play-title">How to play</h2>
+      <ol class="steps">
+        <li>
+          <h3>Choose your settings</h3>
+          <p>Open your BrainBlitz bot in Telegram and choose a category, a question timer, and the total number of players.</p>
+        </li>
+        <li>
+          <h3>Find a match</h3>
+          <p>Join the queue. When enough players choose the same category, timer, and game size, everyone gets a prompt to ready up.</p>
+        </li>
+        <li>
+          <h3>Beat the clock</h3>
+          <p>See whether your answer was correct as soon as you submit it. Review the correct answer at the end of each round and the final standings after the match.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="architecture" id="architecture" aria-labelledby="architecture-title">
+      <div class="wrap section architecture-inner">
+        <div class="architecture-copy">
+          <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> Architecture</p>
+          <h2 id="architecture-title">Under the hood</h2>
+          <p>Five Go services run the game. Kafka carries events between services, and the Telegram bot receives live updates over WebSocket.</p>
+          <p>The stack uses PostgreSQL for accounts and questions, MongoDB for game sessions, and Redis for queues and game state.</p>
+          <a class="text-link" href="https://github.com/nima-abdpoor/brain-blitz/blob/main/docs/architecture.png">View the full architecture diagram</a>
+        </div>
+        <div class="service-map" aria-label="BrainBlitz backend structure">
+          <div class="service-node">Telegram bot</div>
+          <div class="service-connector" aria-hidden="true"></div>
+          <div class="service-node service-gateway">Traefik gateway</div>
+          <div class="service-connector" aria-hidden="true"></div>
+          <ul class="services" aria-label="Go services">
+            <li>Auth</li><li>User</li><li>Match</li><li>Game</li><li>Question</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap section" id="get-started" aria-labelledby="start-title">
+      <div class="launch">
+        <div>
+          <h2 id="start-title">Run your own game.</h2>
+          <p>Start the backend with Docker Compose, load 30 sample questions, and connect a Telegram bot to play your first match.</p>
+        </div>
+        <div class="actions launch-actions">
+          <a class="button button-dark" href="https://github.com/nima-abdpoor/brain-blitz/blob/main/README.md#running-locally">Read the setup guide</a>
+          <a class="text-link" href="https://github.com/nima-abdpoor/brain-blitz/tree/main/clients/telegram-bot#getting-started">Telegram bot setup</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>BrainBlitz</a>
+      <nav aria-label="Project links">
+        <a href="https://github.com/nima-abdpoor/brain-blitz/issues">Issues</a>
+        <a href="https://github.com/nima-abdpoor/brain-blitz/blob/main/CONTRIBUTING.md">Contribute</a>
+        <a href="https://github.com/nima-abdpoor/brain-blitz/blob/main/LICENSE">MIT License</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
