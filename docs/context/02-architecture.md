@@ -69,6 +69,12 @@ Shared utilities used across services:
 | `pkg/email` | Email validation |
 | `pkg/json` | JSON helpers |
 
+### `clients/`
+
+The Android app in `clients/android/` uses Jetpack Compose for screens, a `BrainBlitzViewModel` to publish app state, and `GameProgress` to apply game events. `Gateway` and `GameSocket` handle authenticated HTTP and WebSocket traffic. `SessionStore` encrypts the access token with Android Keystore. The app restores the match from the server after reconnecting. [Android setup](../../clients/android/README.md) · [Match recovery contract](../client/backend-api-analysis.md#recovering-a-match)
+
+The Telegram bot in `clients/telegram-bot/` uses a separate Go module and one game socket per active player. Both clients reach the same Traefik gateway. [Telegram architecture](../../clients/telegram-bot/README.md#architecture)
+
 ## Dependency Graph
 
 ```

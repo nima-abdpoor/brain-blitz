@@ -8,6 +8,8 @@ BrainBlitz is a **real-time multiplayer quiz game** backend written in **Go 1.23
 
 Module name: `BrainBlitz.com/game`
 
+The Android client is a Kotlin and Jetpack Compose project under `clients/android/`. The Telegram bot has a separate Go module under `clients/telegram-bot/`. Both use the same gateway and match settings. Android requests `SYNC_MATCH` to restore play after interruption. [Android setup](../../clients/android/README.md) · [Client protocol](../client/backend-api-analysis.md)
+
 ## Architecture Summary
 
 ```

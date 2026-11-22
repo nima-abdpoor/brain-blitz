@@ -1,6 +1,6 @@
 # Backend API Analysis (Client Integration Perspective)
 
-This document is ground truth extracted directly from source code (not from prior business docs) for anyone building a new client — Telegram bot or otherwise. Every claim below cites the file it came from. Where a prior doc (`docs/business/`, `docs/context/`) is more optimistic than the code, the code wins.
+This reference describes the gateway and game protocol used by the Android app and Telegram bot. [Android integration](android-roadmap.md#existing-backend-contracts) · [Telegram setup](../../clients/telegram-bot/README.md)
 
 Assumptions are marked **[ASSUMPTION]**.
 
@@ -10,21 +10,19 @@ Assumptions are marked **[ASSUMPTION]**.
 
 | Service | HTTP | gRPC | Client-reachable via gateway? |
 |---|---|---|---|
-| `auth` | `:5000` | `:6000` | **No** — no Traefik/IngressRoute exists for auth-service. It is internal-only, called by (a) Traefik's ForwardAuth middleware directly, (b) `user` service via gRPC. |
+| `auth` | `:5000` | `:6000` | Compose exposes the health check. Token operations are internal to ForwardAuth and the User service. |
 | `user` | `:5001` | `:6001` (unused stub) | Yes — `/user-service/...` |
 | `match` | `:5002` | none (skeleton only, never wired) | Yes — `/match-service/...` |
 | `game` | `:5003` (HTTP + WS on same port) | n/a | Yes — `/game-service/...` |
-| `question` | `:5004` | none | **No** — no Traefik route/docker-compose entry exists in this repo. Internal-only today. |
+| `question` | `:5004` | none | Compose routes `/question-service/api/v1/question/`. The checked-in Kubernetes ingress needs this route for timer selection. |
 
-A Telegram bot (or any external client) can only reach `user`, `match`, and `game` through the gateway as currently deployed. **Question service has no external route** — this is a gap the client design must account for (see `gap-analysis.md`).
-
-Source: `infra/kubernetes/ingress/ingress-route.yaml`, `docker-compose.yml`.
+Android reads question timers through the Compose gateway. Confirm the same endpoint and authentication middleware on staging before building for a physical device. [Compose routes](../../docker-compose.yml) · [Kubernetes ingress](../../infra/kubernetes/ingress/ingress-route.yaml)
 
 ---
 
 ## 1. AUTH SERVICE — internal only
 
-Not directly callable by a Telegram bot in the current deployment (no gateway route). Documented for completeness since a future client architecture may need direct access, or the gateway may be extended.
+Clients sign in through User Service. The User service mints tokens over gRPC, and the gateway validates access tokens through ForwardAuth.
 
 ### `POST /api/v1/access-token`
 - **Auth**: none (this endpoint mints tokens; it doesn't consume them)
@@ -39,17 +37,17 @@ Not directly callable by a Telegram bot in the current deployment (no gateway ro
 - **Errors**: `400` invalid body / missing `data`; `500` signing failure.
 - **Purpose**: Mint a JWT access token from arbitrary claims.
 - **Client feature**: None directly — only `user` service calls this today.
-- **Known defect**: the JWT `exp` claim is set to the raw `time.Duration` value (nanoseconds), not `time.Now().Add(d).Unix()`. Token expiry may not behave as the `expire_time` field implies. Flag for backend fix before relying on expiry client-side.
+- **Expiry** uses an absolute Unix timestamp. Android reads the access token deadline and asks the player to sign in again when it expires. [Auth token implementation](../../services/auth_app/service/service.go)
 
 ### `POST /api/v1/refresh-token`
-Same shape as above, mints a longer-lived token (`120h` dev config). Same defect applies.
+Same shape as above, mints a longer-lived token (`120h` in the development config).
 
 ### `POST /api/v1/validate-token` and `GET /api/v1/validate-token`
 - **Auth**: token passed via `Authorization` header, not body.
 - **Response 200**: `{ "valid": true, "data": [{"key":"id","value":"123"}, {"key":"role","value":"user"}] }`
 - **Response 401**: `{ "valid": false }` (missing header, bad body, or invalid/expired JWT)
 - **Purpose**: This is what Traefik's `forwardAuth` middleware calls on every protected request; it injects `X-User-ID`, `X-User-Role`, `X-Auth-Data` headers into the downstream request.
-- **Client feature**: Indirect — every authenticated Telegram bot call rides on this.
+- **Client feature**. ForwardAuth validates authenticated Android and Telegram HTTP requests and WebSocket upgrades.
 
 **gRPC** (`auth.TokenService`, port `6000`): `GetAccessToken`, `GetRefreshToken` — same payloads as above, called only by `user` service today.
 
@@ -144,13 +142,17 @@ No gRPC server is actually running for match-service despite config/proto scaffo
 ### `GET /game-service/api/v1/health-check`
 Public in effect (reads but doesn't validate auth headers). `{ "message": "everything is good!" }`.
 
+### `GET /game-service/api/v1/game-options`
+
+An authenticated request returns `minPlayers`, `maxPlayers`, and `numberOfPlayers`. The default range is 2 to 15 inclusive. Android uses `numberOfPlayers` for its player-count selector. [Game options](../../services/game_app/service/options.go)
+
 ### `GET /game-service/api/v1/process-game` — **WebSocket upgrade endpoint**
 
 This is the single most important endpoint for the client and the only way to actually play a game.
 
 - **Auth**: `Authorization: Bearer <token>` for ForwardAuth (gateway-level) — **but the game-service handler itself only checks for a raw `X-User-ID` header**, with no token/signature validation of its own. In production this header only exists because Traefik injected it after ForwardAuth succeeded, but if a client could reach the game-service directly (bypassing the gateway) it could impersonate any user ID. This is an internal trust boundary a client developer should be aware of but cannot fix — connect through the gateway URL.
 - **Handshake**: standard WebSocket upgrade (`ws://` or `wss://` scheme), no subprotocol negotiation used by the app.
-- **Immediate server push after connect** (only if this is the user's first-ever connection, or their cached status expired to `UNKNOWN`): a **non-enveloped** raw JSON object (not wrapped in the standard event envelope used everywhere else):
+- **Immediate server push after connect** for `UNKNOWN` or `FINISHED` user status. The server sends a raw JSON object with categories and allowed player counts. For example, a two-player-only deployment sends:
   ```json
   { "categories": ["SPORT", "MUSIC", "TECH"], "numberOfPlayers": [2] }
   ```
@@ -165,12 +167,12 @@ Standard envelope:
 
 | Command | Required fields | Purpose |
 |---|---|---|
-| `ADD_TO_WAITING_LIST` | `category` | Join matchmaking queue for a category |
+| `ADD_TO_WAITING_LIST` | `category` | Join matchmaking. Send `timeOptionId` and `players` to match the selected settings. `displayName` is optional. |
 | `LEAVE_QUEUE` | none | Leave the queue and resolve a race with match creation |
 | `SYNC_MATCH` | none | Recover the authenticated player's latest match on a new connection |
 | `READY` | `gameId` | Signal readiness to start after a match is formed |
 | `ANSWER` | `answer.gameId`, `answer.questionId`, `answer.choice` | Submit an answer |
-| `GET_CATEGORIES` | none | **No-op today — sends no response.** Do not rely on this; categories only arrive automatically on first connect. |
+| `GET_CATEGORIES` | none | Reserved command with no response. Read categories from the automatic connection message when available. |
 
 #### Server → Client events
 Envelope: `{ "success": bool, "event": "...", "message": "...", "metaData": {...} }`
@@ -238,11 +240,17 @@ Match recovery and standings use the game WebSocket.
 
 ---
 
-## 5. QUESTION SERVICE — internal only, not reachable via gateway
+## 5. QUESTION SERVICE — `/question-service/api/v1/question/...`
 
-### `GET /api/v1/question/health-check` — public, no dependency checks.
+### `GET /question-service/api/v1/question/health-check`
 
-### `POST /api/v1/question/add` — **stub, non-functional**
+Public health check in Compose.
+
+### `GET /question-service/api/v1/question/time-options`
+
+An authenticated request returns an array of enabled question timers. Each option has `id`, `label`, and `seconds`. Use the selected `id` as `timeOptionId` when joining the game socket queue. [Timer handler](../../services/question_app/delivery/http/time_options.go)
+
+### `POST /question-service/api/v1/question/add` — **stub, non-functional**
 Both request and response are empty structs (`{}`); the handler performs no validation, no persistence, and always returns `200 {}`. There is no working way to add questions to the bank via any API today — questions must be seeded directly into PostgreSQL.
 
 **Client feature**: None — and even if this service were exposed via the gateway, this endpoint could not support an "admin adds a question" bot feature without backend work.
@@ -287,9 +295,6 @@ A client never touches Kafka directly; it's documented here only so a client dev
 ## 8. Recommended Improvements (summary — see `backend-improvements.md` for full detail)
 
 1. Add a token refresh endpoint (`user-service` or `auth-service`).
-2. Add a "get my current game state" HTTP endpoint on game-service for reconnect support.
-3. Add a "leave waiting list" command/endpoint.
-4. Standardize all error response bodies to the `{"message","error","code"}` shape.
-5. Add machine-readable error `code` fields to WebSocket `ERROR` events.
-6. Expose question-service through the gateway (or accept it stays internal and the bot never needs it).
-7. Fix the two non-response WS cases (`READY` before ready, `GET_CATEGORIES`) to always emit *some* acknowledgment.
+2. Standardize error response bodies to the `{"message","error","code"}` shape and add machine-readable WebSocket error codes.
+3. Route question timers through the Kubernetes ingress for Android staging deployments that use those manifests.
+4. Add acknowledgments for `READY` before the roster is ready and for `GET_CATEGORIES`.

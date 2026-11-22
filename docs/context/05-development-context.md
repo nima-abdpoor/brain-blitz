@@ -43,6 +43,17 @@ docker-compose up -d
 | Build auth service binary | `go build -o auth-service ./cmd/auth/` |
 | Build all binaries | `go build ./...` |
 
+## Android development
+
+Open `clients/android` in Android Studio, start the Compose backend, and seed demo questions. The default debug build reaches the host at `http://10.0.2.2:8088` from an emulator. The app's Gradle project runs its own checks.
+
+```sh
+cd clients/android
+./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+```
+
+Use an HTTPS `brainBlitzStagingUrl` for physical-device testing. [Android setup and staging](../../clients/android/README.md)
+
 ## Development Workflow
 
 1. **Pick a service** — changes to a service live entirely in `services/<name>_app/`, `cmd/<name>/main.go`, and any shared `pkg/` or `adapter/` code it touches.
@@ -127,11 +138,12 @@ Docker images are pulled from `ghcr.io/nima-abdpoor/brain-blitz/<service>:latest
 
 ## CI/CD
 
-Three GitHub Actions workflows in `.github/workflows/`:
+Selected GitHub Actions workflows in `.github/workflows/`.
 
 | Workflow | Trigger | Action |
 |---|---|---|
 | `go.yml` | Push/PR to `develop` | `go build ./...` + `go test -v ./...` |
+| `android.yml` | Android project or workflow changes in PRs and pushes to `main` or `develop` | Build the debug APK, run Android unit tests, and check lint |
 | `docker-image-develop.yml` | Push/PR to `develop` (Dockerfile changed) | Build Docker images for auth, match, game, user (push=false) |
 | `auto-tag.yml` | Push to `develop` | Auto-increment patch version tag and push |
 

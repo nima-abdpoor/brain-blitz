@@ -1,4 +1,6 @@
-# Client Architecture — Telegram Bot (and future clients)
+# Client Architecture — Telegram Bot
+
+For the native Android app, see the shared gateway and client architecture reference. [Android architecture](../context/02-architecture.md#clients) · [Android roadmap](android-roadmap.md)
 
 ## Assumptions
 

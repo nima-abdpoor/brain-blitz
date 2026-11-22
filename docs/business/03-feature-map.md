@@ -1,5 +1,13 @@
 # Feature Map
 
+## Player clients
+
+| Feature | Status | Notes |
+|---|---|---|
+| Android client | Implemented | Account and profile screens, configurable matches, live answers, recaps, standings, replay, and match recovery. Local emulator validation passed. [Android roadmap](../client/android-roadmap.md) |
+| Telegram client | Implemented | Play through chat with the same backend. [Telegram setup](../../clients/telegram-bot/README.md) |
+| Android and Telegram cross-play | Verified locally | Use distinct accounts with the same gateway and match settings. [Cross-play setup](../../clients/android/README.md#run-locally) |
+
 ## Authentication & Identity
 
 | Feature | Status | Notes |
@@ -22,13 +30,13 @@
 |---|---|---|
 | Join matchmaking queue via WebSocket | Complete | `ADD_TO_WAITING_LIST` command |
 | Join matchmaking queue via HTTP | Complete | `POST /match-service/api/v1/addToWaitingList` |
-| Per-category waiting lists | Complete | Redis sorted sets per category |
+| Matchmaking queues | Complete | Redis sorted sets grouped by category, timer, and player count |
 | FIFO matching (oldest waiters first) | Complete | Sorted by join timestamp |
 | Periodic matchmaking scheduler | Complete | Every 15 seconds |
-| Even-number pairing (pairs, quads) | Complete | Drops most recent if odd |
 | 20-minute waiting list TTL | Complete | `min_time_list_selection: -20m` |
 | Match notification to players | Complete | `MATCH_CREATED` WebSocket event |
-| Multiple players per match (2+) | Partial | Logic supports N but UI/game assumes 2 |
+| Selectable match size | Complete | Android and Telegram offer the configured player counts, 2 to 15 by default |
+| Player-initiated queue cancellation | Complete | Android uses `LEAVE_QUEUE` and handles a match formed before cancellation |
 | Player kicked from queue after timeout | Missing | No eviction of stale entries (only window filter) |
 | Queue depth visibility | Missing | No endpoint to query queue size |
 
@@ -38,9 +46,9 @@
 |---|---|---|
 | WebSocket game session | Complete | `GET /game-service/api/v1/process-game` |
 | Game document creation in MongoDB | Complete | On `MATCH_CREATED` consume |
-| Question delivery to players | Complete | `QUESTIONS_PUBLISHED` event with all questions upfront |
-| Per-question answer deadline | Complete | `ValidAnswerTime` set on READY |
-| Player ready synchronization | Partial | Bug: game starts 1 player early (R-04) |
+| Question delivery to players | Complete | `QUESTIONS_PUBLISHED` sends one active question per round |
+| Per-question answer deadline | Complete | The server sets an absolute deadline when each round opens |
+| Player ready synchronization | Complete | Play starts when the roster is ready. The server cancels an expired ready lobby. |
 | Answer submission | Complete | `ANSWER` command |
 | Duplicate answer prevention | Complete | Checked against MongoDB |
 | Anti-cheat (too-early answer rejection) | Complete | Answer rejected before valid window |
@@ -48,11 +56,11 @@
 | Real-time leaderboard after each answer | Complete | Returned in ANSWER_ACCEPTED event |
 | Game auto-completion via timer | Complete | Asynq deferred task |
 | Final leaderboard delivery | Complete | `COMPLETED` WebSocket event |
-| Game status update on completion | Missing | MongoDB game document status not updated to FINISHED |
-| Reconnection handling | Missing | No WebSocket reconnect flow |
+| Game status update on completion | Complete | MongoDB persists the finished game |
+| Reconnection handling | Complete for Android | `SYNC_MATCH` restores the current lobby or round, or results from the past 24 hours. Live recovery uses a single game-service instance. |
 | Spectator mode | Missing | |
 | Game replay / history | Missing | No retrieval API for past games |
-| Multiple rounds per game | Missing | Single question set, no round concept |
+| Multiple rounds per game | Complete | Each timed question has a personal verdict and round recap |
 
 ## Questions
 

@@ -5,6 +5,8 @@ Prepared on 2026-11-03 from repository commit `343a2b3` on local branch
 Use the prepared source archive or transfer this working tree, rather than
 cloning the original repository and expecting these changes to be present.
 
+Client validation since this backend preparation is recorded separately. [Local Android validation](../clients/android/README.md#validation-status) · [Local Telegram validation](client/local-e2e-validation.md)
+
 ## Result
 
 The Docker Compose backend has been built and exercised as a single-computer
@@ -71,9 +73,8 @@ enabled. No TLS verification bypasses were added.
 - The target computer's OS, CPU capabilities, RAM allocation, and network access
   must be confirmed there. AMD64 binaries compile, but a full AMD64 runtime was
   not exercised on this ARM Mac.
-- A Telegram bot implementation is not present in this repository. Bot startup,
-  Telegram connectivity, identity mapping, and webhook/polling configuration
-  require that client's source and settings. No Telegram messages were sent.
+- This backend-only run predated the Android app and Telegram bot. Follow the
+  current setup guide to run either client. [Client setup](run-on-another-computer.md#android-app)
 - The Question Add API remains a stub; the supplied SQL import provides demo
   questions. Import your real question data before using it beyond the demo.
 - Kubernetes manifests, public HTTPS deployment, load/capacity limits, and outage

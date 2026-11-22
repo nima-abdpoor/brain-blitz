@@ -73,9 +73,9 @@ Features that enhance the player experience.
 | Item | Type | Notes |
 |---|---|---|
 | Medium and Hard difficulty questions | Feature | `GetRandomQuestions` supports it; make category/difficulty selectable per match |
-| Player reconnection to ongoing game | Feature | Resume WebSocket session after disconnect |
+| Player reconnection to ongoing game | Implemented for Android | Restore readiness, the active round, or recent results over the game socket. [Recovery protocol](../client/backend-api-analysis.md#recovering-a-match) |
 | Game history API | Feature | Players can view past games and scores |
-| Multiple players per match (not just 2) | Feature | Currently UI assumes 2 but matchmaking supports N |
+| Selectable match size | Implemented | Android and Telegram expose the backend's configured roster sizes. |
 | Category selection per player | Feature | Current implementation already passes category |
 | Spectator mode | Feature | Watch a game in progress |
 | Question submission by users | Feature | User-generated content (requires admin review flow) |
@@ -88,6 +88,7 @@ Longer-term features to expand the product.
 
 | Item | Type | Notes |
 |---|---|---|
+| Native Android client | Beta preparation | Core gameplay and local validation are complete. Staging, TalkBack, and signed packaging remain open. [Android roadmap](../client/android-roadmap.md#5-prepare-a-beta-build) |
 | Tournament mode | Feature | Bracket-style multi-round competitions |
 | Leaderboard across games (global rankings) | Feature | Persistent score tracking across matches |
 | Social features (friends, challenges) | Feature | Invite-based matchmaking |

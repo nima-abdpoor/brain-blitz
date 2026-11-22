@@ -1,18 +1,23 @@
 # BrainBlitz
 
-A real-time multiplayer quiz game platform built with Go microservices.
+A real-time multiplayer quiz game for Android and Telegram, powered by Go microservices.
 
-For a prepared single-computer deployment and Telegram connectivity, see
-[Run on another computer](docs/run-on-another-computer.md).
+For backend and client setup on one computer, see [Run on another computer](docs/run-on-another-computer.md).
 
 ## Project Overview
 
 BrainBlitz matches players into live quiz games by category, delivers timed questions over WebSocket connections, scores answers in real time, and presents a final leaderboard when the game ends. The system is composed of five independently deployable Go services communicating over HTTP, gRPC, Kafka, and WebSocket.
 
+## Play BrainBlitz
+
+- **Android** supports signup, profiles, matchmaking, timed quizzes, and recovery after a disconnect or app restart. Open `clients/android` in Android Studio to run the debug app against the local backend. Local emulator validation passed. [Android setup and testing](clients/android/README.md) · [Android beta roadmap](docs/client/android-roadmap.md)
+- **Telegram** lets players sign in and play from a chat. Start the optional bot with Docker Compose. [Telegram setup](clients/telegram-bot/README.md)
+- **Cross-play** works when distinct accounts use the same backend and choose the same category, timer, and total number of players.
+
 ## Architecture Overview
 
 ```
-Client
+Android app or Telegram bot
   │
   ▼
 Traefik (API Gateway / Auth Middleware)
@@ -40,6 +45,9 @@ See [docs/architecture.png](docs/architecture.png) for a visual overview.
 
 ```
 brain-blitz/
+├── clients/
+│   ├── android/                # Native Kotlin and Jetpack Compose app
+│   └── telegram-bot/           # Telegram client (separate Go module)
 ├── cmd/                        # Service entry points
 │   ├── auth/main.go
 │   ├── game/main.go
@@ -104,7 +112,7 @@ brain-blitz/
 |---|---|
 | Go | 1.23+ |
 | Docker | 20+ |
-| Docker Compose | 1.29+ |
+| Docker Compose | 2.24+ |
 | `protoc` + `buf` | For regenerating Protobuf (optional) |
 
 ### Clone
@@ -238,8 +246,9 @@ docker build -f infra/deploy/auth/development/Dockerfile \
 
 ## Testing
 
+Run the backend Go tests from the repository root.
+
 ```bash
-# Run all tests
 go test ./...
 
 # Run tests with verbose output
@@ -256,6 +265,14 @@ Integration tests exist for:
 - `services/match_app/delivery/http/add_to_waiting_list_integration_test.go`
 - `services/user_app/delivery/http/login_integration_test.go`
 - `services/user_app/repository/user_test.go`
+
+Run the Android build, unit tests, and lint from `clients/android` with JDK 17 or newer, Android SDK Platform 35, and Build Tools 35.0.0.
+
+```sh
+./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+```
+
+For Telegram unit and multiplayer integration tests, see the [Telegram testing guide](clients/telegram-bot/README.md#testing).
 
 ## Linting and Formatting
 
@@ -332,14 +349,18 @@ All protected endpoints require `Authorization: Bearer <accessToken>`, validated
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
+| GET | `/api/v1/game-options` | Yes | Get the player-count options |
 | GET | `/api/v1/process-game` | Yes | Upgrade to WebSocket for game session |
 | GET | `/api/v1/health-check` | No | Health check |
 
-The Game Service WebSocket endpoint handles a JSON command protocol. See [docs/context/03-business-domain.md](docs/context/03-business-domain.md) for the full WebSocket protocol.
+Both clients use the game WebSocket for matchmaking and gameplay. Android also uses it to recover interrupted matches. [Client API and WebSocket protocol](docs/client/backend-api-analysis.md)
 
-### Question Service
+### Question Service (`/question-service`)
 
-Internal service only. No public routes beyond health check.
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/question/time-options` | Yes | List enabled question timers through the Compose gateway |
+| GET | `/api/v1/question/health-check` | No | Health check through the Compose gateway |
 
 ## Monitoring
 
@@ -389,6 +410,7 @@ option go_package = "contract/<service>/golang";
 | `AUTH_service__secret_key` not set | JWT signing will use `SECRET_KEY` default | Set the env var in docker-compose or K8s secret |
 | `X-User-ID` header missing | Traefik ForwardAuth not configured, or request sent to public route | Ensure protected routes go through `auth` middleware |
 | Matchmaking never fires | Match scheduler interval | Default is every 15 seconds; the selected number of players must share category, timer, and game size |
+| Android emulator cannot reach the backend | Local gateway origin or port mismatch | Verify Compose is healthy on host port 8088 and the debug app uses `http://10.0.2.2:8088` |
 
 ## Security
 
@@ -398,5 +420,5 @@ For supported versions and private vulnerability reporting, read
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, package conventions,
-backend and Telegram client tests, and the pull request process. Bug reports
+backend and client tests, and the pull request process. Bug reports
 and feature requests can use the repository's GitHub issue templates.

@@ -1,6 +1,6 @@
 # Security Policy
 
-This policy covers the BrainBlitz backend, Telegram bot, shared libraries,
+This policy covers the BrainBlitz backend, Android app, Telegram bot, shared libraries,
 and deployment files maintained in this repository.
 
 ## Supported versions

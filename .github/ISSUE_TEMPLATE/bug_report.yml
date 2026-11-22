@@ -14,6 +14,7 @@ body:
       label: Affected component
       options:
         - Backend / API
+        - Android app
         - Telegram bot
         - Matchmaking / gameplay
         - Deployment / Docker / CI
@@ -56,7 +57,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS/architecture, Docker and Compose versions, native Go version if used, and relevant non-secret settings.
+      description: Include relevant non-secret settings, such as Docker and Compose versions, or the Android version, device or emulator, and gateway environment.
     validations:
       required: true
   - type: textarea
