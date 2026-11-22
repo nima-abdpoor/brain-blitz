@@ -89,9 +89,9 @@ func testConcurrentAnswers(t *testing.T, count int) {
 	sock := &completionSocket{}
 	svc := NewService(Config{}, r, sock, nil, roundPublisher{}, logger.SlogAdapter{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	ctx := context.Background()
-	require.NoError(t, svc.startRounds(ctx, "g"))
+	require.NoError(t, svc.startRoundsLocked(ctx, "g"))
 	deadline := r.q.Questions[0].ValidAnswerTime
-	require.NoError(t, svc.startRounds(ctx, "g"))
+	require.NoError(t, svc.startRoundsLocked(ctx, "g"))
 	require.Equal(t, 1, r.opens)
 	require.Equal(t, deadline, r.q.Questions[0].ValidAnswerTime)
 	var wg sync.WaitGroup
@@ -125,7 +125,7 @@ func TestRoundWaitsForEntireRoster(t *testing.T) {
 			}
 			repo := &roundRepository{q: GameQuestions{Players: players, Questions: []Question{{Id: "q1"}, {Id: "q2"}}}, answers: map[string][]QuestionCorrectness{}}
 			svc := NewService(Config{}, repo, &completionSocket{}, nil, roundPublisher{}, logger.SlogAdapter{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
-			require.NoError(t, svc.startRounds(context.Background(), "g"))
+			require.NoError(t, svc.startRoundsLocked(context.Background(), "g"))
 			for i, id := range players {
 				var conn net.Conn
 				data, err := json.Marshal(ProcessGameMessageRequest{Command: CommandAnswer, GameAnswer: ProcessGameAnswer{GameId: "g", QuestionId: "q1", Answer: "wrong"}})

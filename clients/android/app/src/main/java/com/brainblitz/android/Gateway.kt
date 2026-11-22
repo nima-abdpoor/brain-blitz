@@ -18,6 +18,7 @@ internal data class Profile(
     val displayName: String,
     val username: String,
     val statistics: PlayerStatistics? = null,
+    val id: String? = null,
 )
 
 @Serializable
@@ -63,6 +64,7 @@ internal class Gateway(
         .build(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+    private val heartbeatClient = client.newBuilder().pingInterval(10, TimeUnit.SECONDS).build()
 
     suspend fun signUp(email: String, password: String) {
         decode<SignUp>(accountRequest(SIGNUP_PATH, email, password))
@@ -80,8 +82,8 @@ internal class Gateway(
         return MatchOptions(gameOptions.numberOfPlayers, timeOptions)
     }
 
-    fun openGame(accessToken: String): GameSocket =
-        GameSocket(client, request(GAME_SOCKET_PATH, accessToken).build(), json)
+    fun openGame(accessToken: String, heartbeat: Boolean = false): GameSocket =
+        GameSocket(if (heartbeat) heartbeatClient else client, request(GAME_SOCKET_PATH, accessToken).build(), json)
 
     private fun accountRequest(path: String, email: String, password: String): Request =
         request(path).post(

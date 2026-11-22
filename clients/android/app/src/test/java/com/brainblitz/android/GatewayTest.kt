@@ -38,7 +38,7 @@ class GatewayTest {
             val gateway = Gateway(server.url("/"))
             gateway.signUp("player@example.com", "example-password")
             val token = gateway.login("player@example.com", "example-password")
-            assertEquals(Profile("Player", "player@example.com"), gateway.profile(token))
+            assertEquals(Profile("Player", "player@example.com", id = "5"), gateway.profile(token))
             assertEquals(MatchOptions(listOf(2, 3), listOf(TimeOption("quick", "Quick", 10))), gateway.matchOptions(token))
         }
 

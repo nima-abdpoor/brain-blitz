@@ -10,10 +10,7 @@ import (
 
 // Round updates are serialized with answer acceptance. Timeout tasks include
 // their round index, so a task for a round closed early is a harmless no-op.
-func (svc Service) startRounds(ctx context.Context, gameID string) error {
-	mu := svc.roundMutex(gameID)
-	mu.Lock()
-	defer mu.Unlock()
+func (svc Service) startRoundsLocked(ctx context.Context, gameID string) error {
 	q, err := svc.repository.GetQuestionsByGameId(ctx, gameID)
 	if err == nil && q.RoundBased {
 		return nil
@@ -44,7 +41,7 @@ func (svc Service) openRound(ctx context.Context, gameID string, index int) erro
 	}
 	svc.sendRoundRecaps(gameID, index, recaps)
 	if q.Completed {
-		return svc.ProcessGameCompletion(ctx, map[string]interface{}{"gameId": gameID})
+		return svc.completeGame(ctx, gameID)
 	}
 	// Schedule before publishing: a delivery failure must not leave an
 	// unanswered round without a deadline. Offline players time out normally.
@@ -78,7 +75,7 @@ func (svc Service) ProcessRoundTimeout(ctx context.Context, payload map[string]i
 		mu := svc.roundMutex(gameID)
 		mu.Lock()
 		defer mu.Unlock()
-		return svc.ProcessGameCompletion(ctx, payload)
+		return svc.completeGame(ctx, gameID)
 	}
 	if !initial.RoundBased || initial.CurrentQuestionIndex != int(round) || initial.CurrentQuestionIndex >= len(initial.Questions) {
 		return nil

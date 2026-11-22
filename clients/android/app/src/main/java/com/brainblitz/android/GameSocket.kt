@@ -2,7 +2,6 @@ package com.brainblitz.android
 
 import java.io.IOException
 import java.time.Instant
-import java.time.format.DateTimeParseException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -23,8 +22,10 @@ internal data class MatchSelection(val category: String, val timeOption: TimeOpt
 internal sealed interface MatchEvent {
     data class Categories(val names: List<String>) : MatchEvent
     data object Queued : MatchEvent
+    data object LeftQueue : MatchEvent
     data object Rejected : MatchEvent
-    data class Created(val gameId: String) : MatchEvent
+    data class Created(val gameId: String, val readyUntil: Instant? = null) : MatchEvent
+    data class Snapshot(val match: MatchSnapshot?, val success: Boolean) : MatchEvent
 
     sealed interface Gameplay : MatchEvent {
         val gameId: String
@@ -40,6 +41,7 @@ internal sealed interface MatchEvent {
     data class AnswerAccepted(override val gameId: String, val feedback: AnswerFeedback) : Gameplay
     data class RoundClosed(override val gameId: String, val roundNumber: Int, val recap: RoundRecap) : Gameplay
     data class Completed(override val gameId: String, val scores: List<PlayerScore>) : Gameplay
+    data class Cancelled(override val gameId: String) : Gameplay
 }
 
 internal data class GameQuestion(val id: String, val content: String, val choices: List<String>, val deadline: Instant)
@@ -59,6 +61,8 @@ internal data class RoundRecap(
 
 @Serializable
 internal data class PlayerScore(val playerId: String, val point: Int, val displayName: String = "")
+
+internal class SnapshotUnsupported : IOException()
 
 internal class GameSocket(client: OkHttpClient, request: Request, private val json: Json) {
     private val opened = CompletableDeferred<Unit>()
@@ -111,6 +115,26 @@ internal class GameSocket(client: OkHttpClient, request: Request, private val js
 
     fun ready(gameId: String) = send(ReadyCommand("READY", gameId))
 
+    fun leaveQueue() = send(SimpleCommand("LEAVE_QUEUE"))
+
+    suspend fun recover(onCategories: (List<String>) -> Unit = {}): MatchSnapshot? {
+        opened.await()
+        send(SimpleCommand("SYNC_MATCH"))
+        for (event in events) {
+            when (event) {
+                is MatchEvent.Snapshot -> {
+                    if (!event.success) throw IOException("Match snapshot unavailable")
+                    return event.match
+                }
+                is MatchEvent.Categories -> onCategories(event.names)
+                MatchEvent.Rejected -> throw SnapshotUnsupported()
+                // The snapshot already includes all changes preceding it on this connection.
+                else -> Unit
+            }
+        }
+        throw IOException("Game connection closed before match snapshot")
+    }
+
     fun answer(gameId: String, questionId: String, choice: String) =
         send(AnswerCommand("ANSWER", Answer(gameId, questionId, choice)))
 
@@ -139,21 +163,23 @@ internal class GameSocket(client: OkHttpClient, request: Request, private val js
         return when (event.event) {
             "ADDED_TO_WAITING_LIST" -> if (event.success) MatchEvent.Queued else MatchEvent.Rejected
             "ERROR" -> MatchEvent.Rejected
-            "MATCH_CREATED" -> MatchEvent.Created(metadata<GameMetadata>(event).gameId)
+            "MATCH_CREATED" -> metadata<GameMetadata>(event).let {
+                MatchEvent.Created(it.gameId, it.readyUntil?.let(::parseDeadline))
+            }
+            "LEFT_WAITING_LIST" -> if (event.success) MatchEvent.LeftQueue else MatchEvent.Rejected
+            "MATCH_CANCELLED" -> MatchEvent.Cancelled(metadata<GameMetadata>(event).gameId)
+            "MATCH_SNAPSHOT" -> if (event.success) {
+                MatchEvent.Snapshot(metadata<SnapshotMetadata>(event).snapshot, true)
+            } else {
+                MatchEvent.Snapshot(null, false)
+            }
             "QUESTIONS_PUBLISHED" -> {
                 val data = metadata<QuestionMetadata>(event)
                 val question = data.questions.singleOrNull()
-                if (question == null || question.id.isBlank() || question.choices.isEmpty() ||
-                    data.roundNumber !in 1..data.totalQuestions
+                if (question == null || data.roundNumber !in 1..data.totalQuestions
                 ) throw SerializationException("Invalid active round")
-                val deadline = try {
-                    Instant.parse(question.ttl)
-                } catch (error: DateTimeParseException) {
-                    throw SerializationException("Invalid question deadline", error)
-                }
                 MatchEvent.QuestionPublished(
-                    data.gameId, data.roundNumber, data.totalQuestions,
-                    GameQuestion(question.id, question.content, question.choices, deadline),
+                    data.gameId, data.roundNumber, data.totalQuestions, question.toQuestion(),
                 )
             }
             "ANSWER_ACCEPTED" -> metadata<AnswerMetadata>(event).let {
@@ -186,6 +212,9 @@ internal class GameSocket(client: OkHttpClient, request: Request, private val js
     )
 
     @Serializable
+    private data class SimpleCommand(val command: String)
+
+    @Serializable
     private data class ReadyCommand(val command: String, val gameId: String)
 
     @Serializable
@@ -201,7 +230,7 @@ internal class GameSocket(client: OkHttpClient, request: Request, private val js
     private data class Envelope(val event: String, val success: Boolean, val metaData: JsonElement? = null)
 
     @Serializable
-    private data class GameMetadata(val gameId: String) {
+    private data class GameMetadata(val gameId: String, val readyUntil: String? = null) {
         init {
             require(gameId.isNotBlank())
         }
@@ -216,7 +245,7 @@ internal class GameSocket(client: OkHttpClient, request: Request, private val js
     )
 
     @Serializable
-    private data class WireQuestion(val id: String, val content: String, val choices: List<String>, val ttl: String)
+    private data class SnapshotMetadata(val snapshot: MatchSnapshot? = null)
 
     @Serializable
     private data class AnswerMetadata(val gameId: String, val answerFeedback: AnswerFeedback? = null)

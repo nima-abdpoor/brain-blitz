@@ -44,6 +44,7 @@ task_worker:
     port: 6379
 
 service:
+  ready_timeout: 1m
   players:
     min: 2
     max: 15

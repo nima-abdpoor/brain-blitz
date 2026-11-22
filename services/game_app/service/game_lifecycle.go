@@ -51,29 +51,14 @@ func (svc Service) saveUsersGameStatus(userId []uint64, status GameStatus) {
 	}
 }
 
-func (svc Service) saveGameStatus(gameId string, userId *uint64, numberOfPlayers *int) bool {
-	const op = "game.saveGameStatus"
-
-	ctx, cancel := context.WithTimeout(context.Background(), saveGameStatusTimeOut)
-	defer cancel()
-
-	var id *int
-	if userId != nil {
-		uId := int(*userId)
-		id = &uId
-	}
-	isGameReady, err := svc.repository.UpsertReadyPlayer(ctx, gameId, id, numberOfPlayers)
-	if err != nil {
-		svc.logger.Error(op, "error in saving ready player")
-	}
-
-	return isGameReady
-}
-
 func (svc Service) markReady(ctx context.Context, gameID string, playerID uint64) (bool, error) {
 	game, err := svc.repository.GetGame(ctx, gameID)
 	if err != nil {
 		return false, err
+	}
+	if game.Status == GameStatusCancelled || game.Status == GameStatusFinished ||
+		(!game.ReadyUntil.IsZero() && !time.Now().Before(game.ReadyUntil)) {
+		return false, fmt.Errorf("the ready deadline has passed")
 	}
 	for _, member := range game.Players {
 		if member == playerID {

@@ -18,16 +18,21 @@ const (
 	CommandUnknownCommand   Command = "UNKNOWN"
 	CommandGetCategories    Command = "GET_CATEGORIES"
 	CommandAddToWaitingList Command = "ADD_TO_WAITING_LIST"
+	CommandLeaveQueue       Command = "LEAVE_QUEUE"
+	CommandSyncMatch        Command = "SYNC_MATCH"
 )
 
 const (
-	Error              Event = "ERROR"
-	EventMatchCreated  Event = "MATCH_CREATED"
-	EventRoundClosed   Event = "ROUND_CLOSED"
-	AnswerAccepted     Event = "ANSWER_ACCEPTED"
-	NewQuestion        Event = "QUESTIONS_PUBLISHED"
-	AddedToWaitingList Event = "ADDED_TO_WAITING_LIST"
-	EventCompleted     Event = "COMPLETED"
+	Error               Event = "ERROR"
+	EventMatchCreated   Event = "MATCH_CREATED"
+	EventRoundClosed    Event = "ROUND_CLOSED"
+	AnswerAccepted      Event = "ANSWER_ACCEPTED"
+	NewQuestion         Event = "QUESTIONS_PUBLISHED"
+	AddedToWaitingList  Event = "ADDED_TO_WAITING_LIST"
+	EventCompleted      Event = "COMPLETED"
+	EventLeftQueue      Event = "LEFT_WAITING_LIST"
+	EventMatchSnapshot  Event = "MATCH_SNAPSHOT"
+	EventMatchCancelled Event = "MATCH_CANCELLED"
 )
 
 type GameInitResponse struct {
@@ -67,6 +72,8 @@ type ProcessGameMetaDataResponse struct {
 	GameId         string                     `json:"gameId"`
 	Questions      []ProcessGameQuestion      `json:"questions"`
 	Answer         ProcessGameLeaderBoard     `json:"leaderBoard"`
+	ReadyUntil     *time.Time                 `json:"readyUntil,omitempty"`
+	Snapshot       *MatchSnapshot             `json:"snapshot,omitempty"`
 }
 
 // ProcessGameAnswerFeedback reports only the submitting player's verdict.

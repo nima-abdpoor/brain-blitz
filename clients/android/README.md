@@ -22,4 +22,12 @@ The debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. To build agains
 
 ## Matchmaking behavior
 
-**Cancel search** closes the queue connection and returns to your match settings. The server removes queue membership when it processes the disconnect. If it already created a match, the server can still leave that match pending. Match recovery after losing the connection is the next roadmap phase. [Android roadmap](../../docs/client/android-roadmap.md)
+**Cancel search** waits for the server to confirm you left the queue. If matchmaking has already created a match, the app opens it. Everyone has one minute to select **Ready** by default. After the deadline, expired matches let players search again. [Android roadmap](../../docs/client/android-roadmap.md)
+
+## Test match recovery
+
+- Select **Ready** on the first emulator, close the app process, and relaunch. Check that it returns to the same match and is still waiting for the other player.
+- Answer a question on one emulator while the other player waits. Disconnect and reconnect the first emulator, then check that the deadline and accepted answer are preserved.
+- Let the other client finish the match while the first app is closed. Relaunch the first app to recover the standings. Returning to the profile or choosing **Play again** dismisses those results on that device.
+
+The app starts a bounded reconnect when the active network changes or a game socket drops, and resumes reconnecting when it returns to the foreground. Match state comes from the authenticated game service. The app asks you to sign in again when the access token expires, then checks for your match.

@@ -154,7 +154,7 @@ This is the single most important endpoint for the client and the only way to ac
   ```json
   { "categories": ["SPORT", "MUSIC", "TECH"], "numberOfPlayers": [2] }
   ```
-  If the user reconnects mid-flow (status is `INITIALIZED`/`PENDING`/`CREATED`/`STARTED`/`FINISHED`), **nothing is sent automatically** — the client must already know its `gameId`/state from before the disconnect, since there is no state resync.
+  Game recovery is opt-in. Send `SYNC_MATCH` on the replacement socket to get the current match state.
 
 #### Client → Server commands
 Standard envelope:
@@ -166,6 +166,8 @@ Standard envelope:
 | Command | Required fields | Purpose |
 |---|---|---|
 | `ADD_TO_WAITING_LIST` | `category` | Join matchmaking queue for a category |
+| `LEAVE_QUEUE` | none | Leave the queue and resolve a race with match creation |
+| `SYNC_MATCH` | none | Recover the authenticated player's latest match on a new connection |
 | `READY` | `gameId` | Signal readiness to start after a match is formed |
 | `ANSWER` | `answer.gameId`, `answer.questionId`, `answer.choice` | Submit an answer |
 | `GET_CATEGORIES` | none | **No-op today — sends no response.** Do not rely on this; categories only arrive automatically on first connect. |
@@ -176,10 +178,14 @@ Envelope: `{ "success": bool, "event": "...", "message": "...", "metaData": {...
 | Event | When | metaData contents |
 |---|---|---|
 | `ADDED_TO_WAITING_LIST` | Reply to `ADD_TO_WAITING_LIST` | empty |
-| `MATCH_CREATED` | Broadcast when matchmaking pairs this player | `gameId` |
-| `QUESTIONS_PUBLISHED` | Broadcast once **all** expected players send `READY` | `gameId`, `questions[]` (full set, each with its own `ttl` deadline, delivered all at once) |
+| `MATCH_CREATED` | When matchmaking commits a match | `gameId`, `readyUntil` |
+| `LEFT_WAITING_LIST` | Reply to `LEAVE_QUEUE` when no match committed | empty |
+| `MATCH_SNAPSHOT` | Reply to `SYNC_MATCH` | optional `snapshot` |
+| `MATCH_CANCELLED` | When the server's ready deadline expires | `gameId` |
+| `QUESTIONS_PUBLISHED` | After all players are ready, then once per round | `gameId`, `roundNumber`, `totalQuestions`, and one entry in `questions[]` with its absolute `ttl` deadline |
+| `ROUND_CLOSED` | After everyone answers or the deadline expires | `gameId`, `roundNumber`, and the player's `recap` |
 | `ANSWER_ACCEPTED` | Reply to a valid `ANSWER`, sent only to the submitter | `gameId`, `answerFeedback` (`questionId`, `isCorrect`), `leaderBoard` (recomputed standings with answer details omitted) |
-| `COMPLETED` | Server-scheduled task fires after all question deadlines pass | `leaderBoard` (final) — **connection is closed by the server immediately after sending this** |
+| `COMPLETED` | After the final round closes | `leaderBoard` (final). The server then closes the socket. |
 | `ERROR` | Various failure conditions (see below) | usually empty |
 
 `ANSWER_ACCEPTED` supplies an immediate verdict for the accepted submission,
@@ -206,19 +212,29 @@ answered or the deadline expires. Rejected submissions receive `ERROR` with no
 feedback. Older servers may omit `answerFeedback`; clients must treat its
 absence as an acknowledgement without a correctness verdict.
 
+#### Recovering a match
+
+`SYNC_MATCH` uses the authenticated player ID. Use it on a fresh connection before sending gameplay commands. It returns the latest active match or results from the past 24 hours. A successful response with no `snapshot` means there is no recoverable match. An unsuccessful response means the lookup failed and can be retried.
+
+The snapshot has the match ID, settings, and a `phase` of `ready`, `round`, or `finished`. The ready phase has the player's `ready` flag and `readyUntil`. The round phase has the active question and its original deadline. Its optional `submission` has only the authenticated player's accepted choice and verdict. It can also include the previous round's personal recap. The finished phase has final `scores`.
+
+Establish the socket before requesting the snapshot. The game service orders the response with match creation and round transitions. Use the snapshot as the baseline and apply frames received after it. The replacement socket closes the prior connection for the account. The server checks connection ownership while processing `READY` and `ANSWER` so a superseded connection cannot modify a round after the snapshot. Live delivery and ordering use one game-service process, as in Docker Compose. A multi-replica rollout needs shared socket and round coordination.
+
+The default ready window is 60 seconds and can be set with `GAME_service__ready_timeout`. `LEAVE_QUEUE` either confirms the queue exit or returns `MATCH_CREATED` if matchmaking already committed. If a server version predates those commands, a client can continue using its foreground flow and close the socket to leave the queue.
+
 #### Documented WebSocket quirks a client MUST handle defensively (verified in code, not hypothetical)
-1. **Invalid category on `ADD_TO_WAITING_LIST` sends BOTH an `ERROR` and a subsequent `ADDED_TO_WAITING_LIST`.** A client must not treat receipt of a success event as proof the preceding error didn't happen — check the error first.
-2. **`READY` sent before all players are ready produces NO response at all.** A client cannot distinguish "still waiting for others" from "my READY was silently dropped" except by absence of `QUESTIONS_PUBLISHED`. Recommend a client-side timeout/UX indicator, not a request-response assumption.
-3. **`READY` sent twice by the same player is silently ignored** (error only logged server-side).
+1. **A failed queue publish can send `ERROR` followed by `ADDED_TO_WAITING_LIST`.** Keep the first failure visible.
+2. **`READY` sent before all players are ready produces no immediate success response.** Use the ready timer and the snapshot's readiness flag during recovery.
+3. **A duplicate `READY` can return `ERROR` while the server waits for the rest of the roster.**
 4. **`GET_CATEGORIES` never responds.**
-5. **`ANSWER` with an unrecognized `questionId` is accepted silently with 0 points** — no error surfaces.
-6. **Answers submitted after the deadline are accepted (not rejected), scored 0.** Only answers submitted *too early* (before the anti-cheat window opens) are rejected with `ERROR: "answered to question quickly"`.
-7. **No reconnection/session-resume protocol.** A dropped connection loses all in-flight event delivery; reconnecting with the same `X-User-ID` silently replaces the old connection entry (old socket isn't proactively closed) but the server does **not** replay missed events (`MATCH_CREATED`, `QUESTIONS_PUBLISHED` while disconnected are lost). The client must persist its own `gameId`/`matchId`/last-known-state locally (or the bot backend must) to have any hope of resuming a session — see `gap-analysis.md`.
+5. **Only the active question can be answered in a round-based match.** A stale question ID returns `ERROR`.
+6. **Round-based matches reject late answers.** The server applies the deadline when it saves the answer.
+7. **Reconnect with `SYNC_MATCH`.** The new socket receives current state through the snapshot.
 8. **No message-size limits or rate limiting** on the WS layer — not a client concern to work around, but don't assume the server protects itself; the bot's own client library should apply sane limits.
 9. **Commands can be sent in any order** with no server-side state machine gate — e.g. sending `ANSWER` before a match even exists just falls through to a generic `{"event":"ERROR","message":"something went wrong"}`. A client-side (bot) state machine should prevent sending commands out of the expected sequence rather than relying on the server to reject them meaningfully.
 10. **`ERROR.message` is frequently the generic string `"something went wrong"`** with no machine-readable code — a client cannot branch logic on error type beyond a few specific strings (`"invalid category"`, `"answered to question quickly"`, `"player <id> already answered this question <qid>"`, `"invalid command"`).
 
-No other REST endpoints exist on game-service — there is no "get current game state," "get leaderboard," or "get game history" HTTP API. Everything is WebSocket-driven and ephemeral.
+Match recovery and standings use the game WebSocket.
 
 ---
 

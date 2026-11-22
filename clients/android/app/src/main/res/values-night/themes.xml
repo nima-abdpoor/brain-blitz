@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.BrainBlitz" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#151123</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

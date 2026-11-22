@@ -4,7 +4,7 @@ import java.time.Duration
 import java.time.Instant
 
 internal sealed interface GamePhase {
-    data class Ready(val waiting: Boolean = false) : GamePhase
+    data class Ready(val waiting: Boolean = false, val deadline: Instant? = null) : GamePhase
     data class Round(
         val number: Int,
         val totalQuestions: Int,
@@ -16,16 +16,22 @@ internal sealed interface GamePhase {
             return copy(submission = Submission(choice))
         }
 
-        fun secondsRemaining(now: Instant): Long {
-            val remaining = Duration.between(now, question.deadline)
-            if (remaining.isNegative) return 0
-            return remaining.seconds + if (remaining.nano > 0) 1 else 0
-        }
+        fun secondsRemaining(now: Instant): Long = secondsUntil(question.deadline, now)
     }
 
     data object BetweenRounds : GamePhase
     data class Finished(val scores: List<PlayerScore>) : GamePhase
+    data object Cancelled : GamePhase
 }
+
+internal fun secondsUntil(deadline: Instant, now: Instant): Long {
+    val remaining = Duration.between(now, deadline)
+    if (remaining.isNegative) return 0
+    return remaining.seconds + if (remaining.nano > 0) 1 else 0
+}
+
+internal fun List<PlayerScore>.inStandingOrder() =
+    sortedWith(compareByDescending<PlayerScore> { it.point }.thenBy { it.playerId })
 
 internal data class Submission(val choice: String, val feedback: AnswerFeedback? = null)
 
@@ -37,8 +43,11 @@ internal data class GameProgress(
     val roundNumber: Int?
         get() = (phase as? GamePhase.Round)?.number ?: lastRecap?.roundNumber
 
+    val terminal: Boolean
+        get() = phase is GamePhase.Finished || phase == GamePhase.Cancelled
+
     fun apply(event: MatchEvent.Gameplay): GameProgress {
-        if (event.gameId != gameId || phase is GamePhase.Finished) return this
+        if (event.gameId != gameId || terminal) return this
         val round = phase as? GamePhase.Round
         return when (event) {
             is MatchEvent.QuestionPublished -> {
@@ -56,9 +65,8 @@ internal data class GameProgress(
                 }
                 copy(phase = GamePhase.BetweenRounds, lastRecap = event)
             }
-            is MatchEvent.Completed -> copy(phase = GamePhase.Finished(
-                event.scores.sortedWith(compareByDescending<PlayerScore> { it.point }.thenBy { it.playerId }),
-            ))
+            is MatchEvent.Completed -> copy(phase = GamePhase.Finished(event.scores.inStandingOrder()))
+            is MatchEvent.Cancelled -> copy(phase = GamePhase.Cancelled)
         }
     }
 }

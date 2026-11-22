@@ -22,17 +22,19 @@ type Config struct {
 	StoreGameStatusTimeOut          time.Duration      `koanf:"store_game_status_time_out"`
 	PublishUserToWaitingListTimeOut time.Duration      `koanf:"publish_user_to_waiting_list_time_out"`
 	QuestionInterval                time.Duration      `koanf:"question_interval"`
+	ReadyTimeout                    time.Duration      `koanf:"ready_timeout"`
 }
 
 const saveUserGameStatusTimeOut = 2 * time.Second
-const saveGameStatusTimeOut = 2 * time.Second
 
 type Repository interface {
 	PlayerStatistics(ctx context.Context, userID uint64) (playerstats.Statistics, error)
 	OpenRound(ctx context.Context, gameID string, index int) (GameQuestions, error)
 	CreateGame(ctx context.Context, game Game) (string, error)
 	GetGame(ctx context.Context, gameId string) (Game, error)
+	LatestGameID(ctx context.Context, userID uint64) (string, error)
 	FinishGame(ctx context.Context, gameId string) error
+	CancelGame(ctx context.Context, gameID string) error
 
 	SaveQuestionsByMatchId(ctx context.Context, matchId string, questions []Question) error
 	GetQuestionsByGameId(ctx context.Context, gameId string) (GameQuestions, error)
@@ -45,6 +47,7 @@ type Repository interface {
 
 	UpsertUserStatus(ctx context.Context, userId uint64, status GameStatus) error
 	UpsertReadyPlayer(ctx context.Context, gameId string, playerId, numberOfPlayers *int) (bool, error)
+	IsPlayerReady(ctx context.Context, gameID string, playerID uint64) (bool, error)
 	GetUserStatus(ctx context.Context, userId uint64) (GameStatus, error)
 }
 
@@ -56,6 +59,7 @@ type Service struct {
 	connections   IdToConnection
 	mu            *sync.RWMutex
 	roundMu       *[64]sync.Mutex
+	matchmakingMu *sync.Mutex
 	playerNames   map[uint64]string
 	taskPublisher taskqueue.TaskPublisher
 	broker        broker.Broker
@@ -71,6 +75,9 @@ func NewService(
 	logger logger.SlogAdapter,
 ) Service {
 	config.Players = config.Players.WithDefaults()
+	if config.ReadyTimeout <= 0 {
+		config.ReadyTimeout = time.Minute
+	}
 	if err := config.Players.Validate(); err != nil {
 		panic(err)
 	}
@@ -84,8 +91,15 @@ func NewService(
 		connections:   IdToConnection{},
 		mu:            &sync.RWMutex{},
 		roundMu:       &[64]sync.Mutex{},
+		matchmakingMu: &sync.Mutex{},
 		playerNames:   make(map[uint64]string),
 	}
+}
+
+func (svc Service) ownsConnection(userID uint64, conn net.Conn) bool {
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	return svc.connections[userID] == conn
 }
 
 // A reader for an old socket must not delete a replacement connection.

@@ -13,12 +13,7 @@ import (
 )
 
 // readyTimeout is how long this bot waits for QUESTIONS_PUBLISHED after
-// sending READY before giving up on the match. The backend enforces no
-// timeout of its own — READY before all players are ready produces no
-// response at all (docs/client/backend-api-analysis.md §4 point 2) — so
-// without this, a non-responsive opponent would leave the chat waiting
-// forever. 90s is the upper end of the 60-90s window recommended in
-// docs/client/client-business-flows.md §5.
+// sending READY when an older server does not send MATCH_CANCELLED.
 const readyTimeout = 90 * time.Second
 
 var (
@@ -252,6 +247,10 @@ func (m *Manager) handleEvent(chatID int64, event ws.Event) {
 		m.handleAnswerAccepted(chatID, cg, event)
 	case ws.EventCompleted:
 		m.handleCompleted(chatID, cg, event)
+	case ws.EventMatchCancelled:
+		if match, err := event.MatchCreated(); err == nil && match.GameID == cg.gameID {
+			m.handleReadyTimeout(chatID, cg)
+		}
 	case ws.EventError:
 		m.logger.Warn("game received an ERROR event", "chat_id", chatID, "message", event.Message)
 	default:
