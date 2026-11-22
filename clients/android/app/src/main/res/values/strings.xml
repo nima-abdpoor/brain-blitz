@@ -56,8 +56,34 @@
     </plurals>
     <string name="queue_rejected">The server could not add you to this queue. Check your match settings and try again.</string>
     <string name="queue_timeout">The queue did not respond. Try again.</string>
-    <string name="game_connection_lost">Your connection to the game server was lost. Try again.</string>
+    <string name="game_connection_lost">Your connection to the game server was lost.</string>
     <string name="match_found">Match found</string>
     <string name="match_reference">Match ID %1$s</string>
     <string name="leave_match">Leave match</string>
+    <string name="ready">Ready</string>
+    <string name="waiting_for_ready_players">Waiting for everyone to get ready…</string>
+    <string name="ready_rejected">The server could not mark you ready. Try again.</string>
+    <string name="game_command_rejected">The server rejected a match request.</string>
+    <string name="round_number">Question %1$d of %2$d</string>
+    <plurals name="seconds_remaining">
+        <item quantity="one">%1$d second remaining</item>
+        <item quantity="other">%1$d seconds remaining</item>
+    </plurals>
+    <string name="your_answer">Your answer: %1$s</string>
+    <string name="correct_answer">Correct answer: %1$s</string>
+    <string name="answer_correct">Correct!</string>
+    <string name="answer_incorrect">Incorrect</string>
+    <string name="answer_sent">Answer sent</string>
+    <string name="time_expired">Time’s up</string>
+    <string name="no_answer_submitted">No answer submitted</string>
+    <string name="waiting_for_round">Waiting for the server…</string>
+    <string name="round_recap">Recap for question %1$d</string>
+    <string name="final_standings">Final standings</string>
+    <string name="play_again">Play again</string>
+    <string name="player_id">Player %1$s</string>
+    <string name="player_placement">%1$d. %2$s</string>
+    <plurals name="player_points">
+        <item quantity="one">%1$d point</item>
+        <item quantity="other">%1$d points</item>
+    </plurals>
 </resources>

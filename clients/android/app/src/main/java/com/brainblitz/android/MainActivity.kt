@@ -71,8 +71,9 @@ private fun BrainBlitzApp(screen: AppScreen, model: BrainBlitzViewModel) {
         else model.returnToProfile()
     }
 
+    val match = screen as? AppScreen.Match
     Surface(Modifier.fillMaxSize()) {
-        key(screen::class) {
+        key(screen::class, match?.game?.roundNumber, match?.game?.phase is GamePhase.Finished, match?.disconnected) {
             Column(
                 modifier = Modifier
                     .safeDrawingPadding()
@@ -85,7 +86,7 @@ private fun BrainBlitzApp(screen: AppScreen, model: BrainBlitzViewModel) {
                     is AppScreen.Account -> AccountForm(screen, model.configured, model::submitAccount, model::changeAccountMode)
                     is AppScreen.ProfilePage -> ProfilePage(screen, model::openPlay, model::retryProfile, model::signOut)
                     is AppScreen.Play -> PlayPage(screen, model::joinQueue, model::retryOptions, model::cancelQueue, model::returnToProfile)
-                    is AppScreen.Match -> MatchPage(screen, model::returnToProfile)
+                    is AppScreen.Match -> MatchPage(screen, model::ready, model::answer, model::playAgain, model::returnToProfile)
                 }
             }
         }
@@ -208,9 +209,9 @@ private fun PlayPage(
     onCancel: () -> Unit,
     onBack: () -> Unit,
 ) {
-    var categoryChoice by rememberSaveable { mutableStateOf<String?>(null) }
-    var timerChoice by rememberSaveable { mutableStateOf<String?>(null) }
-    var playerChoice by rememberSaveable { mutableStateOf<Int?>(null) }
+    var categoryChoice by rememberSaveable { mutableStateOf(screen.previousSelection?.category) }
+    var timerChoice by rememberSaveable { mutableStateOf(screen.previousSelection?.timeOption?.id) }
+    var playerChoice by rememberSaveable { mutableStateOf(screen.previousSelection?.players) }
     val options = screen.options
     val queue = screen.queue
 
@@ -273,18 +274,7 @@ private fun <T> ChoiceMenu(
 }
 
 @Composable
-private fun MatchPage(screen: AppScreen.Match, onLeave: () -> Unit) {
-    Heading(stringResource(R.string.match_found))
-    SelectionSummary(screen.selection)
-    if (BuildConfig.DEBUG) {
-        Text(stringResource(R.string.match_reference, screen.gameId), style = MaterialTheme.typography.bodySmall)
-    }
-    Notice(screen.notice)
-    OutlinedButton(onClick = onLeave) { Text(stringResource(R.string.leave_match)) }
-}
-
-@Composable
-private fun SelectionSummary(selection: MatchSelection) {
+internal fun SelectionSummary(selection: MatchSelection) {
     Text(
         pluralStringResource(
             R.plurals.selection_summary,
@@ -305,17 +295,17 @@ private fun categoryName(category: String): String = when (category) {
 }
 
 @Composable
-private fun Heading(title: String) {
+internal fun Heading(title: String) {
     Text(title, style = MaterialTheme.typography.headlineMedium)
 }
 
 @Composable
-private fun Status(message: Int) {
+internal fun Status(message: Int) {
     Text(stringResource(message), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 @Composable
-private fun Notice(message: Int?) {
+internal fun Notice(message: Int?) {
     if (message != null) {
         Text(
             stringResource(message),

@@ -41,13 +41,15 @@ internal sealed interface AppScreen {
         val busy: Boolean = true,
         val queue: QueueEntry? = null,
         val notice: Int? = null,
+        val previousSelection: MatchSelection? = null,
     ) : AppScreen
 
     data class Match(
         val profile: Profile,
         val selection: MatchSelection,
-        val gameId: String,
+        val game: GameProgress,
         val notice: Int? = null,
+        val disconnected: Boolean = false,
     ) : AppScreen
 }
 
@@ -199,17 +201,20 @@ internal class BrainBlitzViewModel(application: Application) : AndroidViewModel(
                     true
                 }
                 if (acknowledged == null) {
-                    showQueueError(R.string.queue_timeout)
+                    showSocketError(R.string.queue_timeout)
                 } else {
-                    for (event in game.events) handleEvent(game, event)
+                    for (event in game.events) {
+                        handleEvent(game, event)
+                        if ((screen.value as? AppScreen.Match)?.game?.phase is GamePhase.Finished) break
+                    }
                 }
             } catch (error: GatewayHttpException) {
                 if (socket === game && error.sessionRejected) endSession(R.string.session_expired)
-                else if (socket === game) showQueueError(R.string.connection_error)
+                else if (socket === game) showSocketError(R.string.connection_error)
             } catch (_: QueueRejected) {
-                if (socket === game) showQueueError(R.string.queue_rejected)
+                if (socket === game) showSocketError(R.string.queue_rejected)
             } catch (_: IOException) {
-                if (socket === game) showQueueError(R.string.game_connection_lost)
+                if (socket === game) showSocketError(R.string.game_connection_lost)
             } finally {
                 if (socket === game) {
                     socket = null
@@ -222,7 +227,14 @@ internal class BrainBlitzViewModel(application: Application) : AndroidViewModel(
 
     private fun handleEvent(game: GameSocket, event: MatchEvent) {
         if (socket !== game) return
-        val play = screen.value as? AppScreen.Play ?: return
+        when (val current = screen.value) {
+            is AppScreen.Play -> handleQueueEvent(current, event)
+            is AppScreen.Match -> handleMatchEvent(current, event)
+            else -> Unit
+        }
+    }
+
+    private fun handleQueueEvent(play: AppScreen.Play, event: MatchEvent) {
         val queue = play.queue ?: return
         mutableScreen.value = when (event) {
             is MatchEvent.Categories -> {
@@ -231,16 +243,76 @@ internal class BrainBlitzViewModel(application: Application) : AndroidViewModel(
             }
             MatchEvent.Queued -> play.copy(queue = queue.copy(acknowledged = true))
             MatchEvent.Rejected -> throw QueueRejected()
-            is MatchEvent.Created -> AppScreen.Match(play.profile, queue.selection, event.gameId)
+            is MatchEvent.Created -> AppScreen.Match(play.profile, queue.selection, GameProgress(event.gameId))
+            is MatchEvent.Gameplay -> play
         }
     }
 
-    private fun showQueueError(message: Int) {
-        when (val current = screen.value) {
-            is AppScreen.Play -> mutableScreen.value = current.copy(queue = null, notice = message)
-            is AppScreen.Match -> mutableScreen.value = current.copy(notice = message)
+    private fun handleMatchEvent(match: AppScreen.Match, event: MatchEvent) {
+        when (event) {
+            is MatchEvent.Gameplay -> {
+                val game = match.game.apply(event)
+                if (game === match.game) return
+                val disconnected = match.disconnected && game.phase !is GamePhase.Finished
+                mutableScreen.value = match.copy(
+                    game = game,
+                    notice = if (disconnected) match.notice else null,
+                    disconnected = disconnected,
+                )
+            }
+            MatchEvent.Rejected -> {
+                if (match.disconnected) return
+                val ready = match.game.phase as? GamePhase.Ready
+                mutableScreen.value = if (ready != null) {
+                    match.copy(game = match.game.copy(phase = GamePhase.Ready()), notice = R.string.ready_rejected)
+                } else {
+                    // ERROR has no round or command ID. Keep the answer locked and wait for the recap.
+                    match.copy(notice = R.string.game_command_rejected)
+                }
+            }
             else -> Unit
         }
+    }
+
+    private fun showSocketError(message: Int) {
+        when (val current = screen.value) {
+            is AppScreen.Play -> mutableScreen.value = current.copy(queue = null, notice = message)
+            is AppScreen.Match -> mutableScreen.value = current.copy(notice = message, disconnected = true)
+            else -> Unit
+        }
+    }
+
+    fun ready() {
+        val match = screen.value as? AppScreen.Match ?: return
+        val ready = match.game.phase as? GamePhase.Ready ?: return
+        if (ready.waiting) return
+        sendGameCommand(match, ready.copy(waiting = true)) { it.ready(match.game.gameId) }
+    }
+
+    fun answer(roundNumber: Int, choice: String) {
+        val match = screen.value as? AppScreen.Match ?: return
+        val round = match.game.phase as? GamePhase.Round ?: return
+        if (round.number != roundNumber) return
+        val submitted = round.submit(choice, Instant.now()) ?: return
+        sendGameCommand(match, submitted) { it.answer(match.game.gameId, round.question.id, choice) }
+    }
+
+    private fun sendGameCommand(match: AppScreen.Match, phase: GamePhase, send: (GameSocket) -> Unit) {
+        val game = socket ?: return
+        if (match.disconnected || activeToken() == null) return
+        mutableScreen.value = match.copy(game = match.game.copy(phase = phase), notice = null)
+        try {
+            send(game)
+        } catch (_: IOException) {
+            showSocketError(R.string.game_connection_lost)
+        }
+    }
+
+    fun playAgain() {
+        val match = screen.value as? AppScreen.Match ?: return
+        if (match.game.phase !is GamePhase.Finished) return
+        closeGame()
+        loadOptions(AppScreen.Play(match.profile, categories, previousSelection = match.selection))
     }
 
     fun cancelQueue() {
