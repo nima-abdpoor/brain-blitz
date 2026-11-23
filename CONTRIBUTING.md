@@ -1,6 +1,6 @@
 # Contributing to BrainBlitz
 
-Contributions to the backend, Telegram client, tests, and documentation are
+Contributions to the backend, Android and Telegram clients, tests, and documentation are
 welcome. For suspected security vulnerabilities, follow [SECURITY.md](SECURITY.md)
 instead of including details in a public issue or pull request.
 
@@ -60,25 +60,29 @@ own test bot token in `.env` and follow the [bot guide](clients/telegram-bot/REA
 Unit tests and the simulated Telegram integration tests do not need a Telegram
 token. Use one bot process per token.
 
+For Android development, open `clients/android` in Android Studio with JDK 17 or newer and Android SDK Platform 35 and Build Tools 35.0.0. Run a debug build on an emulator against the seeded Compose backend. [Android setup](clients/android/README.md#run-locally)
+
 See the [deployment guide](docs/run-on-another-computer.md) for resource
 requirements, connectivity, and troubleshooting. `docker compose stop` stops
 the local stack while retaining its data.
 
 ## Work in the right module and layer
 
-This repository contains two independent Go modules:
+The backend and Telegram bot use independent Go modules. Android uses its own Gradle project.
 
 | Location | Responsibility |
 | --- | --- |
 | Repository root | Backend services, infrastructure adapters, shared packages, and smoke client |
+| `clients/android/` | Native Kotlin app, Compose screens, game protocol, and Android tests |
 | `clients/telegram-bot/` | Telegram client, backend API clients, and bot integration tests |
 
-Running `go test ./...` from the root does **not** test the nested Telegram module.
+Run client checks from their respective project directories.
 
 - Keep transport handling in `delivery/`, business rules in `service/`, and
   persistence in `repository/`. Put infrastructure integrations in `adapter/`.
 - Keep the bot's `internal/core/` independent of the Telegram SDK. Telegram
   message formatting and callbacks belong in `internal/telegram/`.
+- Keep Android network and session storage code outside Compose screens. Model gameplay and recovery in the ViewModel and game state classes.
 - Use `gofmt` on changed Go files. Follow existing package conventions, pass
   dependencies explicitly, and return useful errors.
 - Preserve context cancellation, bounded network operations, and safe ownership
@@ -112,6 +116,13 @@ For Telegram client changes, also run in its module:
 cd clients/telegram-bot
 go test -race ./...
 go vet ./...
+```
+
+For Android changes, run the same Gradle tasks used in CI.
+
+```sh
+cd clients/android
+./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
 ```
 
 To run the backend checks with the build toolchain instead of a native Go
@@ -150,6 +161,8 @@ the test project's database volumes.
 For matchmaking and gameplay changes, cover exact roster size, isolation by
 category/timer/player count, incomplete queues, cancellation, concurrent
 readiness and answers, timeouts, recaps, and final results as relevant.
+
+For Android gameplay changes, use distinct accounts on two emulators or one emulator and the Telegram bot. Verify recovery after a disconnect or app restart when changing session or game-state handling. [Android match and recovery checks](clients/android/README.md#test-match-recovery)
 
 The [deployment readiness workflow](.github/workflows/deployment-readiness.yml)
 defines the automated backend, build, and multiplayer integration checks.

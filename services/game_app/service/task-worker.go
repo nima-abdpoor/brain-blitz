@@ -25,6 +25,7 @@ func (tw TaskWorker) Process() {
 	err := tw.TaskProcessor.Process(context.Background(), map[string]taskqueue.HandlerFunc{
 		"game:completed":     tw.service.ProcessGameCompletion,
 		"game:round-timeout": tw.service.ProcessRoundTimeout,
+		"game:ready-timeout": tw.service.ProcessReadyTimeout,
 	})
 	if err != nil {
 		tw.logger.Error(op, "error in processing the task", "error", err.Error())

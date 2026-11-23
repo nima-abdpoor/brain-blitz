@@ -25,13 +25,7 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 		questionsToSend = gameQuestions.Questions[gameQuestions.CurrentQuestionIndex : gameQuestions.CurrentQuestionIndex+1]
 	}
 	for _, questions := range questionsToSend {
-		questionsResponse = append(questionsResponse, ProcessGameQuestion{
-			Id:         questions.Id,
-			Content:    questions.Content,
-			Choices:    questions.Choices,
-			Difficulty: questions.Difficulty,
-			TTL:        questions.ValidAnswerTime,
-		})
+		questionsResponse = append(questionsResponse, publicQuestion(questions))
 	}
 
 	gameMessageResponse := ProcessGameMessageResponse{
@@ -73,6 +67,13 @@ func (svc Service) sendQuestionToPlayer(ctx context.Context, gameId string) erro
 		}
 	}
 	return nil
+}
+
+func publicQuestion(question Question) ProcessGameQuestion {
+	return ProcessGameQuestion{
+		Id: question.Id, Content: question.Content, Choices: question.Choices,
+		Difficulty: question.Difficulty, TTL: question.ValidAnswerTime,
+	}
 }
 
 func (svc Service) savePlayerAnswer(ctx context.Context, playerId uint64, answer ProcessGameAnswer) (ProcessGameLeaderBoard, error) {

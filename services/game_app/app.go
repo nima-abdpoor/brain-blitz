@@ -18,6 +18,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type Application struct {
@@ -36,6 +37,12 @@ type Application struct {
 func Setup(config Config, db *mongo.Database, logger logger.SlogAdapter) Application {
 	redisAdapter := redis.New(config.Redis)
 	gameRepository := repository.NewGameRepository(config.Repository, logger, db, redisAdapter)
+	indexCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	err := gameRepository.EnsureMatchIndex(indexCtx)
+	cancel()
+	if err != nil {
+		logger.Warn("could not ensure match lookup index", "error", err)
+	}
 	ws := websocket.NewWS(config.WebSocket)
 
 	kafkaBroker, err := broker.NewKafkaBroker([]string{fmt.Sprintf("%s:%s", config.Broker.Host, config.Broker.Port)}, logger)

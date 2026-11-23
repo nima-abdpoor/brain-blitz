@@ -40,9 +40,14 @@ func (websocket WS) ReadClientData(rw io.ReadWriter) (string, OpCode, error) {
 }
 
 func (websocket WS) WriteServerData(rw io.Writer, code OpCode, message string) error {
+	frame, err := ws.CompileFrame(ws.NewFrame(ws.OpCode(code), true, []byte(message)))
+	if err != nil {
+		return err
+	}
 	if conn, ok := rw.(net.Conn); ok {
 		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 		defer conn.SetWriteDeadline(time.Time{})
 	}
-	return wsutil.WriteServerMessage(rw, ws.OpCode(code), []byte(message))
+	_, err = rw.Write(frame)
+	return err
 }

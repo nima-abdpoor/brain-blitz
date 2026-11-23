@@ -1,5 +1,7 @@
 # Business Flows
 
+These flows describe the original backend implementation. Android and Telegram now group matchmaking by category, timer, and player count, and the backend sends one active question at a time. [Current client protocol](../client/backend-api-analysis.md) · [Android setup](../../clients/android/README.md)
+
 ## Flow 1: User Registration
 
 **Purpose**: Allow a new player to create an account.

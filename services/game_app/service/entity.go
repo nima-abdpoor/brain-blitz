@@ -5,16 +5,18 @@ import (
 )
 
 type Game struct {
-	QuestionSeconds int         `bson:"question_seconds"`
-	TimeOptionID    string      `bson:"time_option_id"`
-	Id              *string     `bson:"id"`
-	Players         []uint64    `bson:"players"`
-	MatchId         string      `bson:"match_id"`
-	Category        []Category  `bson:"category"`
-	Status          GameStatus  `bson:"status"`
-	Question        *[]Question `bson:"questions"`
-	CreatedAt       time.Time   `bson:"created_at"`
-	UpdatedAt       time.Time   `bson:"updated_at"`
+	QuestionSeconds int               `bson:"question_seconds"`
+	TimeOptionID    string            `bson:"time_option_id"`
+	Id              *string           `bson:"id"`
+	Players         []uint64          `bson:"players"`
+	PlayerNames     map[string]string `bson:"player_names,omitempty"`
+	MatchId         string            `bson:"match_id"`
+	Category        []Category        `bson:"category"`
+	Status          GameStatus        `bson:"status"`
+	Question        *[]Question       `bson:"questions"`
+	CreatedAt       time.Time         `bson:"created_at"`
+	UpdatedAt       time.Time         `bson:"updated_at"`
+	ReadyUntil      time.Time         `bson:"ready_until,omitempty"`
 }
 
 type PlayerAnswer struct {
@@ -57,6 +59,7 @@ const (
 	GameStatusCreated     GameStatus = "CREATED"
 	GameStatusStarted     GameStatus = "STARTED"
 	GameStatusFinished    GameStatus = "FINISHED"
+	GameStatusCancelled   GameStatus = "CANCELLED"
 	GameStatusUnknown     GameStatus = "UNKNOWN"
 )
 

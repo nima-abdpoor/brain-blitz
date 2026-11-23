@@ -1,5 +1,7 @@
 # Gap Analysis — Backend Readiness for a Telegram Client
 
+This analysis records the initial Telegram planning findings. The Android work addressed server-side queue cancellation (G-13), state resync (G-14), and ready timeouts (G-15). Compose now exposes question timers (G-16), and Kubernetes ingress coverage remains a staging task. [Current client protocol](backend-api-analysis.md) · [Android roadmap](android-roadmap.md)
+
 Categories: **Already supported**, **Needs small backend changes**, **Needs major backend changes**, **Missing entirely**.
 
 ---

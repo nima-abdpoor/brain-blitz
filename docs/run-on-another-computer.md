@@ -14,13 +14,13 @@ manifests are a separate deployment path and are not used by these instructions.
   guarantees. A computer with 16 GB total RAM is preferable when also running
   other applications. MongoDB 8 requires a compatible modern CPU (including AVX
   on Intel/AMD); very old machines may not work.
-- Internet access to pull images, download Go modules, and reach Telegram.
+- Internet access to pull images and download build dependencies. Telegram also needs access to its API.
 
 ## Move the source
 
-Copy the prepared source archive to the other computer and extract it. The
-archive includes the readiness changes; cloning the original GitHub repository
-alone will not include unpushed changes made during this preparation.
+Clone the repository and check out the revision you want to run. For an Android
+demo, use a revision that includes `clients/android/`. Transfer a source archive
+if the changes you need exist only in a local checkout.
 
 Do not copy this computer's `.env`, Docker socket, or logs. Generate a new `.env`
 on the destination. If migrating existing game data, back up and restore the
@@ -72,10 +72,15 @@ Use `Authorization: Bearer <accessToken>` for protected requests. Auth token
 minting endpoints are intentionally internal: the User service calls Auth over
 gRPC after checking credentials. They are not exposed by the gateway.
 
+## Android app
+
+After starting Compose and seeding questions, open `clients/android` in Android Studio. Run the debug app on an Android emulator using `http://10.0.2.2:8088`, which reaches the gateway on the host's loopback port 8088. To play locally, use two emulators with distinct BrainBlitz accounts or use one Android client and the Telegram bot. Choose the same category, timer, and total player count. [Android setup and smoke test](../clients/android/README.md#run-locally)
+
+For a physical device, build with the HTTPS origin of a reachable staging gateway. Staging must route user, game, and question-timer requests, including WebSocket upgrades. [Android staging setup](../clients/android/README.md#test-against-staging)
+
 ## Telegram bot
 
-The `telegram-client` branch includes a bot in `clients/telegram-bot/`. Add
-`BOT_TELEGRAM__BOT_TOKEN=<your BotFather token>` to the private `.env`, then run:
+Add `BOT_TELEGRAM__BOT_TOKEN=<your BotFather token>` to the private `.env` to run the bot in `clients/telegram-bot/`.
 
 ```sh
 docker compose --profile telegram up -d --build bb-telegram-bot
@@ -197,6 +202,7 @@ copy database volumes.
   same category, timer, and game size. The scheduler runs every 15 seconds by default.
 - **No questions:** run the demo import or load EASY questions for the selected
   category in `question_db`.
+- **Android cannot load the profile or match options:** for the emulator's default debug build, check that the host gateway is healthy on port 8088. For staging, check the HTTPS origin, authentication middleware, and routes for game options and question timers.
 - **Bot cannot reach Telegram:** check `https://api.telegram.org` from the target
   computer and the bot process/container. This computer's VPN configuration does
   not transfer with the project.
@@ -204,7 +210,7 @@ copy database volumes.
 ## Scope and operational limits
 
 This setup is intended for a trusted single-computer demo and development. Keep
-the default loopback binding for a bot on the same machine. Before publishing
+the default loopback binding for an emulator or a bot on the same machine. Before publishing
 the API to the internet, configure TLS, access controls, rate limiting, and
 backups appropriate to the deployment. Redis, MongoDB, and Kafka are reachable
 only on the private Compose network and do not have application authentication;

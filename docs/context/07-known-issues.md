@@ -106,7 +106,7 @@ No implementation. There is no way to add questions to the database via the API.
 
 ### 14. Question Service not in Kubernetes manifests
 
-`infra/kubernetes/deployment/` contains manifests for `auth`, `game`, `match`, `user` but not `question`. The Question Service cannot be deployed to Kubernetes without adding this.
+The checked-in Kubernetes manifests need a Question Service deployment, service, and ingress route for clients that load question timers. Compose already serves this endpoint. [Android staging requirements](../client/android-roadmap.md#existing-backend-contracts)
 
 ### 15. ~~Game completion does not update Game document status~~ **FIXED** (Deployment readiness)
 

@@ -1,5 +1,7 @@
 # Use Cases
 
+For current Android and Telegram play, see the shared client protocol and local setup. Android also supports reopening an interrupted lobby, active question, or recent result. [Client protocol](../client/backend-api-analysis.md) · [Android setup](../../clients/android/README.md)
+
 ## UC-01: Register New Player
 
 **Actors**: New User

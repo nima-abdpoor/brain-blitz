@@ -1,6 +1,6 @@
 # Feature Map — Backend Capability → Telegram Bot Feature
 
-For every backend capability (from `backend-api-analysis.md`), this maps the Telegram command/callback, the conversation flow, the API calls involved, expected responses, and any missing backend support.
+This map records the original Telegram bot feature design. Android shares the backend and adds recovery after an interrupted match. [Current client protocol](backend-api-analysis.md) · [Android features and setup](../../clients/android/README.md)
 
 ## Overview Flow
 

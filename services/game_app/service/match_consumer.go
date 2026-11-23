@@ -5,89 +5,108 @@ import (
 	"BrainBlitz.com/game/contract/match/golang"
 	"BrainBlitz.com/game/pkg/matchqueue"
 	"context"
-	"fmt"
-	"google.golang.org/protobuf/proto"
-	"log/slog"
+	"errors"
+	"strconv"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func (svc Service) ConsumeMatchCreated(message []byte, ctx context.Context) error {
-	const op = "game.consumeMatchCreated"
-
 	users := &golang.AllMatchedUsers{}
-	err := proto.Unmarshal(message, users)
-	if err != nil {
-		svc.logger.Error(op, "error in unmarshalling match message", slog.String("error", err.Error()))
+	if err := proto.Unmarshal(message, users); err != nil {
 		return err
 	}
-	matchedUsers := MapFromProtoMessageToEntity(users)
-	createdMatches := make([]MatchedUsers, 0)
-	for _, matchedUser := range matchedUsers {
-		if qr, ok := svc.repository.(queueRepository); ok {
-			valid := true
-			for _, id := range matchedUser.UserId {
-				svc.mu.RLock()
-				connected := svc.connections[id] != nil
-				svc.mu.RUnlock()
-				valid = valid && connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID, Players: len(matchedUser.UserId)})
+	var createErr error
+	for _, match := range MapFromProtoMessageToEntity(users) {
+		createErr = errors.Join(createErr, svc.createMatch(ctx, match))
+	}
+	return createErr
+}
+
+func (svc Service) createMatch(ctx context.Context, match MatchedUsers) error {
+	svc.matchmakingMu.Lock()
+	defer svc.matchmakingMu.Unlock()
+	if qr, ok := svc.repository.(queueRepository); ok {
+		if len(match.Category) == 0 {
+			return nil
+		}
+		category := string(match.Category[0])
+		choice := matchqueue.Choice{Seconds: match.QuestionSeconds, OptionID: match.TimeOptionID, Players: len(match.UserId)}
+		var queued []uint64
+		for _, id := range match.UserId {
+			svc.mu.RLock()
+			connected := svc.connections[id] != nil
+			svc.mu.RUnlock()
+			if connected && qr.IsQueued(ctx, id, category, choice) {
+				queued = append(queued, id)
 			}
-			if !valid {
-				for _, id := range matchedUser.UserId {
-					svc.mu.RLock()
-					connected := svc.connections[id] != nil
-					svc.mu.RUnlock()
-					if connected && len(matchedUser.Category) > 0 && qr.IsQueued(ctx, id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID, Players: len(matchedUser.UserId)}) {
-						msg, _ := proto.Marshal(MapWaitingListRequestToProtoMessage(id, string(matchedUser.Category[0]), matchqueue.Choice{Seconds: matchedUser.QuestionSeconds, OptionID: matchedUser.TimeOptionID, Players: len(matchedUser.UserId)}))
-						if err := svc.broker.Publish(ctx, event.GAME_V1_JOIN_MATCH_QUEUE_REQUESTED, msg); err != nil {
-							return err
-						}
-					}
+		}
+		if len(queued) != len(match.UserId) {
+			for _, id := range queued {
+				msg, err := proto.Marshal(MapWaitingListRequestToProtoMessage(id, category, choice))
+				if err != nil {
+					return err
 				}
-				svc.logger.Info("discarded stale match", "matchId", matchedUser.MatchId)
-				continue
+				if err := svc.broker.Publish(ctx, event.GAME_V1_JOIN_MATCH_QUEUE_REQUESTED, msg); err != nil {
+					return err
+				}
 			}
-		}
-
-		result, err := svc.repository.CreateGame(ctx, Game{
-			Id:              nil,
-			QuestionSeconds: matchedUser.QuestionSeconds, TimeOptionID: matchedUser.TimeOptionID,
-			Players:   matchedUser.UserId,
-			MatchId:   matchedUser.MatchId,
-			Category:  matchedUser.Category,
-			Status:    GameStatusPending,
-			Question:  nil,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		})
-		if err != nil {
-			svc.logger.Error(op, "error in creating match", slog.String("error", err.Error()))
-		} else {
-			matchedUser.GameId = result
-			createdMatches = append(createdMatches, matchedUser)
-		}
-
-		svc.logger.Info(op, "game created", result)
-	}
-
-	for _, createdMatch := range createdMatches {
-		go svc.saveUsersGameStatus(createdMatch.UserId, GameStatusPending)
-
-		numberOfPlayers := len(createdMatch.UserId)
-		svc.saveGameStatus(createdMatch.GameId, nil, &numberOfPlayers)
-
-		msg := ProcessGameMessageResponse{
-			Success: true,
-			Event:   EventMatchCreated,
-			Message: "match created",
-			MetaData: ProcessGameMetaDataResponse{
-				GameId: createdMatch.GameId,
-			},
-		}
-		err = svc.writeMessage(createdMatch.UserId, msg)
-		if err != nil {
-			svc.logger.Error(op, "error writing message", "userId", fmt.Sprintf("%v", createdMatch.UserId), "message", EventMatchCreated, slog.String("error", err.Error()))
+			svc.logger.Info("discarded stale match", "matchId", match.MatchId)
+			return nil
 		}
 	}
 
+	names := make(map[string]string)
+	svc.mu.RLock()
+	for _, id := range match.UserId {
+		names[strconv.FormatUint(id, 10)] = svc.playerNames[id]
+	}
+	svc.mu.RUnlock()
+	now := time.Now().UTC()
+	deadline := now.Add(svc.config.ReadyTimeout)
+	gameID, err := svc.repository.CreateGame(ctx, Game{
+		QuestionSeconds: match.QuestionSeconds, TimeOptionID: match.TimeOptionID,
+		Players: match.UserId, PlayerNames: names, MatchId: match.MatchId, Category: match.Category,
+		Status: GameStatusPending, CreatedAt: now, UpdatedAt: now, ReadyUntil: deadline,
+	})
+	if err != nil {
+		return svc.rejectMatchedQueue(match.UserId, err)
+	}
+	lock := svc.roundMutex(gameID)
+	lock.Lock()
+	defer lock.Unlock()
+	count := len(match.UserId)
+	_, err = svc.repository.UpsertReadyPlayer(ctx, gameID, nil, &count)
+	if err == nil {
+		err = svc.scheduleReadyTimeout(ctx, gameID, time.Until(deadline))
+	}
+	if err != nil {
+		// No client has been told about the match. Release the roster to requeue.
+		svc.logger.Error("could not initialize match readiness", "gameId", gameID, "error", err)
+		return svc.rejectMatchedQueue(match.UserId, errors.Join(err, svc.repository.CancelGame(ctx, gameID)))
+	}
+
+	for _, id := range match.UserId {
+		svc.leaveQueue(id)
+	}
+	svc.saveUsersGameStatus(match.UserId, GameStatusPending)
+	if err := svc.writeMessage(match.UserId, matchCreatedEvent(gameID, deadline)); err != nil {
+		svc.logger.Warn("match notification incomplete", "gameId", gameID, "error", err)
+	}
 	return nil
+}
+
+func (svc Service) rejectMatchedQueue(players []uint64, err error) error {
+	for _, id := range players {
+		svc.leaveQueue(id)
+	}
+	return errors.Join(err, svc.writeMessage(players, ProcessGameMessageResponse{Event: Error, Message: "could not create match"}))
+}
+
+func matchCreatedEvent(gameID string, deadline time.Time) ProcessGameMessageResponse {
+	return ProcessGameMessageResponse{
+		Success: true, Event: EventMatchCreated, Message: "match created",
+		MetaData: ProcessGameMetaDataResponse{GameId: gameID, ReadyUntil: &deadline},
+	}
 }

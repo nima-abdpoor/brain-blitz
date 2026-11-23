@@ -2,7 +2,7 @@
 
 ## Purpose
 
-BrainBlitz is a real-time multiplayer quiz game backend. Its core value proposition is matching anonymous online players by topic category and running a timed, scored quiz session entirely over WebSocket — with matchmaking, question delivery, answer scoring, and a leaderboard all handled server-side.
+BrainBlitz is a real-time multiplayer quiz game for Android and Telegram. Players with BrainBlitz accounts choose a category, timer, and player count, then play timed questions over WebSocket. The backend coordinates matchmaking, question delivery, scoring, and final standings. [Android app](../../clients/android/README.md) · [Telegram bot](../../clients/telegram-bot/README.md)
 
 ## Goals
 
@@ -19,6 +19,8 @@ BrainBlitz is a real-time multiplayer quiz game backend. Its core value proposit
 
 | Component | Role |
 |---|---|
+| **Android app** | Native Kotlin and Jetpack Compose client with account access, live gameplay, and match recovery |
+| **Telegram bot** | Chat client that uses the same accounts, matchmaking, and game service |
 | **Auth Service** | Mints and validates HS256 JWT tokens; only stateless token operations, no database |
 | **User Service** | User registration, authentication (via Auth gRPC), and profile retrieval; stores in PostgreSQL |
 | **Match Service** | Holds players in Redis waiting lists per category; scheduler pairs players and publishes match events to Kafka |

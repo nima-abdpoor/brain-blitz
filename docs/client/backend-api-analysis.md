@@ -1,6 +1,6 @@
 # Backend API Analysis (Client Integration Perspective)
 
-This document is ground truth extracted directly from source code (not from prior business docs) for anyone building a new client — Telegram bot or otherwise. Every claim below cites the file it came from. Where a prior doc (`docs/business/`, `docs/context/`) is more optimistic than the code, the code wins.
+This reference describes the gateway and game protocol used by the Android app and Telegram bot. [Android integration](android-roadmap.md#existing-backend-contracts) · [Telegram setup](../../clients/telegram-bot/README.md)
 
 Assumptions are marked **[ASSUMPTION]**.
 
@@ -10,21 +10,19 @@ Assumptions are marked **[ASSUMPTION]**.
 
 | Service | HTTP | gRPC | Client-reachable via gateway? |
 |---|---|---|---|
-| `auth` | `:5000` | `:6000` | **No** — no Traefik/IngressRoute exists for auth-service. It is internal-only, called by (a) Traefik's ForwardAuth middleware directly, (b) `user` service via gRPC. |
+| `auth` | `:5000` | `:6000` | Compose exposes the health check. Token operations are internal to ForwardAuth and the User service. |
 | `user` | `:5001` | `:6001` (unused stub) | Yes — `/user-service/...` |
 | `match` | `:5002` | none (skeleton only, never wired) | Yes — `/match-service/...` |
 | `game` | `:5003` (HTTP + WS on same port) | n/a | Yes — `/game-service/...` |
-| `question` | `:5004` | none | **No** — no Traefik route/docker-compose entry exists in this repo. Internal-only today. |
+| `question` | `:5004` | none | Compose routes `/question-service/api/v1/question/`. The checked-in Kubernetes ingress needs this route for timer selection. |
 
-A Telegram bot (or any external client) can only reach `user`, `match`, and `game` through the gateway as currently deployed. **Question service has no external route** — this is a gap the client design must account for (see `gap-analysis.md`).
-
-Source: `infra/kubernetes/ingress/ingress-route.yaml`, `docker-compose.yml`.
+Android reads question timers through the Compose gateway. Confirm the same endpoint and authentication middleware on staging before building for a physical device. [Compose routes](../../docker-compose.yml) · [Kubernetes ingress](../../infra/kubernetes/ingress/ingress-route.yaml)
 
 ---
 
 ## 1. AUTH SERVICE — internal only
 
-Not directly callable by a Telegram bot in the current deployment (no gateway route). Documented for completeness since a future client architecture may need direct access, or the gateway may be extended.
+Clients sign in through User Service. The User service mints tokens over gRPC, and the gateway validates access tokens through ForwardAuth.
 
 ### `POST /api/v1/access-token`
 - **Auth**: none (this endpoint mints tokens; it doesn't consume them)
@@ -39,17 +37,17 @@ Not directly callable by a Telegram bot in the current deployment (no gateway ro
 - **Errors**: `400` invalid body / missing `data`; `500` signing failure.
 - **Purpose**: Mint a JWT access token from arbitrary claims.
 - **Client feature**: None directly — only `user` service calls this today.
-- **Known defect**: the JWT `exp` claim is set to the raw `time.Duration` value (nanoseconds), not `time.Now().Add(d).Unix()`. Token expiry may not behave as the `expire_time` field implies. Flag for backend fix before relying on expiry client-side.
+- **Expiry** uses an absolute Unix timestamp. Android reads the access token deadline and asks the player to sign in again when it expires. [Auth token implementation](../../services/auth_app/service/service.go)
 
 ### `POST /api/v1/refresh-token`
-Same shape as above, mints a longer-lived token (`120h` dev config). Same defect applies.
+Same shape as above, mints a longer-lived token (`120h` in the development config).
 
 ### `POST /api/v1/validate-token` and `GET /api/v1/validate-token`
 - **Auth**: token passed via `Authorization` header, not body.
 - **Response 200**: `{ "valid": true, "data": [{"key":"id","value":"123"}, {"key":"role","value":"user"}] }`
 - **Response 401**: `{ "valid": false }` (missing header, bad body, or invalid/expired JWT)
 - **Purpose**: This is what Traefik's `forwardAuth` middleware calls on every protected request; it injects `X-User-ID`, `X-User-Role`, `X-Auth-Data` headers into the downstream request.
-- **Client feature**: Indirect — every authenticated Telegram bot call rides on this.
+- **Client feature**. ForwardAuth validates authenticated Android and Telegram HTTP requests and WebSocket upgrades.
 
 **gRPC** (`auth.TokenService`, port `6000`): `GetAccessToken`, `GetRefreshToken` — same payloads as above, called only by `user` service today.
 
@@ -144,17 +142,21 @@ No gRPC server is actually running for match-service despite config/proto scaffo
 ### `GET /game-service/api/v1/health-check`
 Public in effect (reads but doesn't validate auth headers). `{ "message": "everything is good!" }`.
 
+### `GET /game-service/api/v1/game-options`
+
+An authenticated request returns `minPlayers`, `maxPlayers`, and `numberOfPlayers`. The default range is 2 to 15 inclusive. Android uses `numberOfPlayers` for its player-count selector. [Game options](../../services/game_app/service/options.go)
+
 ### `GET /game-service/api/v1/process-game` — **WebSocket upgrade endpoint**
 
 This is the single most important endpoint for the client and the only way to actually play a game.
 
 - **Auth**: `Authorization: Bearer <token>` for ForwardAuth (gateway-level) — **but the game-service handler itself only checks for a raw `X-User-ID` header**, with no token/signature validation of its own. In production this header only exists because Traefik injected it after ForwardAuth succeeded, but if a client could reach the game-service directly (bypassing the gateway) it could impersonate any user ID. This is an internal trust boundary a client developer should be aware of but cannot fix — connect through the gateway URL.
 - **Handshake**: standard WebSocket upgrade (`ws://` or `wss://` scheme), no subprotocol negotiation used by the app.
-- **Immediate server push after connect** (only if this is the user's first-ever connection, or their cached status expired to `UNKNOWN`): a **non-enveloped** raw JSON object (not wrapped in the standard event envelope used everywhere else):
+- **Immediate server push after connect** for `UNKNOWN` or `FINISHED` user status. The server sends a raw JSON object with categories and allowed player counts. For example, a two-player-only deployment sends:
   ```json
   { "categories": ["SPORT", "MUSIC", "TECH"], "numberOfPlayers": [2] }
   ```
-  If the user reconnects mid-flow (status is `INITIALIZED`/`PENDING`/`CREATED`/`STARTED`/`FINISHED`), **nothing is sent automatically** — the client must already know its `gameId`/state from before the disconnect, since there is no state resync.
+  Game recovery is opt-in. Send `SYNC_MATCH` on the replacement socket to get the current match state.
 
 #### Client → Server commands
 Standard envelope:
@@ -165,10 +167,12 @@ Standard envelope:
 
 | Command | Required fields | Purpose |
 |---|---|---|
-| `ADD_TO_WAITING_LIST` | `category` | Join matchmaking queue for a category |
+| `ADD_TO_WAITING_LIST` | `category` | Join matchmaking. Send `timeOptionId` and `players` to match the selected settings. `displayName` is optional. |
+| `LEAVE_QUEUE` | none | Leave the queue and resolve a race with match creation |
+| `SYNC_MATCH` | none | Recover the authenticated player's latest match on a new connection |
 | `READY` | `gameId` | Signal readiness to start after a match is formed |
 | `ANSWER` | `answer.gameId`, `answer.questionId`, `answer.choice` | Submit an answer |
-| `GET_CATEGORIES` | none | **No-op today — sends no response.** Do not rely on this; categories only arrive automatically on first connect. |
+| `GET_CATEGORIES` | none | Reserved command with no response. Read categories from the automatic connection message when available. |
 
 #### Server → Client events
 Envelope: `{ "success": bool, "event": "...", "message": "...", "metaData": {...} }`
@@ -176,10 +180,14 @@ Envelope: `{ "success": bool, "event": "...", "message": "...", "metaData": {...
 | Event | When | metaData contents |
 |---|---|---|
 | `ADDED_TO_WAITING_LIST` | Reply to `ADD_TO_WAITING_LIST` | empty |
-| `MATCH_CREATED` | Broadcast when matchmaking pairs this player | `gameId` |
-| `QUESTIONS_PUBLISHED` | Broadcast once **all** expected players send `READY` | `gameId`, `questions[]` (full set, each with its own `ttl` deadline, delivered all at once) |
+| `MATCH_CREATED` | When matchmaking commits a match | `gameId`, `readyUntil` |
+| `LEFT_WAITING_LIST` | Reply to `LEAVE_QUEUE` when no match committed | empty |
+| `MATCH_SNAPSHOT` | Reply to `SYNC_MATCH` | optional `snapshot` |
+| `MATCH_CANCELLED` | When the server's ready deadline expires | `gameId` |
+| `QUESTIONS_PUBLISHED` | After all players are ready, then once per round | `gameId`, `roundNumber`, `totalQuestions`, and one entry in `questions[]` with its absolute `ttl` deadline |
+| `ROUND_CLOSED` | After everyone answers or the deadline expires | `gameId`, `roundNumber`, and the player's `recap` |
 | `ANSWER_ACCEPTED` | Reply to a valid `ANSWER`, sent only to the submitter | `gameId`, `answerFeedback` (`questionId`, `isCorrect`), `leaderBoard` (recomputed standings with answer details omitted) |
-| `COMPLETED` | Server-scheduled task fires after all question deadlines pass | `leaderBoard` (final) — **connection is closed by the server immediately after sending this** |
+| `COMPLETED` | After the final round closes | `leaderBoard` (final). The server then closes the socket. |
 | `ERROR` | Various failure conditions (see below) | usually empty |
 
 `ANSWER_ACCEPTED` supplies an immediate verdict for the accepted submission,
@@ -206,27 +214,43 @@ answered or the deadline expires. Rejected submissions receive `ERROR` with no
 feedback. Older servers may omit `answerFeedback`; clients must treat its
 absence as an acknowledgement without a correctness verdict.
 
+#### Recovering a match
+
+`SYNC_MATCH` uses the authenticated player ID. Use it on a fresh connection before sending gameplay commands. It returns the latest active match or results from the past 24 hours. A successful response with no `snapshot` means there is no recoverable match. An unsuccessful response means the lookup failed and can be retried.
+
+The snapshot has the match ID, settings, and a `phase` of `ready`, `round`, or `finished`. The ready phase has the player's `ready` flag and `readyUntil`. The round phase has the active question and its original deadline. Its optional `submission` has only the authenticated player's accepted choice and verdict. It can also include the previous round's personal recap. The finished phase has final `scores`.
+
+Establish the socket before requesting the snapshot. The game service orders the response with match creation and round transitions. Use the snapshot as the baseline and apply frames received after it. The replacement socket closes the prior connection for the account. The server checks connection ownership while processing `READY` and `ANSWER` so a superseded connection cannot modify a round after the snapshot. Live delivery and ordering use one game-service process, as in Docker Compose. A multi-replica rollout needs shared socket and round coordination.
+
+The default ready window is 60 seconds and can be set with `GAME_service__ready_timeout`. `LEAVE_QUEUE` either confirms the queue exit or returns `MATCH_CREATED` if matchmaking already committed. If a server version predates those commands, a client can continue using its foreground flow and close the socket to leave the queue.
+
 #### Documented WebSocket quirks a client MUST handle defensively (verified in code, not hypothetical)
-1. **Invalid category on `ADD_TO_WAITING_LIST` sends BOTH an `ERROR` and a subsequent `ADDED_TO_WAITING_LIST`.** A client must not treat receipt of a success event as proof the preceding error didn't happen — check the error first.
-2. **`READY` sent before all players are ready produces NO response at all.** A client cannot distinguish "still waiting for others" from "my READY was silently dropped" except by absence of `QUESTIONS_PUBLISHED`. Recommend a client-side timeout/UX indicator, not a request-response assumption.
-3. **`READY` sent twice by the same player is silently ignored** (error only logged server-side).
+1. **A failed queue publish can send `ERROR` followed by `ADDED_TO_WAITING_LIST`.** Keep the first failure visible.
+2. **`READY` sent before all players are ready produces no immediate success response.** Use the ready timer and the snapshot's readiness flag during recovery.
+3. **A duplicate `READY` can return `ERROR` while the server waits for the rest of the roster.**
 4. **`GET_CATEGORIES` never responds.**
-5. **`ANSWER` with an unrecognized `questionId` is accepted silently with 0 points** — no error surfaces.
-6. **Answers submitted after the deadline are accepted (not rejected), scored 0.** Only answers submitted *too early* (before the anti-cheat window opens) are rejected with `ERROR: "answered to question quickly"`.
-7. **No reconnection/session-resume protocol.** A dropped connection loses all in-flight event delivery; reconnecting with the same `X-User-ID` silently replaces the old connection entry (old socket isn't proactively closed) but the server does **not** replay missed events (`MATCH_CREATED`, `QUESTIONS_PUBLISHED` while disconnected are lost). The client must persist its own `gameId`/`matchId`/last-known-state locally (or the bot backend must) to have any hope of resuming a session — see `gap-analysis.md`.
+5. **Only the active question can be answered in a round-based match.** A stale question ID returns `ERROR`.
+6. **Round-based matches reject late answers.** The server applies the deadline when it saves the answer.
+7. **Reconnect with `SYNC_MATCH`.** The new socket receives current state through the snapshot.
 8. **No message-size limits or rate limiting** on the WS layer — not a client concern to work around, but don't assume the server protects itself; the bot's own client library should apply sane limits.
 9. **Commands can be sent in any order** with no server-side state machine gate — e.g. sending `ANSWER` before a match even exists just falls through to a generic `{"event":"ERROR","message":"something went wrong"}`. A client-side (bot) state machine should prevent sending commands out of the expected sequence rather than relying on the server to reject them meaningfully.
 10. **`ERROR.message` is frequently the generic string `"something went wrong"`** with no machine-readable code — a client cannot branch logic on error type beyond a few specific strings (`"invalid category"`, `"answered to question quickly"`, `"player <id> already answered this question <qid>"`, `"invalid command"`).
 
-No other REST endpoints exist on game-service — there is no "get current game state," "get leaderboard," or "get game history" HTTP API. Everything is WebSocket-driven and ephemeral.
+Match recovery and standings use the game WebSocket.
 
 ---
 
-## 5. QUESTION SERVICE — internal only, not reachable via gateway
+## 5. QUESTION SERVICE — `/question-service/api/v1/question/...`
 
-### `GET /api/v1/question/health-check` — public, no dependency checks.
+### `GET /question-service/api/v1/question/health-check`
 
-### `POST /api/v1/question/add` — **stub, non-functional**
+Public health check in Compose.
+
+### `GET /question-service/api/v1/question/time-options`
+
+An authenticated request returns an array of enabled question timers. Each option has `id`, `label`, and `seconds`. Use the selected `id` as `timeOptionId` when joining the game socket queue. [Timer handler](../../services/question_app/delivery/http/time_options.go)
+
+### `POST /question-service/api/v1/question/add` — **stub, non-functional**
 Both request and response are empty structs (`{}`); the handler performs no validation, no persistence, and always returns `200 {}`. There is no working way to add questions to the bank via any API today — questions must be seeded directly into PostgreSQL.
 
 **Client feature**: None — and even if this service were exposed via the gateway, this endpoint could not support an "admin adds a question" bot feature without backend work.
@@ -271,9 +295,6 @@ A client never touches Kafka directly; it's documented here only so a client dev
 ## 8. Recommended Improvements (summary — see `backend-improvements.md` for full detail)
 
 1. Add a token refresh endpoint (`user-service` or `auth-service`).
-2. Add a "get my current game state" HTTP endpoint on game-service for reconnect support.
-3. Add a "leave waiting list" command/endpoint.
-4. Standardize all error response bodies to the `{"message","error","code"}` shape.
-5. Add machine-readable error `code` fields to WebSocket `ERROR` events.
-6. Expose question-service through the gateway (or accept it stays internal and the bot never needs it).
-7. Fix the two non-response WS cases (`READY` before ready, `GET_CATEGORIES`) to always emit *some* acknowledgment.
+2. Standardize error response bodies to the `{"message","error","code"}` shape and add machine-readable WebSocket error codes.
+3. Route question timers through the Kubernetes ingress for Android staging deployments that use those manifests.
+4. Add acknowledgments for `READY` before the roster is ready and for `GET_CATEGORIES`.

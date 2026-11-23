@@ -1,5 +1,7 @@
 # Client Project Assessment — Telegram Bot for BrainBlitz
 
+This is the original Telegram planning assessment. Both clients now use the same backend. The Android app supports live play and reconnects using server snapshots. [Current Android milestones](android-roadmap.md) · [Current protocol](backend-api-analysis.md)
+
 ## Executive Summary
 
 BrainBlitz's backend is **substantially ready** to support a Telegram bot client for its core value proposition: register, log in, join a quiz match, and play. The entire real-time gameplay loop (matchmaking → ready → questions → answers → leaderboard → completion) is implemented and functioning end-to-end. However, the backend was clearly built with an implicit "single persistent client" assumption (a always-connected WebSocket, no reconnection story) that is in tension with how a chat-bot backend actually operates — many users, connections that come and go, and a bot process that itself needs to survive restarts without losing every in-flight game. None of these gaps are fatal; they are all addressable with either client-side workarounds (documented in `client-architecture.md` and `client-business-flows.md`) or modest, well-scoped backend changes (`backend-improvements.md`).

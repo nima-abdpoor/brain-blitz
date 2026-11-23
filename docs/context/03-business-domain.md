@@ -239,10 +239,11 @@ The Game Service WebSocket endpoint (`GET /game-service/api/v1/process-game`) ac
 ### Client → Server (Commands)
 
 ```json
-{ "command": "ADD_TO_WAITING_LIST", "category": "SPORT" }
+{ "command": "ADD_TO_WAITING_LIST", "category": "SPORT", "timeOptionId": "10-seconds", "players": 2 }
+{ "command": "LEAVE_QUEUE" }
+{ "command": "SYNC_MATCH" }
 { "command": "READY", "gameId": "<gameId>" }
 { "command": "ANSWER", "gameId": "<gameId>", "answer": { "gameId": "<gameId>", "questionId": "<id>", "choice": "A" } }
-{ "command": "GET_CATEGORIES" }
 ```
 
 ### Server → Client (Events)
@@ -250,16 +251,22 @@ The Game Service WebSocket endpoint (`GET /game-service/api/v1/process-game`) ac
 | Event | When | Payload fields |
 |---|---|---|
 | `ADDED_TO_WAITING_LIST` | After join queue accepted | `success`, `message` |
-| `MATCH_CREATED` | Matchmaking complete | `metaData.gameId` |
-| `QUESTIONS_PUBLISHED` | All players ready | `metaData.questions[]` |
-| `ANSWER_ACCEPTED` | Answer stored | `metaData.leaderBoard` |
-| `COMPLETED` | Game time expired | `metaData.leaderBoard` |
+| `LEFT_WAITING_LIST` | Queue cancellation confirmed | `success`, `message` |
+| `MATCH_CREATED` | Matchmaking complete | `metaData.gameId`, `metaData.readyUntil` |
+| `MATCH_CANCELLED` | Ready deadline expired | `metaData.gameId` |
+| `QUESTIONS_PUBLISHED` | Each round starts | One active question with its original deadline, plus `roundNumber` and `totalQuestions` |
+| `ANSWER_ACCEPTED` | Answer stored | `metaData.answerFeedback`, `metaData.leaderBoard` |
+| `ROUND_CLOSED` | Everyone answered or the deadline expired | Personal `metaData.recap` |
+| `COMPLETED` | Final round closed | `metaData.leaderBoard` |
+| `MATCH_SNAPSHOT` | Reply to `SYNC_MATCH` | `metaData.snapshot` when the player has a recoverable match |
 | `ERROR` | Invalid command / internal error | `message` |
 
-On first connection when user status is `UNKNOWN`, the server also sends:
+When the user status is `UNKNOWN` or `FINISHED`, the server also sends categories and player counts. For example, a two-player-only deployment sends the following object.
 ```json
 { "categories": ["SPORT","MUSIC","TECH"], "numberOfPlayers": [2] }
 ```
+
+Android uses the snapshot to restore readiness, the current deadline and accepted answer, or the final standings. [Client API reference](../client/backend-api-analysis.md#recovering-a-match)
 
 ## Assumptions
 

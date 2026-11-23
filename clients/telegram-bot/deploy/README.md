@@ -2,6 +2,8 @@
 
 This directory holds the Docker image build and Kubernetes manifests for running the bot, mirroring the conventions used by the main repo's backend services (`infra/deploy/*/development/Dockerfile`, `infra/kubernetes/`).
 
+For cross-play, configure the Android app and this bot to reach the same backend gateway. [Android staging setup](../../android/README.md#test-against-staging)
+
 ## Docker image
 
 Unlike the backend services (all one Go module, built from the repo root), this bot is its own Go module — the build context is `clients/telegram-bot/` itself, not the repo root:

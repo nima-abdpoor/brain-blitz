@@ -2,6 +2,8 @@
 
 A Telegram bot client for [BrainBlitz](../../README.md), the real-time multiplayer quiz game backend. Players register, log in, join a category queue, and play a live timed quiz — entirely through Telegram chat — while this process holds the WebSocket connection to the game backend on their behalf.
 
+To play with an Android user, connect both clients to the same gateway and use distinct BrainBlitz accounts. Choose the same category, question timer, and total player count on both clients. [Android setup](../android/README.md)
+
 This is its own Go module (`github.com/nima-abdpoor/brain-blitz-telegram-bot`), independently versioned and deployed from the main BrainBlitz backend, though it lives inside the same monorepo (`clients/telegram-bot/`).
 
 ## Features
@@ -27,7 +29,7 @@ internal/telegram/{commands,conversation,keyboards,middleware}   Delivery layer 
 
 `internal/core` and `internal/apiclient` know nothing about Telegram — a future Web/Discord/CLI client would reuse them and add its own delivery adapter. `internal/telegram` is the only layer allowed to import the Telegram Bot API SDK.
 
-A single bot process serves every Telegram chat; it multiplexes many per-chat WebSocket connections to game-service, guarded by a per-chat state machine (`internal/core/matchmaking`, `internal/core/game`) since there is no server-side session/reconnect API.
+A single bot process serves every Telegram chat. It uses a separate game-service WebSocket for each chat and tracks matchmaking and gameplay with per-chat state machines in `internal/core/matchmaking` and `internal/core/game`.
 
 ## Requirements
 
@@ -136,7 +138,7 @@ See [deploy/README.md](deploy/README.md) for the Docker image and Kubernetes man
 See `docs/client/client-roadmap.md` and `docs/client/gap-analysis.md` in the repo root for the full list; the most consequential for day-to-day operation:
 
 - No backend token-refresh endpoint exists — a session simply expires and the user is asked to `/login` again (`session.Session.Stale`, 24h).
-- A dropped WebSocket connection (queued or mid-game) is never auto-resumed; the bot has no way to know server-side truth after reconnecting, so it always ends the attempt locally rather than risk double-enqueuing or missing an already-fired match.
+- A dropped WebSocket connection ends the bot's current attempt locally. The Android client uses the backend's match recovery protocol. [Match recovery contract](../../docs/client/backend-api-analysis.md#recovering-a-match)
 - Categories are hardcoded client-side (`SPORT`/`MUSIC`/`TECH`) since the backend's `GET_CATEGORIES` command is a documented no-op.
 
 ## Round protocol and operational behavior

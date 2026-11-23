@@ -16,18 +16,11 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (ProcessGameResponse, error) {
 	const op = "game.processGame"
-
-	connection, rw, _, err := svc.webSocket.Upgrade(ctx.Request(), ctx.Response())
-	if err != nil {
-		return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
-			"message": "error in initializing websocket",
-			"data":    fmt.Sprint(request),
-		}, svc.logger)
-	}
 
 	id, err := strconv.ParseUint(request.Id, 10, 64)
 	if err != nil {
@@ -37,9 +30,21 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 		}, svc.logger)
 	}
 
+	connection, rw, _, err := svc.webSocket.Upgrade(ctx.Request(), ctx.Response())
+	if err != nil {
+		return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
+			"message": "error in initializing websocket",
+			"data":    fmt.Sprint(request),
+		}, svc.logger)
+	}
+
 	svc.mu.Lock()
+	previous := svc.connections[id]
 	svc.connections[id] = *connection
 	svc.mu.Unlock()
+	if previous != nil {
+		_ = previous.Close()
+	}
 	switch svc.getUsersGameStatus(id) {
 	case GameStatusInitialized:
 		{
@@ -67,11 +72,9 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 					"data":    fmt.Sprint(request),
 				}, svc.logger)
 			}
-			svc.mu.RLock()
-			initialConn := svc.connections[id]
-			svc.mu.RUnlock()
-			err = svc.webSocket.WriteServerData(initialConn, websocket.OpText, string(categoriesByte))
+			err = svc.webSocket.WriteServerData(*connection, websocket.OpText, string(categoriesByte))
 			if err != nil {
+				svc.closeConnection(id, *connection)
 				return ProcessGameResponse{}, errApp.Wrap(op, nil, errApp.ErrInternal, map[string]string{
 					"message": "error in returning Categories",
 					"data":    fmt.Sprint(request),
@@ -86,8 +89,12 @@ func (svc Service) ProcessGame(ctx echo.Context, request ProcessGameRequest) (Pr
 			svc.logger.Info("connection closed", "userID", userID)
 		}()
 
+		wire := struct {
+			io.Reader
+			io.Writer
+		}{rw.Reader, *conn}
 		for {
-			msg, code, err := svc.webSocket.ReadClientData(rw)
+			msg, code, err := svc.webSocket.ReadClientData(wire)
 			if err != nil {
 				if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
 					svc.logger.Warn("socket read failed", "userID", userID, "error", err)
@@ -118,6 +125,14 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 	}
 
 	switch req.Command {
+	case CommandSyncMatch:
+		ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+		defer cancel()
+		return svc.syncMatch(ctx, id, *conn)
+	case CommandLeaveQueue:
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return svc.acknowledgeQueueExit(ctx, id, *conn)
 	case CommandAddToWaitingList:
 		{
 			svc.logger.Info(op, "adding to waiting list")
@@ -148,6 +163,23 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				return svc.webSocket.WriteServerData(*conn, code, string(data))
 			}
 			choice.Players = players
+			ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+			defer cancel()
+			svc.matchmakingMu.Lock()
+			defer svc.matchmakingMu.Unlock()
+			if !svc.ownsConnection(id, *conn) {
+				return net.ErrClosed
+			}
+			var active bool
+			if err := svc.withCurrentMatch(ctx, id, func(match currentMatch) error {
+				active = match.active(time.Now())
+				return nil
+			}); err != nil {
+				return svc.writeEvent(*conn, code, ProcessGameMessageResponse{Event: Error, Message: "could not check current match"})
+			}
+			if active {
+				return svc.writeEvent(*conn, code, ProcessGameMessageResponse{Event: Error, Message: "a match is already in progress"})
+			}
 			svc.mu.Lock()
 			name := strings.Join(strings.Fields(req.DisplayName), " ")
 			if len([]rune(name)) > 64 {
@@ -202,14 +234,19 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 		}
 	case CommandReady:
 		{
-			// check user if their status is just initialized
+			mu := svc.roundMutex(req.GameId)
+			mu.Lock()
+			defer mu.Unlock()
+			if !svc.ownsConnection(id, *conn) {
+				return net.ErrClosed
+			}
 			isGameReady, readyErr := svc.markReady(ctx, req.GameId, id)
 			if readyErr != nil {
 				data, _ := json.Marshal(ProcessGameMessageResponse{Event: Error, Message: readyErr.Error()})
 				return svc.webSocket.WriteServerData(*conn, code, string(data))
 			}
 			if isGameReady {
-				err := svc.startRounds(ctx, req.GameId)
+				err := svc.startRoundsLocked(ctx, req.GameId)
 				if err != nil {
 					response = ProcessGameMessageResponse{
 						Success: false,
@@ -238,6 +275,9 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 			mu := svc.roundMutex(req.GameAnswer.GameId)
 			mu.Lock()
 			defer mu.Unlock()
+			if !svc.ownsConnection(id, *conn) {
+				return net.ErrClosed
+			}
 			accepted, err := svc.acceptRoundAnswer(ctx, id, req.GameAnswer)
 			if err != nil {
 				svc.logger.Error(op, "error in saving answer of a player", slog.String("error", err.Error()))
@@ -274,17 +314,15 @@ func (svc Service) readMessage(ctx context.Context, id uint64, conn *net.Conn, c
 				return err
 			}
 
-			err = svc.webSocket.WriteServerData(*conn, code, string(answerAcceptedJson))
-			if err != nil {
-				return err
-			}
+			deliveryErr := svc.webSocket.WriteServerData(*conn, code, string(answerAcceptedJson))
 			if accepted.allAnswered {
 				q, err := svc.repository.GetQuestionsByGameId(ctx, req.GameAnswer.GameId)
 				if err != nil {
-					return err
+					return errors.Join(deliveryErr, err)
 				}
-				return svc.openRound(ctx, req.GameAnswer.GameId, q.CurrentQuestionIndex+1)
+				return errors.Join(deliveryErr, svc.openRound(ctx, req.GameAnswer.GameId, q.CurrentQuestionIndex+1))
 			}
+			return deliveryErr
 		}
 	default:
 		{

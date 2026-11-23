@@ -63,6 +63,7 @@ const (
 	EventQuestionsPublished = "QUESTIONS_PUBLISHED"
 	EventAnswerAccepted     = "ANSWER_ACCEPTED"
 	EventCompleted          = "COMPLETED"
+	EventMatchCancelled     = "MATCH_CANCELLED"
 	EventError              = "ERROR"
 )
 

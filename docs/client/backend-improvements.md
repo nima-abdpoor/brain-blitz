@@ -1,6 +1,6 @@
 # Recommended Backend Improvements for Client Integration
 
-These are recommendations only — **not implemented in this planning pass**. Each maps back to a gap in `gap-analysis.md`. Ordered roughly by client-development priority, not necessarily backend implementation ease.
+This document records the original client integration proposals. The backend now exposes question timers through Compose and supports acknowledged queue cancellation, a ready timeout, and WebSocket match snapshots for Android recovery. [Current gateway and recovery contracts](backend-api-analysis.md)
 
 ---
 

@@ -4,7 +4,6 @@ import (
 	"BrainBlitz.com/game/adapter/websocket"
 	"context"
 	"encoding/json"
-	"strconv"
 )
 
 type RoundRecap struct {
@@ -24,21 +23,22 @@ func (svc Service) roundRecaps(ctx context.Context, gameID string, q GameQuestio
 	question := q.Questions[q.CurrentQuestionIndex]
 	recaps := map[uint64]RoundRecap{}
 	for _, id := range q.Players {
-		recap := RoundRecap{QuestionID: question.Id, Question: question.Content, CorrectAnswer: question.CorrectAnswer}
-		for _, p := range board.PlayersPoint {
-			if p.PlayerId == strconv.FormatUint(id, 10) {
-				for _, a := range p.QuestionCorrectness {
-					if a.QuestionId == question.Id {
-						recap.PlayerAnswer = a.PlayerChoice
-						recap.Answered = true
-						recap.IsCorrect = a.PlayerChoice == question.CorrectAnswer
-					}
-				}
-			}
-		}
-		recaps[id] = recap
+		recaps[id] = recapForPlayer(question, playerAnswers(board, id))
 	}
 	return recaps, nil
+}
+
+func recapForPlayer(question Question, answers []QuestionCorrectness) RoundRecap {
+	recap := RoundRecap{QuestionID: question.Id, Question: question.Content, CorrectAnswer: question.CorrectAnswer}
+	for _, answer := range answers {
+		if answer.QuestionId == question.Id {
+			recap.PlayerAnswer = answer.PlayerChoice
+			recap.Answered = true
+			recap.IsCorrect = answer.PlayerChoice == question.CorrectAnswer
+			break
+		}
+	}
+	return recap
 }
 func (svc Service) sendRoundRecaps(gameID string, round int, recaps map[uint64]RoundRecap) {
 	for id, recap := range recaps {

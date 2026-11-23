@@ -1,6 +1,6 @@
 # Client Business Flows
 
-This maps the full player journey as a client (Telegram bot or otherwise) would experience it, based on the verified API surface in `backend-api-analysis.md`. It supersedes `docs/business/02-business-flows.md` for client-facing purposes by adding failure/retry/timeout detail that document didn't need to cover.
+These flows record the original Telegram bot design. Current clients share matchmaking and gameplay. The backend now supports queue cancellation, a ready timeout, round recaps, and Android match recovery. [Current client protocol](backend-api-analysis.md) · [Android setup](../../clients/android/README.md)
 
 ## 1. End-to-End User Journey
 

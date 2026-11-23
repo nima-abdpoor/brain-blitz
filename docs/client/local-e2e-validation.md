@@ -2,6 +2,8 @@
 
 Validated on `telegram-client` after merging `main` at `2506027`.
 
+The later Android validation includes a ten-question match against the Telegram bot using the same backend. [Android validation results](../../clients/android/README.md#validation-status)
+
 ## Automated results
 
 - Bot unit tests passed with the race detector, followed by `go vet ./...`

@@ -1,5 +1,7 @@
 # Telegram Bot — Development Roadmap
 
+Android has its own roadmap and shares the bot's backend and matchmaking queues. [Android roadmap](android-roadmap.md) · [Cross-play setup](../../clients/android/README.md#run-locally)
+
 Seven phases, each independently shippable/testable. Effort estimates assume one backend-capable developer working solo, familiar with Go, new to Telegram bot frameworks.
 
 ---

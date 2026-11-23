@@ -6,7 +6,7 @@ Link related issues (for example, `Closes #123`).
 ## Validation
 
 List the commands you ran and their results. Mention tests you skipped and why.
-Backend and Telegram client tests run in separate Go modules.
+Backend and Telegram tests run in separate Go modules. Android uses the Gradle build, unit tests, and lint. Include the emulator or device and environment for manual Android checks.
 
 ## Compatibility and deployment
 
