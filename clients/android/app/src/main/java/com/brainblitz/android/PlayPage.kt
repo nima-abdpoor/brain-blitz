@@ -360,6 +360,9 @@ internal fun categoryName(category: String): String = when (category) {
     "SPORT" -> stringResource(R.string.category_sports)
     "MUSIC" -> stringResource(R.string.category_music)
     "TECH" -> stringResource(R.string.category_tech)
+    "GEOGRAPHY" -> stringResource(R.string.category_geography)
+    "SCIENCE" -> stringResource(R.string.category_science)
+    "HISTORY" -> stringResource(R.string.category_history)
     else -> category
 }
 
@@ -367,5 +370,8 @@ private fun categorySymbol(category: String): Int = when (category) {
     "SPORT" -> R.drawable.ic_arena_trophy
     "MUSIC" -> R.drawable.ic_arena_headphones
     "TECH" -> R.drawable.ic_arena_chip
+    "GEOGRAPHY" -> R.drawable.ic_arena_geography
+    "SCIENCE" -> R.drawable.ic_arena_science
+    "HISTORY" -> R.drawable.ic_arena_history
     else -> R.drawable.ic_arena_bolt
 }

@@ -10,7 +10,7 @@ This is its own Go module (`github.com/nima-abdpoor/brain-blitz-telegram-bot`), 
 
 - **Onboarding**: `/start`, inline register/login conversations
 - **Profile & menu**: `/profile`, `/help`, logout
-- **Matchmaking**: join a category queue (`SPORT` / `MUSIC` / `TECH`), cancel, match-found notification
+- **Matchmaking**: join a category queue (`SPORT` / `MUSIC` / `TECH` / `GEOGRAPHY` / `SCIENCE` / `HISTORY`), cancel, match-found notification
 - **Gameplay**: server-controlled rounds advance when everyone answers or time expires; full-width answer buttons, local countdown edits, named standings, and personalized winner/loser/draw results
 - **Resilience**: retrying HTTP client with backoff, WebSocket-connect retry, optional rate limiting, optional Redis-backed session persistence across restarts
 - **Observability**: Prometheus metrics, structured JSON logging (see [Metrics](#metrics) below)
@@ -139,7 +139,7 @@ See `docs/client/client-roadmap.md` and `docs/client/gap-analysis.md` in the rep
 
 - No backend token-refresh endpoint exists — a session simply expires and the user is asked to `/login` again (`session.Session.Stale`, 24h).
 - A dropped WebSocket connection ends the bot's current attempt locally. The Android client uses the backend's match recovery protocol. [Match recovery contract](../../docs/client/backend-api-analysis.md#recovering-a-match)
-- Categories are hardcoded client-side (`SPORT`/`MUSIC`/`TECH`) since the backend's `GET_CATEGORIES` command is a documented no-op.
+- Categories are hardcoded client-side (`SPORT`/`MUSIC`/`TECH`/`GEOGRAPHY`/`SCIENCE`/`HISTORY`) since the backend's `GET_CATEGORIES` command is a documented no-op.
 
 ## Round protocol and operational behavior
 

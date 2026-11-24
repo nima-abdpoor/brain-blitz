@@ -121,14 +121,14 @@ Protected (per current deployment config, unlike its name might suggest). Return
 
 ### `POST /match-service/api/v1/addToWaitingList`
 - **Auth**: `Authorization: Bearer <token>` (ForwardAuth) + handler also independently requires `X-User-ID`.
-- **Request**: `{ "category": "SPORT" }` — must be exactly `SPORT`, `MUSIC`, or `TECH` (case-sensitive).
+- **Request**: `{ "category": "SPORT" }` — must be one of `SPORT`, `MUSIC`, `TECH`, `GEOGRAPHY`, `SCIENCE`, or `HISTORY` (case-sensitive).
 - **Response 200**: `{ "timeout": 1200000000000 }` — this is a raw Go `time.Duration` serialized as **nanoseconds**, not a human string or seconds. A client must divide by `1e9` to get seconds (20 minutes in dev config).
 - **Errors**:
   | Status | Body | Cause |
   |---|---|---|
   | 400 | `"Invalid user id"` (bare string) | missing `X-User-ID` |
   | 400 | `"invalid category"` (bare string) | malformed JSON body |
-  | 400 | `{"message":"invalid input"}` | category not in `{SPORT,MUSIC,TECH}` |
+  | 400 | `{"message":"invalid input"}` | category not in `{SPORT,MUSIC,TECH,GEOGRAPHY,SCIENCE,HISTORY}` |
   | 500 | `{"message":"something went wrong"}` | Redis failure |
 - **Purpose**: HTTP alternative to the WebSocket `ADD_TO_WAITING_LIST` command. **Important**: joining via this endpoint alone does not let the player receive `MATCH_CREATED` — that only arrives over the game-service WebSocket. A client must have a WS connection open regardless of which path it used to join the queue.
 - **Client feature**: Not needed if the bot always uses the WebSocket path (recommended — see `client-architecture.md`).
@@ -154,7 +154,7 @@ This is the single most important endpoint for the client and the only way to ac
 - **Handshake**: standard WebSocket upgrade (`ws://` or `wss://` scheme), no subprotocol negotiation used by the app.
 - **Immediate server push after connect** for `UNKNOWN` or `FINISHED` user status. The server sends a raw JSON object with categories and allowed player counts. For example, a two-player-only deployment sends:
   ```json
-  { "categories": ["SPORT", "MUSIC", "TECH"], "numberOfPlayers": [2] }
+  { "categories": ["SPORT", "MUSIC", "TECH", "GEOGRAPHY", "SCIENCE", "HISTORY"], "numberOfPlayers": [2] }
   ```
   Game recovery is opt-in. Send `SYNC_MATCH` on the replacement socket to get the current match state.
 

@@ -4,9 +4,12 @@ type Category string
 type Difficulty string
 
 const (
-	CategoryTypeSport Category = "SPORT"
-	CategoryTypeMusic Category = "MUSIC"
-	CategoryTypeTech  Category = "TECH"
+	CategoryTypeSport     Category = "SPORT"
+	CategoryTypeMusic     Category = "MUSIC"
+	CategoryTypeTech      Category = "TECH"
+	CategoryTypeGeography Category = "GEOGRAPHY"
+	CategoryTypeScience   Category = "SCIENCE"
+	CategoryTypeHistory   Category = "HISTORY"
 )
 
 const (
@@ -23,6 +26,12 @@ func MapToCategory(category string) Category {
 		return CategoryTypeSport
 	case "TECH":
 		return CategoryTypeTech
+	case "GEOGRAPHY":
+		return CategoryTypeGeography
+	case "SCIENCE":
+		return CategoryTypeScience
+	case "HISTORY":
+		return CategoryTypeHistory
 	default:
 		return CategoryTypeMusic
 	}

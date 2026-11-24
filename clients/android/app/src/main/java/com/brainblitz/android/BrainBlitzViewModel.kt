@@ -105,7 +105,7 @@ internal class BrainBlitzViewModel(application: Application) : AndroidViewModel(
     }
 
     // Rejoining accounts may receive no initial frame. Use the server's known categories until it sends a list.
-    private var categories = listOf("SPORT", "MUSIC", "TECH")
+    private var categories = listOf("SPORT", "MUSIC", "TECH", "GEOGRAPHY", "SCIENCE", "HISTORY")
 
     init {
         connectivity?.registerDefaultNetworkCallback(networkCallback)

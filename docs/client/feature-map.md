@@ -88,11 +88,11 @@ Back to Main Menu
 - **Conversation flow**:
   1. Check session has a valid token; if not, redirect to login.
   2. If no open WS connection for this session, open one to game-service.
-  3. On connect, if the server pushes the initial `{categories, numberOfPlayers}` payload (only happens on a truly fresh connection), present inline buttons for each category (`[SPORT] [MUSIC] [TECH]`). If it doesn't (reconnect case), fall back to a bot-side hardcoded category list (see gap below) since the bot cannot re-request categories (`GET_CATEGORIES` is a no-op).
+  3. On connect, if the server pushes the initial `{categories, numberOfPlayers}` payload (only happens on a truly fresh connection), present inline buttons for each category (`[SPORT] [MUSIC] [TECH] [GEOGRAPHY] [SCIENCE] [HISTORY]`). If it doesn't (reconnect case), fall back to a bot-side hardcoded category list (see gap below) since the bot cannot re-request categories (`GET_CATEGORIES` is a no-op).
 - **API calls**: WS connect to `game-service`.
-- **Missing backend support**: `GET_CATEGORIES` command exists in the protocol but the server never responds to it (confirmed no-op). The bot must hardcode `SPORT/MUSIC/TECH` as a fallback rather than relying on this command, and treat the initial-connect payload as a "nice to have, not guaranteed" source of truth.
+- **Missing backend support**: `GET_CATEGORIES` command exists in the protocol but the server never responds to it (confirmed no-op). The bot must hardcode `SPORT/MUSIC/TECH/GEOGRAPHY/SCIENCE/HISTORY` as a fallback rather than relying on this command, and treat the initial-connect payload as a "nice to have, not guaranteed" source of truth.
 
-### Callback: `category:SPORT` (or MUSIC/TECH)
+### Callback: `category:SPORT` (example)
 - **Conversation flow**: Send WS command, show "Looking for an opponent..." with a `[Cancel]` button (UI-only cancel — see below).
 - **API calls**: WS send `{command: "ADD_TO_WAITING_LIST", category: "SPORT"}`
 - **Expected responses**: `ADDED_TO_WAITING_LIST` (proceed to waiting state) — possibly preceded by a spurious `ERROR` if the bot ever sends a malformed category (shouldn't happen since the bot controls the button values).

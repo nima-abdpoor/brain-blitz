@@ -3,8 +3,11 @@ package commands
 import (
 	"context"
 	"fmt"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"slices"
 	"strings"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nima-abdpoor/brain-blitz-telegram-bot/internal/core/matchmaking"
 )
 
 const CallbackTimePrefix = "time:"
@@ -24,7 +27,7 @@ func (h *Handlers) timeOptionsReply(ctx context.Context, chatID int64, category 
 }
 func (h *Handlers) TimeOptionCallback(ctx context.Context, cb *tgbotapi.CallbackQuery) (tgbotapi.Chattable, error) {
 	category, id, ok := strings.Cut(strings.TrimPrefix(cb.Data, CallbackTimePrefix), "|")
-	if !ok || (category != "SPORT" && category != "MUSIC" && category != "TECH") {
+	if !ok || !slices.Contains(matchmaking.Categories, category) {
 		return tgbotapi.NewMessage(cb.Message.Chat.ID, "⚠️ Invalid selection. Please use /play."), nil
 	}
 	options, err := h.matchmaking.TimeOptions(ctx, cb.Message.Chat.ID)

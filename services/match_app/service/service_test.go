@@ -129,11 +129,11 @@ func TestMatchWaitUsers_GetWaitingListError(t *testing.T) {
 	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeMusic).
 		Return([]WaitingMember{}, fmt.Errorf("db error"))
 
-	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeSport).
-		Return([]WaitingMember{}, nil)
-
-	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeTech).
-		Return([]WaitingMember{}, nil)
+	for _, category := range GetCategories() {
+		if category != CategoryTypeMusic {
+			mockRepo.On("GetWaitingListByCategory", mock.Anything, category).Return([]WaitingMember{}, nil)
+		}
+	}
 
 	t.Run("error-while-getting-waiting-list", func(t *testing.T) {
 		_, err := svc.MatchWaitUsers(context.Background(), MatchWaitedUsersRequest{})
@@ -158,8 +158,11 @@ func TestMatchWaitUsers_MatchingLogic(t *testing.T) {
 	}
 	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeMusic).Return(members, nil)
 
-	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeSport).Return([]WaitingMember{}, nil)
-	mockRepo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeTech).Return([]WaitingMember{}, nil)
+	for _, category := range GetCategories() {
+		if category != CategoryTypeMusic {
+			mockRepo.On("GetWaitingListByCategory", mock.Anything, category).Return([]WaitingMember{}, nil)
+		}
+	}
 
 	membersThatMustBeRemoved := []WaitingMember{
 		{UserId: 1, Category: CategoryTypeMusic},

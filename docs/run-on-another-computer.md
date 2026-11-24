@@ -46,7 +46,7 @@ docker compose ps -a
 
 `init-env.py` does not overwrite existing secrets. The first build may take
 several minutes. `seed-demo` is optional and repeatable: it inserts 10 EASY
-questions for each of TECH, SPORT, and MUSIC without replacing existing rows.
+questions for each of TECH, SPORT, MUSIC, GEOGRAPHY, SCIENCE, and HISTORY without replacing existing rows.
 Games need question data; the existing AddQuestion HTTP handler is unfinished,
 so use the SQL import or your own database import until that feature is built.
 

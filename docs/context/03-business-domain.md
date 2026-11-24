@@ -8,7 +8,7 @@ BrainBlitz is a **live quiz competition** platform. Players are paired against s
 
 | Term | Definition |
 |---|---|
-| **Category** | A topic area for quiz questions. Supported values: `SPORT`, `MUSIC`, `TECH` |
+| **Category** | A topic area for quiz questions. Supported values: `SPORT`, `MUSIC`, `TECH`, `GEOGRAPHY`, `SCIENCE`, `HISTORY` |
 | **Difficulty** | Question difficulty level: `EASY`, `MEDIUM`, `HARD` |
 | **Waiting List** | A per-category Redis sorted set of players waiting to be matched |
 | **Match** | A grouping of 2+ players assigned the same questions to compete against each other. Identified by a ULID-based `matchId` |
@@ -45,7 +45,7 @@ id             UUID PRIMARY KEY
 content        TEXT
 correct_answer TEXT
 choices        TEXT[]              (array of 4 choices)
-category       TEXT                ('SPORT', 'MUSIC', 'TECH')
+category       TEXT                ('SPORT', 'MUSIC', 'TECH', 'GEOGRAPHY', 'SCIENCE', 'HISTORY')
 difficulty     TEXT                ('EASY', 'MEDIUM', 'HARD')
 created_at     TIMESTAMP
 ```
@@ -225,7 +225,7 @@ Both Question Service and Game Service consume this event in parallel:
 2. A player can only answer a question **once** per game.
 3. An answer submitted **before** the question's valid answer window is rejected (anti-cheat).
 4. An answer submitted **after** the deadline scores 0 (but is still recorded).
-5. Categories are fixed at compile time: `SPORT`, `MUSIC`, `TECH`.
+5. Categories are fixed at compile time: `SPORT`, `MUSIC`, `TECH`, `GEOGRAPHY`, `SCIENCE`, `HISTORY`.
 6. Questions are selected with difficulty `EASY` only (hardcoded in `ConsumeMatchCreated`).
 7. The number of questions per match is fixed at **10** (hardcoded `limit = 10`).
 8. Player count per match is **2** (visible in `getCategories` which returns `users: [2]`).
@@ -263,7 +263,7 @@ The Game Service WebSocket endpoint (`GET /game-service/api/v1/process-game`) ac
 
 When the user status is `UNKNOWN` or `FINISHED`, the server also sends categories and player counts. For example, a two-player-only deployment sends the following object.
 ```json
-{ "categories": ["SPORT","MUSIC","TECH"], "numberOfPlayers": [2] }
+{ "categories": ["SPORT","MUSIC","TECH","GEOGRAPHY","SCIENCE","HISTORY"], "numberOfPlayers": [2] }
 ```
 
 Android uses the snapshot to restore readiness, the current deadline and accepted answer, or the final standings. [Client API reference](../client/backend-api-analysis.md#recovering-a-match)
