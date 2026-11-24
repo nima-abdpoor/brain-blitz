@@ -63,7 +63,7 @@ Categories: **Already supported**, **Needs small backend changes**, **Needs majo
 - **Backend files involved**: `services/game_app/service/websocket_handler.go`
 - **Suggested solution**: Make it call the same `getCategories()` helper used on fresh-connect and send the response, so a bot reconnecting mid-session (status != UNKNOWN) can still fetch the category list on demand instead of hardcoding it client-side.
 - **Estimated effort**: Trivial (< 1 hour).
-- **Priority**: Low — bot can hardcode categories as a workaround since they're static (`SPORT/MUSIC/TECH`) today.
+- **Priority**: Low — bot can hardcode categories as a workaround since they're static (`SPORT/MUSIC/TECH/GEOGRAPHY/SCIENCE/HISTORY`) today.
 
 ### G-10: `ADD_TO_WAITING_LIST` sends contradictory ERROR+success frames on invalid category
 - **Why it exists**: Missing `return` statements after the error-write in `readMessage`'s `ADD_TO_WAITING_LIST` case (`services/game_app/service/websocket_handler.go`).

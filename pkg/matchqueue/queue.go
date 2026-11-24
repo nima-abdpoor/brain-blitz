@@ -11,7 +11,7 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-var categories = []string{"SPORT", "MUSIC", "TECH"}
+var categories = []string{"SPORT", "MUSIC", "TECH", "GEOGRAPHY", "SCIENCE", "HISTORY"}
 
 const presencePrefix = "queue_presence:"
 

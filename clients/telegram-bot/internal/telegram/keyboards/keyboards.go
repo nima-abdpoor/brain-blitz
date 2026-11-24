@@ -68,7 +68,7 @@ func MainMenu() tgbotapi.InlineKeyboardMarkup {
 	)
 }
 
-// Category offers the three matchmaking categories, shown after /play.
+// Category offers the matchmaking categories, shown after /play.
 // Categories are hardcoded client-side rather than fetched from
 // game-service's first-connect push — an approved Phase 4 decision, since
 // GET_CATEGORIES is a documented no-op server-side
@@ -81,6 +81,11 @@ func Category() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("⚽ Sport", CallbackCategoryPrefix+"SPORT"),
 			tgbotapi.NewInlineKeyboardButtonData("🎵 Music", CallbackCategoryPrefix+"MUSIC"),
 			tgbotapi.NewInlineKeyboardButtonData("💻 Tech", CallbackCategoryPrefix+"TECH"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🌍 Geography", CallbackCategoryPrefix+"GEOGRAPHY"),
+			tgbotapi.NewInlineKeyboardButtonData("🔬 Science", CallbackCategoryPrefix+"SCIENCE"),
+			tgbotapi.NewInlineKeyboardButtonData("🏛️ History", CallbackCategoryPrefix+"HISTORY"),
 		),
 	)
 }

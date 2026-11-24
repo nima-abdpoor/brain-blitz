@@ -49,6 +49,9 @@
     <string name="category_sports">Sports</string>
     <string name="category_music">Music</string>
     <string name="category_tech">Tech</string>
+    <string name="category_geography">Geography</string>
+    <string name="category_science">Science</string>
+    <string name="category_history">History</string>
     <string name="players">Total players</string>
     <string name="fewer_players">Fewer players</string>
     <string name="more_players">More players</string>

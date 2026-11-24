@@ -36,7 +36,7 @@ const (
 // push — an approved Phase 4 decision, since GET_CATEGORIES is a documented
 // no-op (docs/client/gap-analysis.md G-09) and the push only fires on a
 // genuinely first-ever connection anyway (backend-api-analysis.md §4).
-var Categories = []string{"SPORT", "MUSIC", "TECH"}
+var Categories = []string{"SPORT", "MUSIC", "TECH", "GEOGRAPHY", "SCIENCE", "HISTORY"}
 
 var (
 	// ErrAlreadyInProgress is returned by JoinQueue when chatID already has

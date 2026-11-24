@@ -3,10 +3,12 @@ package commands
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nima-abdpoor/brain-blitz-telegram-bot/internal/core/matchmaking"
 )
 
 const CallbackPlayersPrefix = "players:"
@@ -31,7 +33,7 @@ func (h *Handlers) playerCountsReply(ctx context.Context, chatID int64, category
 
 func (h *Handlers) PlayerCountCallback(ctx context.Context, cb *tgbotapi.CallbackQuery) (tgbotapi.Chattable, error) {
 	parts := strings.Split(strings.TrimPrefix(cb.Data, CallbackPlayersPrefix), "|")
-	if len(parts) != 3 || (parts[0] != "SPORT" && parts[0] != "MUSIC" && parts[0] != "TECH") {
+	if len(parts) != 3 || !slices.Contains(matchmaking.Categories, parts[0]) {
 		return tgbotapi.NewMessage(cb.Message.Chat.ID, "⚠️ Invalid selection. Please use /play."), nil
 	}
 	players, err := strconv.Atoi(parts[2])

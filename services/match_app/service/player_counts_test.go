@@ -88,7 +88,7 @@ func TestMatchSeparatesSizeCategoryAndTimer(t *testing.T) {
 		}
 	}
 	rosters := matchRosters(t, members, Config{})
-	require.Len(t, rosters, 24)
+	require.Len(t, rosters, len(GetCategories())*4*2)
 	for _, roster := range rosters {
 		first := members[int(roster[0])-1]
 		require.Len(t, roster, first.Players)

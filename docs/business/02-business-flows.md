@@ -90,7 +90,7 @@ These flows describe the original backend implementation. Android and Telegram n
 
 **Steps**:
 1. Game Service receives command on established WebSocket connection
-2. Validates category is one of `SPORT`, `MUSIC`, `TECH`
+2. Validates category is one of `SPORT`, `MUSIC`, `TECH`, `GEOGRAPHY`, `SCIENCE`, `HISTORY`
 3. Sets user's game status to `INITIALIZED` in Redis
 4. Publishes `GAME_V1_JOIN_MATCH_QUEUE_REQUESTED` event to Kafka
 5. Match Service consumer receives event; adds user to Redis sorted set `waiting_users:SPORT` with score = current Unix microseconds

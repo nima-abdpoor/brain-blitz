@@ -1,6 +1,10 @@
 package keyboards
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/nima-abdpoor/brain-blitz-telegram-bot/internal/core/matchmaking"
+)
 
 func TestAuth_HasRegisterAndLogin(t *testing.T) {
 	kb := Auth()
@@ -44,7 +48,7 @@ func TestMainMenu_HasPlayProfileHelpLogout(t *testing.T) {
 	}
 }
 
-func TestCategory_HasSportMusicTech(t *testing.T) {
+func TestCategory_HasAllMatchmakingCategories(t *testing.T) {
 	kb := Category()
 	var got []string
 	for _, row := range kb.InlineKeyboard {
@@ -52,13 +56,12 @@ func TestCategory_HasSportMusicTech(t *testing.T) {
 			got = append(got, *btn.CallbackData)
 		}
 	}
-	want := []string{CallbackCategoryPrefix + "SPORT", CallbackCategoryPrefix + "MUSIC", CallbackCategoryPrefix + "TECH"}
-	if len(got) != len(want) {
-		t.Fatalf("Category buttons = %v, want %v", got, want)
+	if len(got) != len(matchmaking.Categories) {
+		t.Fatalf("Category buttons = %v, want buttons for %v", got, matchmaking.Categories)
 	}
-	for i, data := range want {
-		if got[i] != data {
-			t.Errorf("button %d data = %q, want %q", i, got[i], data)
+	for i, category := range matchmaking.Categories {
+		if want := CallbackCategoryPrefix + category; got[i] != want {
+			t.Errorf("button %d data = %q, want %q", i, got[i], want)
 		}
 	}
 }

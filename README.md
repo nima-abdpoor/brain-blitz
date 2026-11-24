@@ -194,7 +194,7 @@ curl --fail http://127.0.0.1:8088/user-service/public/api/v1/health-check
 This starts all five application services, Kafka, PostgreSQL, Redis, a three-node
 MongoDB replica set, and Traefik. Initializer jobs create the Question database,
 Kafka topics, and replica set before their dependent applications start. The
-optional demo import adds 30 questions and can be repeated safely.
+optional demo import adds 60 questions across six categories and can be repeated safely.
 
 The gateway binds to `127.0.0.1:8088` by default. Database and administrative
 ports are private. Set `HTTP_BIND` and `HTTP_PORT` in `.env` when appropriate for

@@ -7,14 +7,17 @@ import (
 type Category string
 
 const (
-	CategoryTypeSport   Category = "SPORT"
-	CategoryTypeMusic   Category = "MUSIC"
-	CategoryTypeTech    Category = "TECH"
-	CategoryTypeUnknown Category = "UNKNOWN"
+	CategoryTypeSport     Category = "SPORT"
+	CategoryTypeMusic     Category = "MUSIC"
+	CategoryTypeTech      Category = "TECH"
+	CategoryTypeGeography Category = "GEOGRAPHY"
+	CategoryTypeScience   Category = "SCIENCE"
+	CategoryTypeHistory   Category = "HISTORY"
+	CategoryTypeUnknown   Category = "UNKNOWN"
 )
 
 func GetCategories() []Category {
-	return []Category{CategoryTypeSport, CategoryTypeMusic, CategoryTypeTech}
+	return []Category{CategoryTypeSport, CategoryTypeMusic, CategoryTypeTech, CategoryTypeGeography, CategoryTypeScience, CategoryTypeHistory}
 }
 
 func MapToCategory(category string) Category {
@@ -25,6 +28,12 @@ func MapToCategory(category string) Category {
 		return CategoryTypeMusic
 	case "TECH":
 		return CategoryTypeTech
+	case "GEOGRAPHY":
+		return CategoryTypeGeography
+	case "SCIENCE":
+		return CategoryTypeScience
+	case "HISTORY":
+		return CategoryTypeHistory
 	default:
 		return CategoryTypeUnknown
 	}

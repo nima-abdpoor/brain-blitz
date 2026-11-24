@@ -13,7 +13,10 @@ func TestMatchSeparatesQuestionTimes(t *testing.T) {
 	repo := new(MockRepo)
 	broker := new(BrokerMock)
 	repo.On("GetWaitingListByCategory", mock.Anything, CategoryTypeSport).Return([]WaitingMember{{UserId: 1, Category: CategoryTypeSport, QuestionSeconds: 10, TimeOptionID: "10-seconds"}, {UserId: 2, Category: CategoryTypeSport, QuestionSeconds: 60, TimeOptionID: "1-minute"}, {UserId: 3, Category: CategoryTypeSport, QuestionSeconds: 10, TimeOptionID: "10-seconds"}}, nil)
-	for _, c := range []Category{CategoryTypeMusic, CategoryTypeTech} {
+	for _, c := range GetCategories() {
+		if c == CategoryTypeSport {
+			continue
+		}
 		repo.On("GetWaitingListByCategory", mock.Anything, c).Return([]WaitingMember{}, nil)
 	}
 	repo.On("RemoveWaitingMember", mock.Anything, mock.Anything).Return(nil)

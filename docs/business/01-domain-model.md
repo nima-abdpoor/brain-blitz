@@ -61,7 +61,7 @@
 
 | Term | Type | Values / Notes |
 |---|---|---|
-| `Category` | Enum | `SPORT`, `MUSIC`, `TECH` |
+| `Category` | Enum | `SPORT`, `MUSIC`, `TECH`, `GEOGRAPHY`, `SCIENCE`, `HISTORY` |
 | `Difficulty` | Enum | `EASY`, `MEDIUM`, `HARD` |
 | `GameStatus` | Enum | `UNKNOWN`, `INITIALIZED`, `PENDING`, `CREATED`, `STARTED`, `FINISHED` |
 | `Role` | Enum | `user` (1), `admin` (2) |

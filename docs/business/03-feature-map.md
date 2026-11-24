@@ -72,7 +72,7 @@
 | History-aware question selection | Partial | `GetProperQuestions` implemented but never called; `user_question_history` never populated |
 | Add question via API | Missing | `AddQuestion` is a stub |
 | Question search / listing | Missing | No admin API |
-| Question categories: SPORT, MUSIC, TECH | Complete | Hardcoded enum |
+| Question categories: SPORT, MUSIC, TECH, GEOGRAPHY, SCIENCE, HISTORY | Complete | Hardcoded enum |
 | 4-choice questions | Complete | `choices TEXT[]` |
 
 ## Infrastructure
